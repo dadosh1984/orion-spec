@@ -1,0 +1,7 @@
+{
+  "testTemplate": "import { describe, it, expect } from 'vitest';\nimport { {{task}} } from '../src/tasks/{{task}}';\n\ndescribe('{{task}}', () => {\n  it('works', () => {\n    expect({{task}}()).toBeDefined();\n  });\n});\n",
+  "testDir": "tests",
+  "srcDir": "src/tasks",
+  "command": "pnpm vitest run {{testDir}}/{{task}}.test.ts",
+  "minCoverage": 80
+}

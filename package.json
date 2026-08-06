@@ -1,0 +1,55 @@
+{
+  "name": "orion-cli",
+  "version": "0.1.0",
+  "description": "Self-contained AI-agent toolkit: deterministic think → draft → forge → shield workflow with zero dependencies at runtime.",
+  "type": "module",
+  "bin": {
+    "orion": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "tdd",
+    "yagni",
+    "cache",
+    "cli"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --max-warnings=0",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "watch": "tsc -w -p tsconfig.json",
+    "prepare": "pnpm run build",
+    "tdd": "node dist/cli/index.js tdd",
+    "metrics": "node dist/cli/index.js metrics",
+    "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run test:coverage && pnpm run build",
+    "publish": "npm publish"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,0 +1,3 @@
+{
+  "stages": ["yagni", "reuse", "stdlib", "native", "dep", "oneLiner", "minimum"]
+}
