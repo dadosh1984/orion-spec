@@ -1,6 +1,7 @@
 # Orion – Self‑Contained AI‑Agent Toolkit
 
 ![CI](https://img.shields.io/badge/CI-passing-brightgreen)
+[![npm](https://img.shields.io/npm/v/orion-spec.svg)](https://www.npmjs.com/package/orion-spec)
 
 > **Orion** is a zero‑dependency framework that turns a high‑level idea into production‑ready code **while guaranteeing minimal token usage, full test coverage, and deterministic quality gates**. Everything – the cache, the YAGNI ladder, the RED‑GREEN‑REFACTOR engine and the CLI – is written from scratch.
 

@@ -1,5 +1,5 @@
 {
-  "name": "orion-cli",
+  "name": "orion-spec",
   "version": "0.5.0",
   "packageManager": "pnpm@11.18.0",
   "description": "Self-contained AI-agent toolkit: deterministic think → draft → forge → shield workflow with zero dependencies at runtime.",
@@ -16,13 +16,18 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dadosh1984/orion-spec.git"
+  },
   "keywords": [
     "ai",
     "agent",
     "tdd",
     "yagni",
     "cache",
-    "cli"
+    "cli",
+    "zero-dependency"
   ],
   "license": "MIT",
   "engines": {
