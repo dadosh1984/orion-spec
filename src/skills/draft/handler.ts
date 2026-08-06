@@ -119,6 +119,8 @@ const WORD_MAP: Array<[RegExp, string]> = [
   [/сервер/g, "server"],
   [/бот/g, "bot"],
   [/заметк/g, "notes"],
+  [/дашборд/g, "dashboard"],
+  [/изменений/g, "changes"],
   // \b is ASCII-only in JS, so use lookarounds for the one-letter particles.
   [/(?<![а-яёa-z0-9])с(?![а-яёa-z0-9])/g, "with"],
   [/(?<![а-яёa-z0-9])и(?![а-яёa-z0-9])/g, "and"],
