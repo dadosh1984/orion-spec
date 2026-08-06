@@ -395,22 +395,24 @@ export async function main(argv: string[]): Promise<number> {
       // v0.7: natural-language fallback — `orion <multi-word prompt>`
       // captures the idea as a proposal (shorthand for `orion think`).
       // Single-word input stays an error so command typos are visible.
-      if (args.length > 0) {
-        const prompt = [cmd, ...args].join(" ");
-        const proposal = await think(
-          prompt,
-          { noCache: opts.noCache },
-          async () => "",
-        );
-        printOut(
-          opts,
-          proposal,
-          `Proposal "${proposal.title}" saved. Next: orion draft ${proposal.title}`,
-        );
-        return 0;
+      // A whole quoted phrase (`orion "build a calculator"`) arrives as
+      // one argv entry with spaces — that is a prompt too (v0.8.1).
+      const prompt = args.length > 0 ? [cmd, ...args].join(" ") : cmd;
+      if (args.length === 0 && !cmd.includes(" ")) {
+        console.log(`orion: unknown command "${cmd}"\n\n${HELP}`);
+        return 1;
       }
-      console.log(`orion: unknown command "${cmd}"\n\n${HELP}`);
-      return 1;
+      const proposal = await think(
+        prompt,
+        { noCache: opts.noCache },
+        async () => "",
+      );
+      printOut(
+        opts,
+        proposal,
+        `Proposal "${proposal.title}" saved. Next: orion draft ${proposal.title}`,
+      );
+      return 0;
     }
   }
 }

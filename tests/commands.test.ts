@@ -65,6 +65,12 @@ describe("main dispatcher", () => {
     ).toBe(true);
   });
 
+  it("treats a whole quoted phrase as a prompt (single argv with spaces)", async () => {
+    expect(await main(["сделай CLI калькулятор с историей"])).toBe(0);
+    // Cyrillic is stripped by slugify, so the title is "cli".
+    expect(existsSync(join(dir, "changes", "cli", "proposal.json"))).toBe(true);
+  });
+
   it("tasks prints the checklist with check marks", async () => {
     mkdirSync(join(dir, "changes", "demo"), { recursive: true });
     writeFileSync(
