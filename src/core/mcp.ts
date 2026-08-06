@@ -15,6 +15,7 @@ import { applyScale, previewScale } from "./scale.js";
 import { OrionTrack } from "./track.js";
 import { metricsReport } from "./metrics.js";
 import { compress } from "./compress.js";
+import { listLessons } from "./lessons.js";
 import { listPlugins, installPlugin, removePlugin } from "./plugins.js";
 import { readVersion } from "../cli/serve.js";
 
@@ -284,6 +285,27 @@ export function getMcpTools(): McpTool[] {
           { verbose: Boolean(args.verbose) },
         );
         return JSON.stringify(r, null, 2);
+      },
+    },
+    {
+      name: "lessons_list",
+      description:
+        "List recorded self-correction lessons (changeId optional). Lessons are what Orion learned from its own errors — read them before acting so the same mistake is not repeated. Empty list is honest: nothing went wrong (yet).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          changeId: {
+            type: "string",
+            description: "Filter lessons for one change (optional)",
+          },
+        },
+      },
+      handler: async (args) => {
+        const changeId =
+          typeof args.changeId === "string" && args.changeId.trim()
+            ? args.changeId.trim()
+            : undefined;
+        return JSON.stringify(listLessons(changeId), null, 2);
       },
     },
     {

@@ -2,6 +2,7 @@ import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import { readJson, writeJson } from "../../utils/file.js";
 import { OrionTrack } from "../../core/track.js";
+import { findLessons } from "../../core/lessons.js";
 import type { Proposal } from "../../type.js";
 import {
   assessPrompt,
@@ -96,6 +97,17 @@ export async function think(
       const answer = await ask(q.msg);
       if (answer) proposal[q.key] = answer;
     }
+  }
+
+  // Self-learning (v0.12): attach past self-correction lessons this idea
+  // relates to, so the same mistake is not repeated across projects.
+  const hits = findLessons(
+    `${proposal.goal} ${proposal.title} ${proposal.platform}`,
+  );
+  if (hits.length > 0) {
+    proposal.appliesLessons = hits.map(
+      (l) => `${l.changeId}:${l.step}:${l.id}`,
+    );
   }
 
   await writeJson(`changes/${proposal.title}/proposal.json`, proposal);

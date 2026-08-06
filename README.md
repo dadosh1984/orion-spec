@@ -156,6 +156,34 @@ orion mcp   # → call the `compress` tool with {command, output}
 orion metrics   # → Token economy (ledger ~/.orion/economy.json)
 ```
 
+### Self-correction & learning (v0.12) — Orion fixes its own mistakes
+
+Orion is self-learning: when any step of the workflow (think → draft → forge →
+shield → out) honestly fails or doubts itself, it **records a lesson** and goes
+**back to `think` with a corrected task** instead of pushing blindly forward:
+
+- **Honest capture**: `shield` on a FAIL check, `out` on a STALE/INCOMPLETE verdict
+  and `forge` on a RED task each append `{changeId, step, error, cause, fix}` to the
+  ledger `~/.orion/lessons.json` (zero deps, fail-safe, cap 500, identical errors
+  recorded once — learning, not spamming).
+- **The loop you asked for**: when the earliest change carries a lesson, `orion next`
+  does not guess past the mistake — it returns a `selfCorrection` route:
+  `orion think "fix <changeId>: <error>"` with the corrected prompt derived from the
+  last lesson (`confidence: high`, honest summary: *"I recorded an error at step X —
+  going back to think with a corrected task"*).
+- **Learning across projects**: `orion think` attaches matching past lessons to a new
+  idea (`appliesLessons` in the proposal, rendered in proposal.md) — the same mistake
+  is not repeated in another change or another project.
+- **Readable by humans and agents**: `orion track lessons [changeId]` lists the ledger
+  (`orion track status` shows the count); MCP tool `lessons_list {changeId?}` gives
+  all 35+ agents the same view.
+
+```bash
+orion track status        # cache stats + lessons: N
+orion track lessons       # what Orion has learned so far
+orion next                # routes back to think when a lesson exists
+```
+
 ### Skills — the high-level workflow
 
 - **`think <prompt>`** – asks 3 guided questions (platform, constraints, budget) and persists `changes/<title>/proposal.json` + `proposal:<title>` cache entry.
@@ -207,6 +235,7 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - ✅ **v0.9** – Context depth — _done_: `draft` decomposes goals into concrete tasks (RU+EN: strips action verbs, transliterates known entities, sub‑entity details like “operation history: persistence/replay/undo”), `shield` security scan catches shell injection (`${}` in exec), `$(…)`/`|;&` chaining, `node:vm` escapes and hardcoded credentials — while staying green on legitimate template literals
 - 🔄 **v0.10** – Honesty & companion — _done_: `out` detects a stale guard report (context hash) instead of using it as-is; `track` labels cache hits with their date; `next` says "insufficient context" with ranked alternatives instead of guessing, and suggests starting ideas when nothing exists; `draft` marks tasks `[fact]` vs `[assumption]` (with an Assumptions section in design.md) and no longer false-positivizes on `logical`→history or "no new CLI commands"→CLI; `tdd` names the exact failing test; `mcp` never returns fake success; `shield`/`out` fail honestly when the change does not exist; README documents the process‑over‑model thesis
 - ✅ **v0.11** – Token economy — _done_: own rtk-style output compressor in the core (`compress` MCP tool, agent-agnostic for all MCP clients; compact shield/forge test rendering; honest bytes/4 savings notes; RU/EN-safe truncation), `orion metrics` reports real savings from the `~/.orion/economy.json` ledger, `next` ranks alternatives cheapest-first by estimated token cost, repeated outputs are cached by input hash and labeled `cached=true`; `draft` no longer crashes on free-text `platform` answers (path-safe capability names)
+- 🚧 **v0.12** – Self-correction & learning — _in progress_: Orion records a lesson (`~/.orion/lessons.json`) whenever a step honestly fails (`shield` FAIL check, `out` STALE/INCOMPLETE, `forge` RED task) and routes back to `think` with a corrected task (`next` returns a `selfCorrection` route built from the last lesson); `think` attaches matching past lessons to new ideas (`appliesLessons`) so the same mistake is not repeated across projects; `orion track lessons [id]` and MCP `lessons_list` give CLI users and all 35+ agents read access to the ledger
 
 ## 📜 License
 

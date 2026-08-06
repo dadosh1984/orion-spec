@@ -1,0 +1,33 @@
+{
+  "changeId": "v0.12-self-correction",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  27 passed (27)\n      Tests  255 passed (255)\n   Duration  6.65s (transform 1.56s, setup 0ms, collect 4.42s, tests 15.15s, environment 6ms, prepare 7.00s)\n\n[orion: −30807 B (−99.3%) ≈ 7702 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 2 exported capabilities"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-06T17:15:30.967Z",
+  "contextHash": "36a0a46056a1"
+}

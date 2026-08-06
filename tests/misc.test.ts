@@ -27,10 +27,12 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-misc-"));
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
+  process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
 });
 
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
+  delete process.env.ORION_LESSONS_FILE;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });

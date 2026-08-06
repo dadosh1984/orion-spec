@@ -27,8 +27,9 @@
 
 | Command                         | Description                                |
 | ------------------------------- | ------------------------------------------ |
-| `orion track status`            | Entry count, total size, last prune time   |
+| `orion track status`            | Entry count, total size, last prune time + lessons count |
 | `orion track prune`             | Remove expired (TTL) and oversized entries |
+| `orion track lessons [id]`      | List self-correction lessons (v0.12)       |
 | `orion track get <key>`         | Print a cached value                       |
 | `orion track set <key> <value>` | Store a value                              |
 | `orion track clear`             | Delete the whole cache                     |
@@ -56,7 +57,7 @@
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
-| `orion mcp`                                | MCP server over stdio; exposes 15 tools incl. `compress` (v0.7, v0.11)    |
+| `orion mcp`                                | MCP server over stdio; exposes 16 tools incl. `compress`, `lessons_list` (v0.7, v0.11, v0.12)    |
 | `orion <multi-word prompt>`                | Shorthand for `think` — captures an idea as a proposal (v0.7)          |
 | `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2)             |
 | `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
@@ -64,14 +65,16 @@
 | `orion plugin list`                        | List installed plugins (global + local)                                |
 | `orion plugin remove <name>`               | Uninstall a plugin                                                     |
 
-## MCP tools (agent-agnostic, v0.11)
+## MCP tools (agent-agnostic, v0.11–v0.12)
 
 Any MCP-capable agent (Claude Code, Codex, opencode, Cursor, Cline, …) attaches via
 `orion mcp` and gets the workflow tools (`think`, `draft`, `forge`, `shield`, `out`,
 `next_step`, `scale`, `track_*`, `metrics`, `plugin_*`, `version`) plus the token-economy
 `compress` tool: `{command, output, stderr?, verbose?}` → compressed output with honest
 byte/token savings, `matched`, and `cached` flags. Repeated identical input is served
-from the OrionTrack cache and labeled `cached=true`.
+from the OrionTrack cache and labeled `cached=true`. Since v0.12 agents also get
+`lessons_list {changeId?}` → what Orion has learned from its own errors (empty list is
+honest: nothing has gone wrong yet).
 
 ## Examples
 

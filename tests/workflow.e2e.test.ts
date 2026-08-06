@@ -6,7 +6,9 @@ import {
   writeFileSync,
   readFileSync,
   existsSync,
+  mkdtempSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const CLI = "node dist/cli/index.js";
@@ -34,6 +36,10 @@ describe("full workflow (e2e)", () => {
   const generatedTask = join("src", "tasks", "implement_add.ts");
 
   beforeAll(() => {
+    process.env.ORION_LESSONS_FILE = join(
+      mkdtempSync(join(tmpdir(), "orion-e2e-lessons-")),
+      "lessons.json",
+    );
     mkdirSync(join(changeDir, "snippets"), { recursive: true });
     mkdirSync(join(changeDir, "specs", "node"), { recursive: true });
     writeFileSync(
@@ -60,6 +66,7 @@ describe("full workflow (e2e)", () => {
   });
 
   afterAll(() => {
+    delete process.env.ORION_LESSONS_FILE;
     rmSync(changeDir, { recursive: true, force: true });
     rmSync(reportDir, { recursive: true, force: true });
     rmSync(generatedTest, { force: true });

@@ -3,6 +3,7 @@ import { watch } from "node:fs";
 import { join } from "node:path";
 import { writeFileSafe } from "../utils/file.js";
 import { OrionTrack } from "../core/track.js";
+import { lessonsStats, listLessons } from "../core/lessons.js";
 import { applyScale, previewScale } from "../core/scale.js";
 import { TddEngine } from "../core/tddCore.js";
 import { think, askQuestion } from "../skills/think/handler.js";
@@ -51,6 +52,7 @@ Commands:
   out <change-id>         Produce the final result.md summary
   track status            Show cache statistics
   track prune             Remove expired / oversized cache entries
+  track lessons [id]      List self-correction lessons (v0.12)
   track get <key>         Read a cache value
   track set <key> <val>   Write a cache value
   track clear             Delete the whole cache
@@ -474,11 +476,28 @@ async function trackCommand(
   switch (sub) {
     case "status": {
       const stats = track.getStats();
+      const lessons = lessonsStats();
       printOut(
         opts,
-        stats,
-        `cache: ${stats.count} entries, ${formatBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"}`,
+        { ...stats, lessons: lessons.count },
+        `cache: ${stats.count} entries, ${formatBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"} | lessons: ${lessons.count}${lessons.lastTs ? ` (last ${new Date(lessons.lastTs).toISOString()})` : ""}`,
       );
+      return 0;
+    }
+    case "lessons": {
+      const changeId = key?.trim() || undefined;
+      const rows = listLessons(changeId);
+      const text = rows.length
+        ? rows
+            .map(
+              (l) =>
+                `  [${l.ts.slice(0, 19)}] ${l.changeId} / ${l.step} — ${l.error.slice(0, 90)}${l.fix ? ` → ${l.fix.slice(0, 60)}` : ""}`,
+            )
+            .join("\n")
+        : changeId
+          ? `no lessons for "${changeId}" — nothing has gone wrong (yet)`
+          : "no lessons recorded — nothing has gone wrong (yet)";
+      printOut(opts, { lessons: rows }, text);
       return 0;
     }
     case "prune": {

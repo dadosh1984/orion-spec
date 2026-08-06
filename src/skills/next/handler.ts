@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
 import { estimateTokens } from "../../core/compress.js";
+import { listLessons, type Lesson } from "../../core/lessons.js";
 import type { GuardReport } from "../../type.js";
 
 /**
@@ -39,6 +40,16 @@ export interface NextResult {
    * Estimated as bytes/4 of the change's artifacts — an estimate, not a bill.
    */
   alternativeCosts?: number[];
+  /**
+   * Self-correction route (v0.12): when the earliest change carries a
+   * recorded lesson, Orion goes back to `think` with a corrected task
+   * instead of pushing blindly forward.
+   */
+  selfCorrection?: {
+    changeId: string;
+    lesson: Lesson;
+    correctivePrompt: string;
+  };
   /**
    * How sure Orion is about `next` (v0.10):
    * - "high"  — exactly one change at the earliest stage;
@@ -109,6 +120,57 @@ export async function nextStep(): Promise<NextResult> {
       alternatives: [],
       alternativeCosts: [],
       confidence: "none",
+    };
+  }
+
+  // Self-correction (v0.12): a change carries a recorded lesson — an error
+  // we already admitted. Going forward anyway would repeat it, so we
+  // honestly route back to `think` with a corrected task built from the
+  // last lesson. When several changes exist, the lesson wins over
+  // alphabetical tie-breaking: the errored change is the one that needs
+  // re-thinking. This is the loop the user asked for: error → think again.
+  // A lesson stays actionable only while the change has not moved past the
+  // step that failed (after a successful shield the old shield-lesson is
+  // resolved history — the loop self-resolves once the fix is real).
+  const LESSON_RANK: Record<string, number> = {
+    draft: 0,
+    forge: 1,
+    tdd: 1,
+    shield: 2,
+    out: 3,
+  };
+  const lessonChange = sorted
+    .filter((c) => c.phase !== "done")
+    .find((c) =>
+      listLessons(c.id).some(
+        (l) => PHASE_RANK[c.phase] <= (LESSON_RANK[l.step] ?? 99),
+      ),
+    );
+  if (lessonChange) {
+    const last = listLessons(lessonChange.id)[0];
+    const correctivePrompt = `fix ${lessonChange.id}: ${last.error}`.slice(
+      0,
+      200,
+    );
+    const action = `orion think "${correctivePrompt}"`;
+    return {
+      next: action,
+      summary:
+        `Self-correction: I recorded an error at step ${last.step} for ${lessonChange.id} — "${last.error}".\n` +
+        "I won't push forward past my own mistake: going back to think with a corrected task:\n" +
+        `  ${action}\n\n` +
+        `All changes:\n${sorted
+          .map((c) => `  ${c.id}  [${c.phase}]  ${c.detail}`)
+          .join("\n")}`,
+      changes: sorted,
+      alternatives: [action],
+      alternativeCosts: [Math.max(1, estimateTokens(correctivePrompt.length))],
+      confidence: "high",
+      selfCorrection: {
+        changeId: lessonChange.id,
+        lesson: last,
+        correctivePrompt,
+      },
     };
   }
 

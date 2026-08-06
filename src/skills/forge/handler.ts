@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { TddEngine } from "../../core/tddCore.js";
 import { OrionTrack } from "../../core/track.js";
+import { recordLesson } from "../../core/lessons.js";
 import { writeFileSafe } from "../../utils/file.js";
 import { slugify } from "../think/handler.js";
 
@@ -123,6 +124,19 @@ export async function forge(
     const passed = await engine.runTest();
     engine.transition(passed);
     if (!passed) {
+      // Self-correction (v0.12): a task that could not be completed is a
+      // lesson — `next` will route back to `think` with a corrective task.
+      recordLesson({
+        changeId: title,
+        step: "forge",
+        error:
+          `task not green: ${desc} — ${engine.lastFailure ?? "no details"}`.slice(
+            0,
+            240,
+          ),
+        cause: "forge RED state (test failing or snippet missing)",
+        fix: `fix the task, then re-run orion forge ${title}`,
+      });
       pending.push(slug);
       missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
       rows.push({ desc, status: "pending" });

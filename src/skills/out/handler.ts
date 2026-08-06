@@ -4,6 +4,7 @@ import { readdirSync } from "node:fs";
 import { writeFileSafe, readJson } from "../../utils/file.js";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
+import { recordLesson } from "../../core/lessons.js";
 import type { GuardReport, Proposal } from "../../type.js";
 
 /** Result of the `out` skill. */
@@ -61,6 +62,22 @@ export async function out(
     guard.contextHash !== currentHash;
   const status: "SUCCESS" | "INCOMPLETE" =
     guardOk && allTasksDone && !staleGuard ? "SUCCESS" : "INCOMPLETE";
+
+  if (status === "INCOMPLETE") {
+    // Self-correction (v0.12): an honest verdict we cannot deliver is a
+    // lesson — `next` will route back to `think` with a corrective task.
+    recordLesson({
+      changeId,
+      step: "out",
+      error: staleGuard
+        ? `guard STALE — the change moved after the last shield run (${guard?.generatedAt ?? "?"})`
+        : guardOk
+          ? `tasks incomplete (${tasksDone}/${tasksTotal} done)`
+          : "guard not passing",
+      cause: "out could not produce a SUCCESS verdict",
+      fix: `resolve the condition above, then re-run orion out ${changeId}`,
+    });
+  }
 
   const artifacts = listArtifacts(changeId);
 

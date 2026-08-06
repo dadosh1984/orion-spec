@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { writeFileSafe } from "../../utils/file.js";
 import { OrionTrack } from "../../core/track.js";
 import { compress } from "../../core/compress.js";
+import { recordLesson } from "../../core/lessons.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
 const execAsync = promisify(exec);
@@ -71,6 +72,17 @@ export async function shield(
     }
     const result = await runStep(step, changeId);
     checks.push(result);
+    if (result.status === "FAIL") {
+      // Self-correction (v0.12): a failed guard-rail is a lesson, not a
+      // secret. `next` will route back to `think` with a corrective task.
+      recordLesson({
+        changeId,
+        step: "shield",
+        error: (result.detail ?? result.step).slice(0, 240),
+        cause: `guard-rail ${result.step} failed`,
+        fix: `fix the ${result.step} check, then re-run orion shield ${changeId}`,
+      });
+    }
     if (result.status === "PASS" && !opts?.noCache) {
       track.store(`shield:${step}`, `PASS:${hash}`);
     }

@@ -264,6 +264,12 @@ export async function draft(
     `- Platform: ${proposal.platform || "any"}`,
     `- Constraints: ${proposal.constraints || "none"}`,
     `- Budget: ${proposal.budget || "unlimited"}`,
+    ...(proposal.appliesLessons?.length
+      ? [
+          "",
+          `- **Lessons applied (v0.12):** ${proposal.appliesLessons.join(", ")}`,
+        ]
+      : []),
     "",
   ].join("\n");
 
