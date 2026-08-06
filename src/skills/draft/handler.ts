@@ -6,6 +6,7 @@ import {
 } from "../../utils/file.js";
 import { existsSync } from "node:fs";
 import { OrionTrack } from "../../core/track.js";
+import { renderTemplate } from "../../core/templates.js";
 import type { ArtifactSet, Proposal } from "../../type.js";
 
 /**
@@ -41,33 +42,6 @@ export async function loadProposal(
   }
   return readJson<Proposal>(`changes/${title}/proposal.json`);
 }
-
-const SPEC_TEMPLATE = `# Spec: {{capability}}
-
-## Purpose
-{{goal}}
-
-## Acceptance criteria
-- [ ] Placeholder — refine during implementation
-`;
-
-const DESIGN_TEMPLATE = `# Design — {{title}}
-
-## Overview
-Deterministic plan derived from the proposal.
-
-## Modules
-- \`src/tasks/*\` — test-driven implementation units
-- \`tests/*\` — RED-GREEN-REFACTOR test files
-
-## Assumptions
-{{assumptions}}
-
-## Verification
-- [ ] lint (pnpm lint)
-- [ ] type-check (tsc --noEmit)
-- [ ] unit tests (pnpm test)
-`;
 
 /** Leading action verbs / filler phrases stripped from the goal. */
 const LEADING_ACTION =
@@ -256,41 +230,47 @@ export async function draft(
     await writeFileSafe(path, data);
   };
 
-  const proposalMd = [
-    `# Proposal — ${title}`,
-    "",
-    `**Goal:** ${proposal.goal}`,
-    "",
-    `- Platform: ${proposal.platform || "any"}`,
-    `- Constraints: ${proposal.constraints || "none"}`,
-    `- Budget: ${proposal.budget || "unlimited"}`,
-    ...(proposal.appliesLessons?.length
-      ? [
-          "",
-          `- **Lessons applied (v0.12):** ${proposal.appliesLessons.join(", ")}`,
-        ]
-      : []),
-    "",
-  ].join("\n");
+  const proposalMd = renderTemplate(
+    "proposal",
+    {
+      title,
+      goal: proposal.goal,
+      platform: proposal.platform || "any",
+      constraints: proposal.constraints || "none",
+      budget: proposal.budget || "unlimited",
+      lessons: proposal.appliesLessons?.length
+        ? `- **Lessons applied (v0.12):** ${proposal.appliesLessons.join(", ")}`
+        : "",
+    },
+    title,
+  );
 
-  const specMd = SPEC_TEMPLATE.replace("{{capability}}", capability).replace(
-    "{{goal}}",
-    proposal.goal,
+  const specMd = renderTemplate(
+    "spec",
+    { capability, goal: proposal.goal },
+    title,
   );
   const derived = deriveTasks(proposal);
   const assumptions = derived.filter((t) => t.mark === "assumption");
-  const designMd = DESIGN_TEMPLATE.replaceAll("{{title}}", title).replace(
-    "{{assumptions}}",
-    assumptions.length > 0
-      ? assumptions.map((t) => `- ${t.text}`).join("\n")
-      : "- none — everything below is stated in the proposal",
+  const designMd = renderTemplate(
+    "design",
+    {
+      title,
+      assumptions:
+        assumptions.length > 0
+          ? assumptions.map((t) => `- ${t.text}`).join("\n")
+          : "- none — everything below is stated in the proposal",
+    },
+    title,
   );
-  const tasksMd = [
-    `# Tasks — ${title}`,
-    "",
-    ...derived.map((t) => `- [ ] [${t.mark}] ${t.text}`),
-    "",
-  ].join("\n");
+  const tasksMd = renderTemplate(
+    "tasks",
+    {
+      title,
+      tasks: derived.map((t) => `- [ ] [${t.mark}] ${t.text}`).join("\n"),
+    },
+    title,
+  );
 
   const snippetsReadme = [
     "# Snippets",
@@ -302,10 +282,10 @@ export async function draft(
     "",
   ].join("\n");
 
-  await writeIfMissing(`${dir}/proposal.md`, proposalMd);
-  await writeIfMissing(`${specsDir}/spec.md`, specMd);
-  await writeIfMissing(`${dir}/design.md`, designMd);
-  await writeIfMissing(`${dir}/tasks.md`, tasksMd);
+  await writeIfMissing(`${dir}/proposal.md`, proposalMd.text);
+  await writeIfMissing(`${specsDir}/spec.md`, specMd.text);
+  await writeIfMissing(`${dir}/design.md`, designMd.text);
+  await writeIfMissing(`${dir}/tasks.md`, tasksMd.text);
   await ensureDir(`${dir}/snippets`);
   await writeIfMissing(`${dir}/snippets/README.md`, snippetsReadme);
   await writeJson(`${dir}/proposal.json`, proposal);

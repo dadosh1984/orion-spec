@@ -184,6 +184,40 @@ orion track lessons       # what Orion has learned so far
 orion next                # routes back to think when a lesson exists
 ```
 
+### Session learning & open templates (v0.13)
+
+**Session learning** — Orion learns from the history it actually lived through.
+`orion learn <file|dir>` (and the MCP `lessons_learn` tool) reads agent-session
+JSONL in any shape (pi-style records, generic `{role, content}`), finds
+"failed → succeeded" pairs for the same action (word-bounded RU/EN error
+markers, signature = tool + first significant tokens), and records each
+unique pattern as a lesson in the same `~/.orion/lessons.json` that feeds
+`next`/`think` — so the next idea knows about the mistakes really made, not
+only workflow-step failures. Honest by construction: invalid lines are
+counted in `skipped`, an empty result is a valid answer (`no fake learning`),
+and identical patterns are recorded once.
+
+```bash
+orion learn ~/.pi/agent/sessions/my-session.jsonl   # file or directory
+orion track lessons                                  # see what was learned
+```
+
+**Open templates** — artifact skeletons and questions are data, not code.
+Draft renders proposal.md/design.md/tasks.md/spec.md from skeletons, think
+reads its clarifying questions from `questions.json`; a user can override any
+of them per change or globally, with a built-in fallback that never goes away:
+
+```
+changes/<id>/templates/<name>   ← per-change override (highest)
+~/.orion/templates/<name>       ← user-level override
+built-in skeleton               ← fallback
+```
+
+Placeholders are plain `{{title}}`/`{{goal}}`/… (zero dependencies, no template
+language). When an override is used the generated file carries an honest
+`<!-- orion: template=<path> (custom) -->` marker — custom output is never
+presented as the standard one.
+
 ### Skills — the high-level workflow
 
 - **`think <prompt>`** – asks 3 guided questions (platform, constraints, budget) and persists `changes/<title>/proposal.json` + `proposal:<title>` cache entry.
@@ -236,6 +270,7 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - 🔄 **v0.10** – Honesty & companion — _done_: `out` detects a stale guard report (context hash) instead of using it as-is; `track` labels cache hits with their date; `next` says "insufficient context" with ranked alternatives instead of guessing, and suggests starting ideas when nothing exists; `draft` marks tasks `[fact]` vs `[assumption]` (with an Assumptions section in design.md) and no longer false-positivizes on `logical`→history or "no new CLI commands"→CLI; `tdd` names the exact failing test; `mcp` never returns fake success; `shield`/`out` fail honestly when the change does not exist; README documents the process‑over‑model thesis
 - ✅ **v0.11** – Token economy — _done_: own rtk-style output compressor in the core (`compress` MCP tool, agent-agnostic for all MCP clients; compact shield/forge test rendering; honest bytes/4 savings notes; RU/EN-safe truncation), `orion metrics` reports real savings from the `~/.orion/economy.json` ledger, `next` ranks alternatives cheapest-first by estimated token cost, repeated outputs are cached by input hash and labeled `cached=true`; `draft` no longer crashes on free-text `platform` answers (path-safe capability names)
 - ✅ **v0.12** – Self-correction & learning — _done_: Orion records a lesson (`~/.orion/lessons.json`) whenever a step honestly fails (`shield` FAIL check, `out` STALE/INCOMPLETE, `forge` RED task) and routes back to `think` with a corrected task (`next` returns a `selfCorrection` route built from the last lesson); `think` attaches matching past lessons to new ideas (`appliesLessons`) so the same mistake is not repeated across projects; `orion track lessons [id]` and MCP `lessons_list` give CLI users and all 35+ agents read access to the ledger
+- 🚧 **v0.13** – Session learning & open templates — _in progress_: Orion reads real agent-session JSONL (any shape: pi-style, generic), detects "failed → succeeded" pairs for the same action and records them as lessons in the same ledger that feeds `next`/`think` (`orion learn <file|dir>`, MCP `lessons_learn`) — honest report, no fake learning; artifact skeletons (proposal/design/tasks/spec) and think questions became editable data (`~/.orion/templates/`, per-change `changes/<id>/templates/`, built-in fallback, honest `(custom)` marker in generated files)
 
 ## 📜 License
 

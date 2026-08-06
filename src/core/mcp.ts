@@ -16,6 +16,7 @@ import { OrionTrack } from "./track.js";
 import { metricsReport } from "./metrics.js";
 import { compress } from "./compress.js";
 import { listLessons } from "./lessons.js";
+import { learnFromSessions, sessionFiles } from "./sessions.js";
 import { listPlugins, installPlugin, removePlugin } from "./plugins.js";
 import { readVersion } from "../cli/serve.js";
 
@@ -306,6 +307,32 @@ export function getMcpTools(): McpTool[] {
             ? args.changeId.trim()
             : undefined;
         return JSON.stringify(listLessons(changeId), null, 2);
+      },
+    },
+    {
+      name: "lessons_learn",
+      description:
+        "Learn from a JSONL agent session: detect recurring errors (an action failed, then the same action succeeded) and record them as lessons for the current project. Returns an honest report {files, records, actions, pairs, lessons, skipped} — an empty result means nothing was learned, not an error.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "Session file (.jsonl) or directory of session files",
+          },
+        },
+        required: ["path"],
+      },
+      handler: async (args) => {
+        const target = typeof args.path === "string" ? args.path.trim() : "";
+        if (!target) {
+          throw new Error("lessons_learn requires a session file path");
+        }
+        const files = sessionFiles(target);
+        if (files.length === 0) {
+          throw new Error(`no *.jsonl session files found at ${target}`);
+        }
+        return JSON.stringify(learnFromSessions(files), null, 2);
       },
     },
     {

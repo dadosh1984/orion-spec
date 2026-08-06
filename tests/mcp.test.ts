@@ -8,6 +8,7 @@ import {
   toolManifest,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../src/core/mcp.js";
+import { listLessons } from "../src/core/lessons.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -353,5 +354,74 @@ describe("mcp: compress tool (token economy)", () => {
       (t) => t.name,
     );
     expect(names).toContain("compress");
+  });
+});
+
+describe("mcp: lessons_learn tool (session learning, v0.13)", () => {
+  it("learns lessons from a session file and reports honestly", async () => {
+    writeFileSync(
+      join("sess.jsonl"),
+      [
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "toolCall", id: "a", name: "bash", arguments: { command: "pnpm test" } },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "toolResult",
+            toolCallId: "a",
+            toolName: "bash",
+            content: [{ type: "text", text: "Error: 2 tests failed" }],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "toolCall", id: "b", name: "bash", arguments: { command: "pnpm test --runInBand" } },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "toolResult",
+            toolCallId: "b",
+            toolName: "bash",
+            content: [{ type: "text", text: "Test Files 3 passed" }],
+          },
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    const server = new McpServer(getMcpTools(), "7.0.0");
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "lessons_learn",
+      arguments: { path: "sess.jsonl" },
+    });
+    const text = textOf(res);
+    expect(text).toContain('"lessons": 1');
+    expect(text).toContain('"pairs": 1');
+    expect(listLessons().some((l) => l.step === "session")).toBe(true);
+  });
+
+  it("isError on a missing path (honesty)", async () => {
+    const server = new McpServer(getMcpTools(), "7.0.0");
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "lessons_learn",
+      arguments: { path: "nope.jsonl" },
+    });
+    const result = res.result as { isError: boolean; content: Array<{ text: string }> };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/no \*\.jsonl session files/);
   });
 });

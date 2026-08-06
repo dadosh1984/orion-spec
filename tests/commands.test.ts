@@ -5,6 +5,7 @@ import {
   writeFileSync,
   existsSync,
   mkdirSync,
+  readFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,10 +18,14 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-cmd-"));
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
+  process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
+  process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
 });
 
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
+  delete process.env.ORION_LESSONS_FILE;
+  delete process.env.ORION_ECONOMY_FILE;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });
@@ -56,6 +61,62 @@ describe("main dispatcher", () => {
 
   it("returns 1 for unknown commands", async () => {
     expect(await main(["bogus"])).toBe(1);
+  });
+
+  it("learn records session lessons and reports honestly (v0.13)", async () => {
+    writeFileSync(
+      join(dir, "sess.jsonl"),
+      [
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "toolCall", id: "a", name: "bash", arguments: { command: "pnpm lint" } },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "toolResult",
+            toolCallId: "a",
+            toolName: "bash",
+            content: [{ type: "text", text: "error: lint problems" }],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "toolCall", id: "b", name: "bash", arguments: { command: "pnpm lint --fix" } },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "toolResult",
+            toolCallId: "b",
+            toolName: "bash",
+            content: [{ type: "text", text: "clean" }],
+          },
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    const exit = await main(["learn", join(dir, "sess.jsonl")]);
+    expect(exit).toBe(0);
+    const lessons = JSON.parse(
+      readFileSync(join(dir, "lessons.json"), "utf8"),
+    ) as Array<{ step: string; fix: string }>;
+    expect(lessons.some((l) => l.step === "session" && l.fix.includes("pnpm lint --fix"))).toBe(true);
+  });
+
+  it("learn fails honestly on missing sessions", async () => {
+    expect(await main(["learn"])).toBe(1);
+    expect(await main(["learn", join(dir, "nope")])).toBe(1);
   });
 
   it("routes multi-word unknown input to think (natural-language fallback)", async () => {

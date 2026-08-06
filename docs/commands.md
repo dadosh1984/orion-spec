@@ -30,6 +30,7 @@
 | `orion track status`            | Entry count, total size, last prune time + lessons count |
 | `orion track prune`             | Remove expired (TTL) and oversized entries |
 | `orion track lessons [id]`      | List self-correction lessons (v0.12)       |
+| `orion learn <file\|dir>`        | Learn lessons from agent session JSONL (v0.13) |
 | `orion track get <key>`         | Print a cached value                       |
 | `orion track set <key> <value>` | Store a value                              |
 | `orion track clear`             | Delete the whole cache                     |
@@ -57,7 +58,7 @@
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
-| `orion mcp`                                | MCP server over stdio; exposes 16 tools incl. `compress`, `lessons_list` (v0.7, v0.11, v0.12)    |
+| `orion mcp`                                | MCP server over stdio; exposes 17 tools incl. `compress`, `lessons_list`, `lessons_learn` (v0.7, v0.11–v0.13)    |
 | `orion <multi-word prompt>`                | Shorthand for `think` — captures an idea as a proposal (v0.7)          |
 | `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2)             |
 | `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
@@ -65,7 +66,7 @@
 | `orion plugin list`                        | List installed plugins (global + local)                                |
 | `orion plugin remove <name>`               | Uninstall a plugin                                                     |
 
-## MCP tools (agent-agnostic, v0.11–v0.12)
+## MCP tools (agent-agnostic, v0.11–v0.13)
 
 Any MCP-capable agent (Claude Code, Codex, opencode, Cursor, Cline, …) attaches via
 `orion mcp` and gets the workflow tools (`think`, `draft`, `forge`, `shield`, `out`,
@@ -74,7 +75,9 @@ Any MCP-capable agent (Claude Code, Codex, opencode, Cursor, Cline, …) attache
 byte/token savings, `matched`, and `cached` flags. Repeated identical input is served
 from the OrionTrack cache and labeled `cached=true`. Since v0.12 agents also get
 `lessons_list {changeId?}` → what Orion has learned from its own errors (empty list is
-honest: nothing has gone wrong yet).
+honest: nothing has gone wrong yet). Since v0.13 agents also get
+`lessons_learn {path}` → learn from a session file and get an honest report
+`{files, records, actions, pairs, lessons, skipped}`.
 
 ## Examples
 

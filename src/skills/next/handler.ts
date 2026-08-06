@@ -131,7 +131,10 @@ export async function nextStep(): Promise<NextResult> {
   // re-thinking. This is the loop the user asked for: error → think again.
   // A lesson stays actionable only while the change has not moved past the
   // step that failed (after a successful shield the old shield-lesson is
-  // resolved history — the loop self-resolves once the fix is real).
+  // resolved history — the loop self-resolves once the fix is real), and
+  // only while the change is not yet completed (result.md exists): a
+  // completed change's lessons are history, not a restart signal — even if
+  // its guard later goes stale from repo movement.
   const LESSON_RANK: Record<string, number> = {
     draft: 0,
     forge: 1,
@@ -140,7 +143,9 @@ export async function nextStep(): Promise<NextResult> {
     out: 3,
   };
   const lessonChange = sorted
-    .filter((c) => c.phase !== "done")
+    .filter(
+      (c) => c.phase !== "done" && !existsSync(`changes/${c.id}/result.md`),
+    )
     .find((c) =>
       listLessons(c.id).some(
         (l) => PHASE_RANK[c.phase] <= (LESSON_RANK[l.step] ?? 99),

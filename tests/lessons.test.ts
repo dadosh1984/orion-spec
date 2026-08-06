@@ -210,6 +210,22 @@ describe("next — self-correction route", () => {
     const result = await nextStep();
     expect(result.selfCorrection).toBeUndefined();
   });
+
+  it("treats lessons on a completed change as history, not a restart", async () => {
+    seedChange("done-change", ["a"]);
+    writeFileSync(
+      join("changes", "done-change", "result.md"),
+      "# Result — done-change\n- **Status:** SUCCESS\n",
+      "utf8",
+    );
+    recordLesson({
+      changeId: "done-change",
+      step: "shield",
+      error: "old resolved drift failure",
+    });
+    const result = await nextStep();
+    expect(result.selfCorrection).toBeUndefined();
+  });
 });
 
 describe("think — self-learning across projects", () => {

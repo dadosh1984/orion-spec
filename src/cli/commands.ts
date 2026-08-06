@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { writeFileSafe } from "../utils/file.js";
 import { OrionTrack } from "../core/track.js";
 import { lessonsStats, listLessons } from "../core/lessons.js";
+import { learnFromSessions, sessionFiles } from "../core/sessions.js";
 import { applyScale, previewScale } from "../core/scale.js";
 import { TddEngine } from "../core/tddCore.js";
 import { think, askQuestion } from "../skills/think/handler.js";
@@ -53,6 +54,7 @@ Commands:
   track status            Show cache statistics
   track prune             Remove expired / oversized cache entries
   track lessons [id]      List self-correction lessons (v0.12)
+  learn <file|dir>        Learn lessons from agent session JSONL (v0.13)
   track get <key>         Read a cache value
   track set <key> <val>   Write a cache value
   track clear             Delete the whole cache
@@ -283,6 +285,22 @@ export async function main(argv: string[]): Promise<number> {
 
     case "track":
       return await trackCommand(args, opts, track);
+
+    case "learn": {
+      const target = args[0];
+      if (!target)
+        return fail("learn requires a session file or directory of sessions");
+      const files = sessionFiles(target);
+      if (files.length === 0)
+        return fail(`no *.jsonl session files found at ${target}`);
+      const report = learnFromSessions(files);
+      printOut(
+        opts,
+        report,
+        `learned from ${report.files} file(s), ${report.records} record(s), ${report.actions} action(s): ${report.pairs} failure→success pattern(s), ${report.lessons} lesson(s) recorded${report.skipped > 0 ? `, ${report.skipped} invalid line(s) skipped` : ""}`,
+      );
+      return 0;
+    }
 
     case "scale": {
       const file = args[0];

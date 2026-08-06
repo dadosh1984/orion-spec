@@ -1,0 +1,163 @@
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+/**
+ * Open templates (v0.13): the skeletons of draft artifacts (proposal.md,
+ * design.md, tasks.md, spec.md) and think's clarifying questions become
+ * data a user can edit without a release:
+ *
+ *   changes/<changeId>/templates/<name>   ← per-change override (highest)
+ *   ~/.orion/templates/<name>             ← user-level override
+ *   built-in skeleton                     ← fallback (never removed)
+ *
+ * Honesty: when an override is used, the generated artifact carries an
+ * explicit `<!-- orion: template=<path> (custom) -->` marker — custom
+ * output is never presented as the standard one. Zero dependencies:
+ * rendering is plain `{{placeholder}}` substitution, no template language.
+ */
+
+export type TemplateKind =
+  "proposal" | "design" | "tasks" | "spec" | "questions";
+
+const FILE_EXT: Record<TemplateKind, "md" | "json"> = {
+  proposal: "md",
+  design: "md",
+  tasks: "md",
+  spec: "md",
+  questions: "json",
+};
+
+/** User-level templates dir (~/.orion/templates; tests override via env). */
+export function templatesDir(): string {
+  return (
+    process.env.ORION_TEMPLATES_DIR ?? join(homedir(), ".orion", "templates")
+  );
+}
+
+/** Resolve a template to a file path, or null when only built-in exists. */
+export function findTemplate(
+  kind: TemplateKind,
+  changeId?: string,
+): string | null {
+  const ext = FILE_EXT[kind];
+  if (changeId) {
+    const p = join("changes", changeId, "templates", `${kind}.${ext}`);
+    if (existsSync(p)) return p;
+  }
+  const p = join(templatesDir(), `${kind}.${ext}`);
+  return existsSync(p) ? p : null;
+}
+
+/** Built-in skeletons — the standard format, available even with no files. */
+const BUILTIN: Record<TemplateKind, string> = {
+  proposal: `# Proposal — {{title}}
+
+**Goal:** {{goal}}
+
+- Platform: {{platform}}
+- Constraints: {{constraints}}
+- Budget: {{budget}}
+{{lessons}}
+`,
+  design: `# Design — {{title}}
+
+## Overview
+Deterministic plan derived from the proposal.
+
+## Modules
+- \`src/tasks/*\` — test-driven implementation units
+- \`tests/*\` — RED-GREEN-REFACTOR test files
+
+## Assumptions
+{{assumptions}}
+
+## Verification
+- [ ] lint (pnpm lint)
+- [ ] type-check (tsc --noEmit)
+- [ ] unit tests (pnpm test)
+`,
+  tasks: `# Tasks — {{title}}
+
+{{tasks}}
+`,
+  spec: `# Spec: {{capability}}
+
+## Purpose
+{{goal}}
+
+## Acceptance criteria
+- [ ] Placeholder — refine during implementation
+`,
+  questions: `[
+  { "key": "platform", "msg": "Platform?" },
+  { "key": "constraints", "msg": "Constraints?" },
+  { "key": "budget", "msg": "Budget?" }
+]
+`,
+};
+
+export interface RenderedTemplate {
+  text: string;
+  /** "builtin" or the filesystem path of the custom template. */
+  source: "builtin" | string;
+}
+
+const MARKER = (path: string): string =>
+  `\n\n<!-- orion: template=${path} (custom) -->\n`;
+
+/**
+ * Render a skeleton with {{placeholders}}. Custom templates get an honest
+ * marker; built-ins stay clean. Placeholder values are plain-substituted
+ * (no regex), so `$` and quotes in values are safe.
+ */
+export function renderTemplate(
+  kind: TemplateKind,
+  vars: Record<string, string>,
+  changeId?: string,
+): RenderedTemplate {
+  const custom = findTemplate(kind, changeId);
+  let text = custom ? readFileSync(custom, "utf8") : BUILTIN[kind];
+  for (const [k, v] of Object.entries(vars)) {
+    text = text.replaceAll(`{{${k}}}`, v);
+  }
+  const trimmed = text.trimEnd();
+  if (custom) {
+    return { text: `${trimmed}${MARKER(custom)}`, source: custom };
+  }
+  return { text: `${trimmed}\n`, source: "builtin" };
+}
+
+export interface QuestionSpec {
+  key: string;
+  msg: string;
+}
+
+/**
+ * User-editable think questions (questions.json). Returns null when no
+ * (or an invalid) override exists — the caller keeps the built-in list.
+ * Only known keys are honoured by the caller; unknown ones are ignored,
+ * never silently injected into the proposal.
+ */
+export function loadQuestions(): QuestionSpec[] | null {
+  const custom = findTemplate("questions");
+  if (!custom) return null;
+  try {
+    const raw = JSON.parse(readFileSync(custom, "utf8")) as unknown;
+    if (
+      Array.isArray(raw) &&
+      raw.every(
+        (q) =>
+          q !== null &&
+          typeof q === "object" &&
+          typeof (q as QuestionSpec).key === "string" &&
+          typeof (q as QuestionSpec).msg === "string",
+      )
+    ) {
+      return raw as QuestionSpec[];
+    }
+  } catch {
+    /* fall through to built-in */
+  }
+  return null;
+}

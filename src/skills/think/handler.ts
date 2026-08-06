@@ -3,6 +3,7 @@ import { stdin, stdout } from "node:process";
 import { readJson, writeJson } from "../../utils/file.js";
 import { OrionTrack } from "../../core/track.js";
 import { findLessons } from "../../core/lessons.js";
+import { loadQuestions } from "../../core/templates.js";
 import type { Proposal } from "../../type.js";
 import {
   assessPrompt,
@@ -93,9 +94,18 @@ export async function think(
       }
     }
 
-    for (const q of QUESTIONS) {
+    // Open templates (v0.13): user-editable questions.json replaces the
+    // built-in clarifying questions; unknown keys are ignored, never
+    // injected into the proposal.
+    const questions = loadQuestions() ?? QUESTIONS;
+    for (const q of questions) {
       const answer = await ask(q.msg);
-      if (answer) proposal[q.key] = answer;
+      if (
+        answer &&
+        (q.key === "platform" || q.key === "constraints" || q.key === "budget")
+      ) {
+        proposal[q.key] = answer;
+      }
     }
   }
 
