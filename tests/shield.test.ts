@@ -10,7 +10,6 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { shield } from "../src/skills/shield/handler.js";
-import { OrionTrack } from "../src/core/track.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -78,11 +77,87 @@ describe("shield skill", () => {
     expect(report.changeId).toBe("demo");
   });
 
-  it("skips cached PASS steps and re-runs on --no-cache", async () => {
-    const track = new OrionTrack(join(dir, "cache"));
-    track.store("shield:lint", "PASS");
+  it("caches PASS only while the project hash is unchanged", async () => {
+    mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "specs", "core", "spec.md"),
+      "# Spec: converter\n\n## Purpose\nx\n",
+      "utf8",
+    );
+    writeFileSync(
+      "src/tasks/converter.ts",
+      "export function converter() { return 1; }",
+      "utf8",
+    );
+
     const first = await shield("demo", { noCache: false });
-    const lint = first.checks.find((c) => c.step === "lint");
-    expect(lint?.status).toBe("SKIP");
+    expect(first.checks.find((c) => c.step === "drift")?.status).toBe("PASS");
+
+    // Same code → cached PASS is honoured (SKIP).
+    const second = await shield("demo", { noCache: false });
+    expect(second.checks.find((c) => c.step === "drift")?.status).toBe("SKIP");
+
+    // Hand edit → hash changed → the step is honestly re-run.
+    writeFileSync(
+      "src/tasks/converter.ts",
+      "export function converter() { return 2; }",
+      "utf8",
+    );
+    const third = await shield("demo", { noCache: false });
+    const drift3 = third.checks.find((c) => c.step === "drift");
+    expect(drift3?.status).toBe("PASS");
+    expect(drift3?.detail).toContain("matched");
+  });
+
+  it("drift ignores stray mentions (comments) — exports only", async () => {
+    mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "specs", "core", "spec.md"),
+      "# Spec: converter\n\n## Purpose\nx\n",
+      "utf8",
+    );
+    // "converter" only appears in a comment, not as an export → drift FAIL.
+    writeFileSync(
+      "src/tasks/other.ts",
+      "// TODO: implement the converter here\nexport function helper() { return 1; }",
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const drift = report.checks.find((c) => c.step === "drift");
+    expect(drift?.status).toBe("FAIL");
+    expect(drift?.detail).toContain("converter");
+  });
+
+  it("detects the package manager and derives shell commands from context", async () => {
+    const { detectPackageManager, stepCommand } =
+      await import("../src/skills/shield/handler.js");
+    // No lockfile → npm default; no scripts → lint/test are null (SKIP).
+    expect(detectPackageManager()).toBe("npm");
+    expect(stepCommand("lint")).toBeNull();
+    expect(stepCommand("test")).toBeNull();
+    expect(stepCommand("type")).toBe("npm exec tsc --noEmit");
+
+    writeFileSync("pnpm-lock.yaml", "lockfileVersion: '9.0'\n", "utf8");
+    writeFileSync(
+      "package.json",
+      JSON.stringify({ scripts: { lint: "eslint .", test: "vitest run" } }),
+      "utf8",
+    );
+    expect(detectPackageManager()).toBe("pnpm");
+    expect(stepCommand("lint")).toBe("pnpm run lint");
+    expect(stepCommand("test")).toBe("pnpm test");
+
+    // yaml lock wins only when pnpm-lock.yaml is gone.
+    rmSync("pnpm-lock.yaml");
+    writeFileSync("yarn.lock", "# yarn\n", "utf8");
+    writeFileSync(
+      "package.json",
+      JSON.stringify({ scripts: { typecheck: "tsc" } }),
+      "utf8",
+    );
+    expect(detectPackageManager()).toBe("yarn");
+    expect(stepCommand("type")).toBe("yarn run typecheck");
   });
 });

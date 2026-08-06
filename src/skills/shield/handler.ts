@@ -1,6 +1,7 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { writeFileSafe } from "../../utils/file.js";
 import { OrionTrack } from "../../core/track.js";
@@ -16,8 +17,13 @@ const STEPS: StepName[] = ["lint", "type", "test", "drift", "security"];
 /**
  * `orion shield` — run every guard-rail against the change:
  * lint → type-check → unit tests → drift-check (code vs specs) → security scan.
- * Each step result is cached as `shield:<step>` and skipped on repeat runs
- * (unless --no-cache is given).
+ *
+ * Context-driven (no flags):
+ * - the package manager (pnpm/yarn/npm) is detected from the lockfile and
+ *   the actual scripts from package.json — no hardcoded commands;
+ * - a PASS is cached together with a hash of the project source, so any
+ *   hand edit to src/ or the change invalidates the cache and the step
+ *   is honestly re-run.
  */
 export async function shield(
   changeId: string,
@@ -28,6 +34,7 @@ export async function shield(
   // Test escape hatch: skip the (slow, recursive) shell steps so e2e runs
   // only the deterministic drift + security gates.
   const skipShell = process.env.ORION_SHIELD_SKIP_SHELL === "1";
+  const hash = projectHash(changeId);
 
   for (const step of STEPS) {
     if (skipShell && (step === "lint" || step === "type" || step === "test")) {
@@ -38,14 +45,22 @@ export async function shield(
       });
       continue;
     }
-    if (!opts?.noCache && track.loadString(`shield:${step}`) === "PASS") {
-      checks.push({ step, status: "SKIP", detail: "cached PASS" });
+    // Cache hits only when the code hash matches — edited code is re-checked.
+    if (
+      !opts?.noCache &&
+      track.loadString(`shield:${step}`) === `PASS:${hash}`
+    ) {
+      checks.push({
+        step,
+        status: "SKIP",
+        detail: "cached PASS (hash unchanged)",
+      });
       continue;
     }
     const result = await runStep(step, changeId);
     checks.push(result);
     if (result.status === "PASS" && !opts?.noCache) {
-      track.store(`shield:${step}`, "PASS");
+      track.store(`shield:${step}`, `PASS:${hash}`);
     }
   }
 
@@ -77,18 +92,104 @@ export async function shield(
   return report;
 }
 
+/** Detect the package manager from the lockfile present in the project. */
+export function detectPackageManager(): "pnpm" | "yarn" | "npm" {
+  if (existsSync("pnpm-lock.yaml")) return "pnpm";
+  if (existsSync("yarn.lock")) return "yarn";
+  return "npm";
+}
+
+/** Whether package.json defines the given script. */
+function hasScript(name: string): boolean {
+  try {
+    const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+      scripts?: Record<string, unknown>;
+    };
+    return typeof pkg.scripts?.[name] === "string";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Shell command for a guard step, derived from the project context
+ * (package manager + actual scripts). Returns null when the step has no
+ * sensible command — the step is then SKIPPED with a clear reason.
+ */
+export function stepCommand(step: "lint" | "type" | "test"): string | null {
+  const pm = detectPackageManager();
+  const run = (name: string) =>
+    pm === "npm" ? `npm run ${name}` : `${pm} run ${name}`;
+  switch (step) {
+    case "lint":
+      return hasScript("lint") ? run("lint") : null;
+    case "type":
+      if (hasScript("typecheck")) return run("typecheck");
+      if (hasScript("type-check")) return run("type-check");
+      return `${pm} exec tsc --noEmit`;
+    case "test":
+      return hasScript("test")
+        ? pm === "npm"
+          ? "npm test"
+          : `${pm} test`
+        : null;
+  }
+}
+
+/**
+ * Stable hash of the project source + the change, used to validate the
+ * shield cache: any hand edit invalidates the cached PASS.
+ */
+export function projectHash(changeId: string): string {
+  const h = createHash("sha1");
+  const roots = ["src", "package.json", `changes/${changeId}`];
+  const files: string[] = [];
+  for (const root of roots) {
+    if (root.endsWith(".json")) {
+      if (existsSync(root)) files.push(root);
+      continue;
+    }
+    files.push(
+      ...walk(root).filter(
+        (f) => f.endsWith(".ts") || f.endsWith(".md") || f.endsWith(".json"),
+      ),
+    );
+  }
+  for (const f of files.sort()) {
+    try {
+      h.update(f);
+      h.update(readFileSync(f, "utf8"));
+    } catch {
+      /* unreadable file — skip */
+    }
+  }
+  return h.digest("hex").slice(0, 12);
+}
+
 /** Execute a single guard-rail step. */
 async function runStep(
   step: StepName,
   changeId: string,
 ): Promise<GuardCheckResult> {
   switch (step) {
-    case "lint":
-      return shellCheck(step, "pnpm lint");
-    case "type":
-      return shellCheck(step, "pnpm exec tsc --noEmit");
-    case "test":
-      return shellCheck(step, "pnpm test");
+    case "lint": {
+      const cmd = stepCommand("lint");
+      return cmd
+        ? shellCheck(step, cmd)
+        : { step, status: "SKIP", detail: "no lint script in package.json" };
+    }
+    case "type": {
+      const cmd = stepCommand("type");
+      return cmd
+        ? shellCheck(step, cmd)
+        : { step, status: "SKIP", detail: "no typecheck script" };
+    }
+    case "test": {
+      const cmd = stepCommand("test");
+      return cmd
+        ? shellCheck(step, cmd)
+        : { step, status: "SKIP", detail: "no test script in package.json" };
+    }
     case "drift":
       return driftCheck(changeId);
     case "security":
@@ -120,8 +221,9 @@ async function shellCheck(
 
 /**
  * Drift check: every capability named in the spec files under
- * `changes/<id>/specs/` must have a matching exported symbol in
- * `src/tasks/`. Best-effort AST-free comparison via exported names.
+ * `changes/<id>/specs/` must have a matching *exported symbol* in
+ * `src/tasks/`. AST-free but honest: only real export declarations count
+ * (comments and stray mentions no longer produce false positives).
  */
 function driftCheck(changeId: string): GuardCheckResult {
   const specsDir = `changes/${changeId}/specs`;
@@ -145,25 +247,43 @@ function driftCheck(changeId: string): GuardCheckResult {
   }
 
   const srcDir = "src/tasks";
-  const sources = existsSync(srcDir)
-    ? readdirSync(srcDir)
-        .filter((f) => f.endsWith(".ts"))
-        .map((f) => readFileSync(join(srcDir, f), "utf8"))
-        .join("\n")
-    : "";
+  const exports = new Set<string>();
+  if (existsSync(srcDir)) {
+    for (const f of readdirSync(srcDir).filter((f) => f.endsWith(".ts"))) {
+      collectExports(readFileSync(join(srcDir, f), "utf8"), exports);
+    }
+  }
 
-  const missing = expected.filter((cap) => !sources.includes(cap));
+  const missing = expected.filter((cap) => !exports.has(cap));
   return missing.length === 0
     ? {
         step: "drift",
         status: "PASS",
-        detail: `matched ${expected.length} capabilities`,
+        detail: `matched ${expected.length} exported capabilities`,
       }
     : {
         step: "drift",
         status: "FAIL",
-        detail: `missing: ${missing.join(", ")}`,
+        detail: `missing exported: ${missing.join(", ")}`,
       };
+}
+
+/** Collect exported symbol names (declarations + export lists). */
+function collectExports(source: string, out: Set<string>): void {
+  const decl =
+    /\bexport\s+(?:declare\s+)?(?:const|function|class|interface|type|enum|let|var)\s+([A-Za-z0-9_$]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = decl.exec(source))) out.add(m[1]);
+  const list = /\bexport\s*\{([^}]*)\}/g;
+  while ((m = list.exec(source))) {
+    for (const part of m[1].split(",")) {
+      const name = part
+        .trim()
+        .split(/\s+as\s+/)[0]
+        ?.trim();
+      if (name && /^[A-Za-z0-9_$]+$/.test(name)) out.add(name);
+    }
+  }
 }
 
 /**
