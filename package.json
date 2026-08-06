@@ -37,7 +37,7 @@
     "test:watch": "vitest",
     "test:coverage": "pnpm run build && vitest run --coverage",
     "watch": "tsc -w -p tsconfig.json",
-    "prepare": "pnpm run build",
+    "prepublishOnly": "pnpm run build",
     "tdd": "node dist/cli/index.js tdd",
     "metrics": "node dist/cli/index.js metrics",
     "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run build && pnpm run test:coverage",
