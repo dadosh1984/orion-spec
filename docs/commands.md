@@ -18,6 +18,7 @@
 | `orion think <prompt>`     | Refines the prompt (language-aware clarifying questions), then stores the proposal     |
 | `orion draft <title>`      | Generates `proposal.md`, `specs/`, `design.md`, `tasks.md` (never clobbers edits)      |
 | `orion forge <title>`      | Drives tasks through RED-GREEN-REFACTOR, ticking each off live in the terminal         |
+| `orion forge <title> --parallel <n>` | Same, but in parallel waves: each wave's tasks run in forked workers; parent applies bookkeeping after each wave (v0.16) |
 | `orion tasks <title>`      | Shows the task checklist with check marks and progress (✓ = done)                      |
 | `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, security scan (package-manager aware)       |
 | `orion out <change-id>`    | Writes the final `result.md` (tasks + guard + artifacts + next steps)                  |
@@ -97,6 +98,32 @@ records: 42 | invalid lines: 0 | ≈ total 5130 tok (20520 B)
 Buckets: user / assistant / toolCall / toolResult / thinking (parts typed
 `thinking`/`reasoning`) / other. Invalid JSONL lines are counted in
 `invalid lines`, never hidden. `--json` emits the structured object.
+
+### Parallel forge waves (v0.16)
+
+`orion forge <title> --parallel <n>` (n ≥ 2) splits the open tasks into
+sequential **waves** of `n`. Inside a wave, each task runs its own
+RED-GREEN cycle in a **forked worker** (`child_process.fork`, zero new
+dependencies): generate test → apply snippet → run vitest. Workers never
+touch shared files — all bookkeeping (tasks.md checkboxes, forge cache
+keys, shield-cache invalidation, lessons on RED) happens in the parent,
+applied sequentially after each wave, so `tasks.md` and `lessons.json`
+always have exactly one writer. The refactor pass (eslint --fix + prettier)
+runs once per wave in the parent, after the wave's workers have exited.
+
+Honest caveats: each fork costs ~100–300 ms of Node startup, and parallel
+vitest runs share the `.vite` cache — so `--parallel` is a speed tool for
+changes with many independent tasks, not a universal win. A crashed worker
+or a RED test is reported as pending with the real failure; nothing is
+invented. `--parallel 1` falls back to the sequential path.
+
+```
+orion forge my-csv-tool --parallel 4
+  ✓ parse csv
+  ✓ validate rows
+  · (no snippet) write json
+forge paused: 2 done, 0 skipped, 1 pending across 1 wave(s) of 4
+```
 
 ### Token-economy compress rules (v0.11, v0.14)
 

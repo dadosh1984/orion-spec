@@ -13,7 +13,7 @@ import { applyScale, previewScale } from "../core/scale.js";
 import { TddEngine } from "../core/tddCore.js";
 import { think, askQuestion } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
-import { forge, readTasks } from "../skills/forge/handler.js";
+import { forge, forgeParallel, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { nextStep } from "../skills/next/handler.js";
@@ -43,6 +43,8 @@ export interface CliOptions {
   host?: string;
   /** Session file for `metrics --session <path>` (v0.15). */
   session?: string;
+  /** Parallel wave size for `forge --parallel <n>` (v0.16). */
+  parallel?: number;
 }
 
 const HELP = `orion — self-contained AI-agent toolkit
@@ -54,6 +56,7 @@ Commands:
   think <prompt>          Gather a proposal by asking guided questions
   draft <title>           Generate proposal.md, specs/, design.md, tasks.md
   forge <title>           Run the RED-GREEN-REFACTOR loop over tasks.md
+  forge <title> --parallel <n>   Parallel forge waves via fork workers (v0.16)
   tasks <title>           Show the task checklist (✓ = done) (v0.8)
   shield <change-id>      Run lint, type-check, tests, drift and security gates
   out <change-id>         Produce the final result.md summary
@@ -137,6 +140,16 @@ export function parseArgs(argv: string[]): {
       }
       opts.session = value;
       i++;
+    } else if (arg === "--parallel") {
+      const value = argv[i + 1];
+      const n = Number(value);
+      if (!value || value.startsWith("-") || !Number.isInteger(n) || n < 1) {
+        throw new Error(
+          "--parallel requires a positive integer, e.g. --parallel 3",
+        );
+      }
+      opts.parallel = n;
+      i++;
     } else if (arg === "--ui") {
       opts.ui = true;
     } else {
@@ -201,18 +214,29 @@ export async function main(argv: string[]): Promise<number> {
       if (!title)
         return fail("forge requires a draft id, e.g. orion forge my-csv-tool");
       // Live checklist: each task is ticked off in the terminal as it runs.
-      const summary = await forge(title, {
-        noCache: opts.noCache,
-        onTask: (row) => {
-          const mark =
-            row.status === "done"
-              ? "✓"
-              : row.status === "skipped"
-                ? "✓ (cached)"
-                : "· (no snippet)";
-          console.log(`  ${mark} ${row.desc}`);
-        },
-      });
+      const onTask = (row: {
+        desc: string;
+        status: "done" | "skipped" | "pending";
+      }) => {
+        const mark =
+          row.status === "done"
+            ? "✓"
+            : row.status === "skipped"
+              ? "✓ (cached)"
+              : "· (no snippet)";
+        console.log(`  ${mark} ${row.desc}`);
+      };
+      const summary =
+        opts.parallel !== undefined && opts.parallel >= 2
+          ? await forgeParallel(title, {
+              noCache: opts.noCache,
+              parallel: opts.parallel,
+              onTask,
+            })
+          : await forge(title, {
+              noCache: opts.noCache,
+              onTask,
+            });
       printOut(opts, summary, summary.message);
       return summary.ok ? 0 : 1;
     }

@@ -254,3 +254,17 @@ describe("metrics --session (v0.15)", () => {
     expect(args).toEqual(["extra"]);
   });
 });
+
+describe("forge --parallel (v0.16)", () => {
+  it("parseArgs consumes --parallel <n>", () => {
+    const { opts, args } = parseArgs(["forge", "demo", "--parallel", "3", "x"]);
+    expect(opts.parallel).toBe(3);
+    expect(args).toEqual(["demo", "x"]);
+  });
+
+  it("parseArgs rejects invalid --parallel values", () => {
+    expect(() => parseArgs(["forge", "demo", "--parallel"])).toThrow();
+    expect(() => parseArgs(["forge", "demo", "--parallel", "0"])).toThrow();
+    expect(() => parseArgs(["forge", "demo", "--parallel", "abc"])).toThrow();
+  });
+});

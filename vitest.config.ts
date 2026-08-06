@@ -11,7 +11,13 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary"],
       include: ["src/**/*.ts"],
-      exclude: ["src/cli/index.ts"],
+      exclude: [
+        "src/cli/index.ts",
+        // fork-entry point (v0.16): executes as its own child process in
+        // `forge --parallel`, exercised by the e2e suite; v8 coverage of
+        // the parent process cannot observe a forked worker
+        "src/skills/forge/worker.ts",
+      ],
       thresholds: {
         lines: 80,
         functions: 80,

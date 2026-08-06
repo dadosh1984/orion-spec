@@ -1,0 +1,38 @@
+{
+  "changeId": "v0.16-parallel-forge-waves",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  31 passed (31)\n      Tests  320 passed (320)\n   Duration  19.33s (transform 2.52s, setup 5ms, collect 6.61s, tests 50.84s, environment 13ms, prepare 12.98s)\n\n[orion: −35549 B (−99.4%) ≈ 8887 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 2 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 85 LOC, 3 imports)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-06T18:39:47.503Z",
+  "contextHash": "e32200d8b9dd"
+}
