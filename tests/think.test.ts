@@ -10,9 +10,11 @@ let dir: string;
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-think-"));
   process.chdir(dir);
+  process.env.ORION_CACHE_DIR = join(dir, "cache");
 });
 
 afterEach(() => {
+  delete process.env.ORION_CACHE_DIR;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });
@@ -56,5 +58,40 @@ describe("think skill", () => {
     expect(slugify("Hello World!")).toBe("hello-world");
     expect(slugify("  A  B  ")).toBe("a-b");
     expect(slugify("!!!")).toBe("untitled");
+  });
+
+  it("returns the existing proposal unchanged for a repeated idea", async () => {
+    const first = await think("same idea", { noCache: true }, async () => "");
+    expect(first.platform).toBe("");
+
+    // A second think with the same goal must not clobber the first one
+    // and must not re-ask the guided questions.
+    let asked = 0;
+    const again = await think("same idea", { noCache: true }, async () => {
+      asked++;
+      return "node";
+    });
+    expect(again).toStrictEqual(first);
+    expect(asked).toBe(0);
+    expect(again.platform).toBe("");
+  });
+
+  it("auto-suffixes the title when a different idea collides (non-TTY)", async () => {
+    await think("Build a tool", { noCache: true }, async () => "");
+    // Same slugified title, different goal → non-TTY context auto-suffixes.
+    const second = await think(
+      "build a tool!",
+      { noCache: true },
+      async () => "",
+    );
+    expect(second.title).toBe("build-a-tool-2");
+    expect(second.goal).toBe("build a tool!");
+
+    const third = await think(
+      "BUILD A TOOL",
+      { noCache: true },
+      async () => "",
+    );
+    expect(third.title).toBe("build-a-tool-3");
   });
 });
