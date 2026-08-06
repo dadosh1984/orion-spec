@@ -1,0 +1,12 @@
+{
+  "title": "gsd-core-superpowers-openspec-spec-kit-rtk-ponytail-orion-spec",
+  "goal": "Сравнительный анализ: gsd-core, superpowers, OpenSpec, spec-kit, rtk, ponytail против orion-spec. Для каждого: сильные и слабые стороны, эффективность, работоспособность, полезность для конечного пользователя. Вывод: какие лучшие идеи мы можем взять и улучшить (без копирования).",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "appliesLessons": [
+    "v0.12-self-correction:shield:eb3fe1f53f29"
+  ]
+}
