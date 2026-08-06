@@ -50,11 +50,15 @@
 
 ## Other
 
-| Command         | Description                                      |
-| --------------- | ------------------------------------------------ |
-| `orion help`    | Show the help text                               |
-| `orion metrics` | Reserved for the benchmark module (planned v0.5) |
-| `orion serve [--port N] [--ui]` | Start the web dashboard (v0.2) |
+| Command                         | Description                                      |
+| ------------------------------- | ------------------------------------------------ |
+| `orion help`                    | Show the help text                               |
+| `orion metrics`                 | Reserved for the benchmark module (planned v0.5) |
+| `orion serve [--port N] [--ui]` | Start the web dashboard (v0.2)                   |
+| `orion plugin new <name>`       | Scaffold a plugin skeleton (v0.3)                |
+| `orion plugin install <dir>`    | Copy a plugin into `~/.orion/plugins`            |
+| `orion plugin list`             | List installed plugins (global + local)          |
+| `orion plugin remove <name>`    | Uninstall a plugin                               |
 
 ## Examples
 

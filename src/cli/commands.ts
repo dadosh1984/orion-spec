@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { watch } from "node:fs";
+import { join } from "node:path";
 import { writeFileSafe } from "../utils/file.js";
 import { OrionTrack } from "../core/track.js";
 import { applyScale, previewScale } from "../core/scale.js";
@@ -10,6 +11,14 @@ import { forge } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { startServer } from "./serve.js";
+import {
+  listPlugins,
+  installPlugin,
+  removePlugin,
+  scaffoldPlugin,
+  findPluginForCommand,
+  loadPluginHandler,
+} from "../core/plugins.js";
 
 /** Global CLI flags shared by every command. */
 export interface CliOptions {
@@ -45,6 +54,10 @@ Commands:
   tdd refactor <task>     Run lint --fix + format
   metrics                 (reserved) benchmark module
   serve [--port N] [--ui] Start the web dashboard (v0.2)
+  plugin new <name>       Scaffold a plugin skeleton (v0.3)
+  plugin install <dir>    Copy a plugin into ~/.orion/plugins
+  plugin list             List installed plugins
+  plugin remove <name>    Uninstall a plugin
   help                    Show this help
 
 Flags:
@@ -253,9 +266,33 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
 
-    default:
+    case "plugin":
+      return await pluginCommand(args, opts);
+
+    default: {
+      // v0.3: unknown commands are dispatched to installed plugins.
+      const plugin = findPluginForCommand(cmd);
+      if (plugin) {
+        try {
+          const handler = await loadPluginHandler(plugin);
+          return await handler(args, {
+            track,
+            cwd: process.cwd(),
+            options: opts,
+            log: (message) => console.log(message),
+          });
+        } catch (err) {
+          console.error(
+            `orion: plugin "${plugin.name}" failed: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+          return 1;
+        }
+      }
       console.log(`orion: unknown command "${cmd}"\n\n${HELP}`);
       return 1;
+    }
   }
 }
 
@@ -389,6 +426,76 @@ async function tddCommand(args: string[], opts: CliOptions): Promise<number> {
 function fail(message: string): number {
   console.error(`orion: ${message}`);
   return 1;
+}
+
+/** plugin sub-commands (v0.3 plugin marketplace). */
+async function pluginCommand(
+  args: string[],
+  opts: CliOptions,
+): Promise<number> {
+  const [sub, target] = args;
+  switch (sub) {
+    case "new": {
+      if (!target)
+        return fail("plugin new requires a name, e.g. orion plugin new mytool");
+      scaffoldPlugin(target);
+      printOut(
+        opts,
+        {
+          plugin: target,
+          action: "scaffolded",
+          dir: join(process.cwd(), target),
+        },
+        `Created plugin skeleton in ${join(process.cwd(), target)} — run \`orion plugin install ${target}\` to activate it`,
+      );
+      return 0;
+    }
+    case "install": {
+      if (!target) return fail("plugin install requires a plugin directory");
+      try {
+        const info = installPlugin(target);
+        printOut(
+          opts,
+          { plugin: info.name, version: info.version, location: info.dir },
+          `Installed plugin ${info.name}@${info.version} (${info.commands.join(", ")})`,
+        );
+        return 0;
+      } catch (err) {
+        return fail(err instanceof Error ? err.message : String(err));
+      }
+    }
+    case "list": {
+      const plugins = listPlugins();
+      printOut(
+        opts,
+        { plugins },
+        plugins.length
+          ? plugins
+              .map(
+                (p) =>
+                  `  • ${p.name}@${p.version} [${p.location}] — ${p.commands.join(", ")}${p.description ? ": " + p.description : ""}`,
+              )
+              .join("\n")
+          : "No plugins installed. Try: orion plugin new demo && orion plugin install demo",
+      );
+      return 0;
+    }
+    case "remove": {
+      if (!target) return fail("plugin remove requires a plugin name");
+      const removed = removePlugin(target);
+      if (!removed) return fail(`no plugin named "${target}"`);
+      printOut(
+        opts,
+        { plugin: target, removed: true },
+        `Removed plugin ${target}`,
+      );
+      return 0;
+    }
+    default:
+      return fail(
+        `unknown plugin sub-command "${sub ?? ""}" (new|install|list|remove)`,
+      );
+  }
 }
 
 function formatBytes(bytes: number): string {
