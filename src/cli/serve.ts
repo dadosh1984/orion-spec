@@ -10,6 +10,8 @@ export interface ServeOptions {
   port: number;
   /** Serve the HTML dashboard at `/` (defaults to true). */
   ui: boolean;
+  /** Host to bind (default 127.0.0.1 — loopback only). */
+  host?: string;
 }
 
 interface ApiChange {
@@ -60,6 +62,16 @@ function humanBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/** Escape HTML metacharacters — prevents stored XSS via change titles/goals. */
+export function escapeHtml(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function sendJson(
@@ -143,16 +155,17 @@ async function refresh() {
     const list = document.getElementById("changes");
     list.innerHTML = changes.length
       ? changes.map(c =>
-          '<li><b>' + c.title + '</b>' +
+          '<li><b>' + esc(c.title) + '</b>' +
           (c.hasResult ? '<span class="tag done">result</span>' : '') +
-          (c.goal ? '<div style="color:#8b93a7;font-size:12px;margin-top:4px">' + c.goal + '</div>' : '')
+          (c.goal ? '<div style="color:#8b93a7;font-size:12px;margin-top:4px">' + esc(c.goal) + '</div>' : '')
         ).join("")
       : '<li>no changes yet — run <code>orion think</code></li>';
   } catch (err) {
     document.getElementById("cache").innerHTML =
-      '<p class="err">' + err + '</p>';
+      '<p class="err">' + esc(String(err)) + '</p>';
   }
 }
+function esc(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 refresh();
 </script>
 </body>
@@ -231,7 +244,9 @@ export function startServer(
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(opts.port, () => {
+    // Loopback-only by default: the dashboard exposes cache contents with no
+    // auth, so it must not be reachable from the network unless opted in.
+    server.listen(opts.port, opts.host ?? "127.0.0.1", () => {
       server.removeListener("error", reject);
       resolve(server);
     });

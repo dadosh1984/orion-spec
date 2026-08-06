@@ -93,6 +93,40 @@ describe("plugins: manager", () => {
     );
   });
 
+  it("installPlugin keys by manifest name, not source basename", () => {
+    // two different plugin dirs with the SAME basename but different names
+    const a = join(dir, "plugin-a");
+    const b = join(dir, "plugin-b");
+    mkdirSync(a, { recursive: true });
+    mkdirSync(b, { recursive: true });
+    writeFileSync(
+      join(a, "manifest.json"),
+      JSON.stringify({ name: "alpha", version: "1.0.0" }),
+      "utf8",
+    );
+    writeFileSync(
+      join(b, "manifest.json"),
+      JSON.stringify({ name: "beta", version: "1.0.0" }),
+      "utf8",
+    );
+    writeFileSync(join(a, "index.js"), "export const run = () => 0;", "utf8");
+    writeFileSync(join(b, "index.js"), "export const run = () => 0;", "utf8");
+    installPlugin(a);
+    installPlugin(b);
+    const names = listPlugins()
+      .map((p) => p.name)
+      .sort();
+    expect(names).toEqual(["alpha", "beta"]);
+  });
+
+  it("scaffoldPlugin rejects path traversal names", () => {
+    expect(() => scaffoldPlugin("../../evil")).toThrow(
+      "only [a-zA-Z0-9_-] are allowed",
+    );
+    expect(() => scaffoldPlugin("a/b")).toThrow();
+    expect(() => scaffoldPlugin("ok-name_2")).not.toThrow();
+  });
+
   it("local plugins take precedence over global ones", () => {
     installPlugin(makePlugin("demo"));
     // local override with the same name

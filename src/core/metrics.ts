@@ -58,16 +58,15 @@ export async function runBenchmark(track: OrionTrack): Promise<{
   timings: PassTiming[];
   stages: StageTiming[];
 }> {
-  void track;
   // Warm the cache so the "hot" pass reads every stage from OrionTrack.
-  await applyScale(BENCHMARK_SNIPPET);
+  await applyScale(BENCHMARK_SNIPPET, { track });
 
   const coldStart = performance.now();
-  await applyScale(BENCHMARK_SNIPPET, { noCache: true });
+  await applyScale(BENCHMARK_SNIPPET, { noCache: true, track });
   const coldMs = performance.now() - coldStart;
 
   const hotStart = performance.now();
-  await applyScale(BENCHMARK_SNIPPET);
+  await applyScale(BENCHMARK_SNIPPET, { track });
   const hotMs = performance.now() - hotStart;
 
   // Per-stage breakdown from one cold pass.

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { sha256 } from "../utils/hash.js";
+import { resolveConfig } from "../utils/file.js";
 import { OrionTrack } from "./track.js";
 import type { ScaleConfig, ScaleStageName } from "../type.js";
 import { handler as yagni } from "../scaleStages/yagni.js";
@@ -32,11 +32,16 @@ export function hashCode(code: string): string {
   return sha256(code);
 }
 
+/** Resolve a stage result (string or { code }) to plain source. */
+function toCode(next: string | { code: string }): string {
+  return typeof next === "string" ? next : next.code;
+}
+
 /** Load the ordered stage list from `src/config/orionScale.json`. */
 export function loadStages(): ScaleStageName[] {
   try {
     const cfg = JSON.parse(
-      readFileSync(resolve("src/config/orionScale.json"), "utf8"),
+      readFileSync(resolveConfig("orionScale.json"), "utf8"),
     ) as ScaleConfig;
     return cfg.stages;
   } catch {
@@ -69,7 +74,7 @@ export async function previewScale(code: string): Promise<ScalePreview> {
     const handlerFn = STAGE_HANDLERS[stage];
     if (!handlerFn) continue;
     const next = await handlerFn(current);
-    const result = typeof next === "string" ? next : next;
+    const result = toCode(next);
     stages.push({ name: stage, changed: result !== current, result });
     current = result;
   }
@@ -80,12 +85,15 @@ export async function previewScale(code: string): Promise<ScalePreview> {
  * Apply the YAGNI ladder to a piece of code: run every configured stage
  * in order, caching each intermediate result in OrionTrack under
  * `scale:<stage>:<hash>` so identical runs cost zero tokens.
+ *
+ * A track instance may be injected (benchmarks, long-running hosts) so the
+ * cache object is created exactly once instead of per call.
  */
 export async function applyScale(
   code: string,
-  opts?: { noCache?: boolean },
+  opts?: { noCache?: boolean; track?: OrionTrack },
 ): Promise<string> {
-  const track = OrionTrack.init();
+  const track = opts?.track ?? OrionTrack.init();
   let current = code;
   const stages = loadStages();
 
@@ -101,7 +109,7 @@ export async function applyScale(
     const handlerFn = STAGE_HANDLERS[stage];
     if (!handlerFn) continue;
     const next = await handlerFn(current);
-    current = typeof next === "string" ? next : next;
+    current = toCode(next);
     if (!opts?.noCache) track.store(key, current);
   }
 

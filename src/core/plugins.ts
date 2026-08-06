@@ -8,7 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join, basename } from "node:path";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { OrionTrack } from "./track.js";
 import type { CliOptions } from "../cli/commands.js";
@@ -40,6 +40,24 @@ export interface PluginInfo {
 }
 
 const DEFAULT_PLUGIN_DIR = join(homedir(), ".orion", "plugins");
+
+/** Safe characters for a plugin name (used for paths). */
+const PLUGIN_NAME_RE = /^[a-zA-Z0-9_-]+$/;
+
+/** Sanitize an arbitrary string into a safe directory/identifier name. */
+export function safePluginName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+/** Validate a plugin name for use as a path segment (path-traversal guard). */
+export function assertSafePluginName(name: string): string {
+  if (!PLUGIN_NAME_RE.test(name)) {
+    throw new Error(
+      `invalid plugin name "${name}" — only [a-zA-Z0-9_-] are allowed`,
+    );
+  }
+  return name;
+}
 
 /** Global plugin directory; overridable via ORION_PLUGIN_DIR (tests). */
 export function pluginDir(): string {
@@ -113,7 +131,10 @@ export function installPlugin(source: string): PluginInfo {
   if (!manifest) {
     throw new Error(`plugin install requires a directory with manifest.json`);
   }
-  const target = join(pluginDir(), basename(source));
+  // Key by the manifest name (sanitized), not the source folder basename:
+  // two plugins from different dirs with the same basename must not clash.
+  const dirName = assertSafePluginName(manifest.name);
+  const target = join(pluginDir(), dirName);
   mkdirSync(pluginDir(), { recursive: true });
   rmSync(target, { recursive: true, force: true });
   cpSync(source, target, { recursive: true });
@@ -149,9 +170,11 @@ export function removePlugin(name: string): boolean {
 
 /** Scaffold a minimal plugin skeleton in the current directory. */
 export function scaffoldPlugin(name: string): void {
+  // Path-traversal guard: `orion plugin new` must never write outside cwd.
+  assertSafePluginName(name);
   const dir = join(process.cwd(), name);
   mkdirSync(dir, { recursive: true });
-  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "-");
+  const safeName = safePluginName(name);
   writeFileSync(
     join(dir, "manifest.json"),
     JSON.stringify(

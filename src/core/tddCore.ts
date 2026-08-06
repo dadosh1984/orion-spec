@@ -1,12 +1,15 @@
 import { exec } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { dirname } from "node:path";
 import { promisify } from "node:util";
-import { writeFileSafe, ensureDir } from "../utils/file.js";
+import { writeFileSafe, ensureDir, resolveConfig } from "../utils/file.js";
 import { OrionTrack } from "./track.js";
 import type { TaskStatus, TddConfig } from "../type.js";
 
 const execAsync = promisify(exec);
+
+/** Safe characters for a task identifier (filesystem + shell-safe). */
+const TASK_ID_RE = /^[a-zA-Z0-9_-]+$/;
 
 /** RED-GREEN-REFACTOR state machine. */
 export enum State {
@@ -20,7 +23,7 @@ export enum State {
 export function loadTddConfig(): TddConfig {
   try {
     return JSON.parse(
-      readFileSync(resolve("src/config/orionTdd.json"), "utf8"),
+      readFileSync(resolveConfig("orionTdd.json"), "utf8"),
     ) as TddConfig;
   } catch {
     return {
@@ -51,6 +54,13 @@ export class TddEngine {
   readonly track: OrionTrack;
 
   constructor(task: string, track?: OrionTrack, config?: TddConfig) {
+    // Shell/command-injection guard: the task id is interpolated into shell
+    // commands and file paths, so only allow safe identifier characters.
+    if (!TASK_ID_RE.test(task)) {
+      throw new Error(
+        `invalid task id "${task}" — only [a-zA-Z0-9_-] are allowed`,
+      );
+    }
     this.task = task;
     this.track = track ?? OrionTrack.init();
     this.config = config ?? loadTddConfig();
@@ -94,8 +104,14 @@ export class TddEngine {
 
   /** Advance the state machine based on the latest test run. */
   transition(testPassed: boolean): State {
-    if (this.state === State.RED && !testPassed) return State.RED;
-    if (testPassed && this.state !== State.DONE) this.state = State.GREEN;
+    if (this.state === State.DONE) return State.DONE;
+    // A failing test always resets to RED — a regression after a green run
+    // (e.g. `tdd implement --watch`) must be visible, not silently cached.
+    if (!testPassed) {
+      this.state = State.RED;
+      return this.state;
+    }
+    this.state = State.GREEN;
     return this.state;
   }
 

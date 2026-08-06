@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import {
   existsSync,
   mkdirSync,
@@ -9,6 +9,7 @@ import {
   unlinkSync,
   readdirSync,
 } from "node:fs";
+import { resolveConfig } from "../utils/file.js";
 import type { TrackConfig, TrackStats } from "../type.js";
 
 /** Cache entry persisted on disk: the stored value plus a timestamp. */
@@ -29,7 +30,7 @@ export class OrionTrack {
 
   constructor(cacheDir?: string, configPath?: string) {
     this.cacheDir = cacheDir ?? join(homedir(), ".orion", "cache");
-    this.configPath = configPath ?? resolve("src/config/orionTrack.json");
+    this.configPath = configPath ?? resolveConfig("orionTrack.json");
     mkdirSync(this.cacheDir, { recursive: true });
   }
 

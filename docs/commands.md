@@ -54,8 +54,8 @@
 | ------------------------------- | ------------------------------------------------ |
 | `orion help`                    | Show the help text                               |
 | `orion metrics`                 | Benchmark + token-budget report (v0.5) |
-| `orion serve [--port N] [--ui]` | Start the web dashboard (v0.2)                   |
-| `orion plugin new <name>`       | Scaffold a plugin skeleton (v0.3)                |
+| `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2) |
+| `orion plugin new <name>`       | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
 | `orion plugin install <dir>`    | Copy a plugin into `~/.orion/plugins`            |
 | `orion plugin list`             | List installed plugins (global + local)          |
 | `orion plugin remove <name>`    | Uninstall a plugin                               |
@@ -70,5 +70,5 @@ orion shield my-csv-tool --json
 orion track status
 orion scale src/foo.ts --dry
 orion tdd start calcSum
-orion serve --port 4780   # open http://localhost:4780
+orion serve --port 4780   # open http://127.0.0.1:4780
 ```

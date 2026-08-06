@@ -46,10 +46,14 @@ export function handler(code: string): string {
   return result;
 }
 
-/** Find all top-level `export function name(...) { ... }` declarations. */
+/** Find all top-level `export function name(...) ... { ... }` declarations. */
 function collectFunctions(code: string): Map<string, FunctionDecl> {
   const map = new Map<string, FunctionDecl>();
-  const re = /export\s+function\s+(\w+)\s*(\([^)]*\))\s*\{/g;
+  // `{` is optional in the match: a typed function like
+  // `export function add(a: number, b: number): number {` has a return-type
+  // annotation between `)` and `{`. indexOf() below locates the body brace;
+  // the annotation itself may not contain `{` (object types are skipped).
+  const re = /export\s+function\s+(\w+)\s*\([^)]*\)\s*(?::[^{]*)?\{/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(code)) !== null) {
     const open = code.indexOf("{", m.index + m[0].length - 1);
@@ -69,9 +73,60 @@ function collectFunctions(code: string): Map<string, FunctionDecl> {
 /** Return the index of the brace matching the one at `openIndex`. */
 function matchBrace(code: string, openIndex: number): number {
   let depth = 0;
+  let inString: "'" | '"' | null = null;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
   for (let i = openIndex; i < code.length; i++) {
-    if (code[i] === "{") depth++;
-    else if (code[i] === "}") {
+    const ch = code[i];
+    const next = code[i + 1];
+    if (inLineComment) {
+      if (ch === "\n") inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (ch === "*" && next === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (inTemplate) {
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
+      if (ch === "`") inTemplate = false;
+      continue;
+    }
+    if (inString) {
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
+      if (ch === inString) inString = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inString = ch;
+      continue;
+    }
+    if (ch === "`") {
+      inTemplate = true;
+      continue;
+    }
+    if (ch === "/" && next === "/") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+    if (ch === "{") depth++;
+    else if (ch === "}") {
       depth--;
       if (depth === 0) return i;
     }

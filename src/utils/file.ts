@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /** Read a text file; throws if the file does not exist. */
 export async function readFileSafe(path: string): Promise<string> {
@@ -38,4 +39,16 @@ export async function readJson<T>(file: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolve a config file. A project-local `src/config/<name>` wins (so per-
+ * project customization keeps working from any cwd), otherwise fall back to
+ * the installed package's own copy — which makes global installs
+ * (`npm i -g orion-spec`) functional outside the repo root.
+ */
+export function resolveConfig(name: string): string {
+  const local = join(process.cwd(), "src", "config", name);
+  if (existsSync(local)) return local;
+  return fileURLToPath(new URL(`../../src/config/${name}`, import.meta.url));
 }

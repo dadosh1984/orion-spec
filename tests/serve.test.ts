@@ -10,6 +10,7 @@ import {
   dashboardHtml,
   readVersion,
   listChanges,
+  escapeHtml,
 } from "../src/cli/serve.js";
 import { OrionTrack } from "../src/core/track.js";
 
@@ -170,6 +171,14 @@ describe("serve: helpers", () => {
   it("dashboardHtml embeds the version", () => {
     const html = dashboardHtml("9.9.9");
     expect(html).toContain("v9.9.9");
+  });
+
+  it("escapeHtml neutralizes XSS payloads", () => {
+    const payload = `<img src=x onerror=alert(document.cookie)>`;
+    const escaped = escapeHtml(payload);
+    expect(escaped).not.toContain("<img");
+    expect(escaped).toContain("&lt;img");
+    expect(escaped).toContain("&gt;");
   });
 
   it("listChanges returns an empty array when changes/ is absent", () => {

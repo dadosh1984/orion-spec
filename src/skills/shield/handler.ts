@@ -202,12 +202,23 @@ function securityScan(changeId: string): GuardCheckResult {
       };
 }
 
-/** Recursively list files under a directory. */
+/** Recursively list files under a directory (resilient to broken entries). */
 function walk(dir: string): string[] {
   const out: string[] = [];
-  for (const e of readdirSync(dir)) {
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
     const full = join(dir, e);
-    const st = statSync(full);
+    let st;
+    try {
+      st = statSync(full);
+    } catch {
+      continue; // broken symlink / permission error — skip
+    }
     if (st.isDirectory()) out.push(...walk(full));
     else out.push(full);
   }

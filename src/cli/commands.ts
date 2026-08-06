@@ -31,6 +31,8 @@ export interface CliOptions {
   port: number;
   /** Serve the HTML dashboard at `/` (`serve --ui`). */
   ui: boolean;
+  /** Bind host for `serve` (default 127.0.0.1). */
+  host?: string;
 }
 
 const HELP = `orion — self-contained AI-agent toolkit
@@ -54,7 +56,7 @@ Commands:
   tdd implement <task> <path>  Apply an implementation snippet
   tdd refactor <task>     Run lint --fix + format
   metrics                 Benchmark + token-budget report (v0.5)
-  serve [--port N] [--ui] Start the web dashboard (v0.2)
+  serve [--port N] [--host H] [--ui] Start the web dashboard (v0.2)
   plugin new <name>       Scaffold a plugin skeleton (v0.3)
   plugin install <dir>    Copy a plugin into ~/.orion/plugins
   plugin list             List installed plugins
@@ -67,6 +69,7 @@ Flags:
   --watch      Re-run on file changes (tdd)
   --json       Machine-readable output
   --port N     Listen port for serve (default 4780)
+  --host H     Bind host for serve (default 127.0.0.1)
   --ui         Serve the HTML dashboard at / (default for serve)
 `;
 
@@ -104,6 +107,13 @@ export function parseArgs(argv: string[]): {
         throw new Error("--port requires a positive integer");
       }
       opts.port = value;
+      i++;
+    } else if (arg === "--host") {
+      const value = argv[i + 1];
+      if (!value || value.startsWith("-")) {
+        throw new Error("--host requires a hostname or IP");
+      }
+      opts.host = value;
       i++;
     } else if (arg === "--ui") {
       opts.ui = true;
@@ -277,12 +287,14 @@ export async function main(argv: string[]): Promise<number> {
       const server = await startServer(track, {
         port: opts.port || 4780,
         ui: opts.ui,
+        host: opts.host ?? "127.0.0.1",
       });
       const addr = server.address();
       const port =
         typeof addr === "object" && addr ? addr.port : opts.port || 4780;
+      const host = opts.host ?? "127.0.0.1";
       console.log(
-        `orion: dashboard at http://localhost:${port} (Ctrl+C to stop)`,
+        `orion: dashboard at http://${host}:${port} (Ctrl+C to stop)`,
       );
       await new Promise<void>((resolve) => {
         const stop = () => server.close(() => resolve());
@@ -483,7 +495,7 @@ async function pluginCommand(
         printOut(
           opts,
           { plugin: info.name, version: info.version, location: info.dir },
-          `Installed plugin ${info.name}@${info.version} (${info.commands.join(", ")})`,
+          `Installed plugin ${info.name}@${info.version} (${info.commands.join(", ")})\n  ⚠ plugins run with full user privileges — install only code you trust`,
         );
         return 0;
       } catch (err) {
