@@ -63,6 +63,70 @@ describe("out skill", () => {
       readFileSync(join("changes", "ghost", "result.md"), "utf8"),
     ).toContain("INCOMPLETE");
   });
+
+  it("marks INCOMPLETE when tasks are left open despite a PASS guard", async () => {
+    mkdirSync(join("changes", "demo"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "tasks.md"),
+      "# Tasks\n- [x] one\n- [ ] two\n",
+      "utf8",
+    );
+    mkdirSync(join("reports", "demo"), { recursive: true });
+    writeFileSync(
+      join("reports", "demo", "guard-report.json"),
+      JSON.stringify({
+        changeId: "demo",
+        checks: [{ step: "security", status: "PASS" }],
+        allPass: true,
+        generatedAt: "2025-01-01T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    const result = await out("demo");
+    expect(result.status).toBe("INCOMPLETE");
+    expect(result.tasksDone).toBe(1);
+    expect(result.tasksTotal).toBe(2);
+    expect(result.allPass).toBe(false);
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).toContain("1/2");
+    expect(md).toContain("## Checklist");
+    expect(md).toContain("orion forge demo");
+  });
+
+  it("lists artifacts and SUCCESS when guard passes and all tasks done", async () => {
+    mkdirSync(join("changes", "demo"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "tasks.md"),
+      "# Tasks\n- [x] one\n",
+      "utf8",
+    );
+    writeFileSync(join("changes", "demo", "proposal.md"), "# P\n", "utf8");
+    mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "specs", "core", "spec.md"),
+      "# Spec: x\n",
+      "utf8",
+    );
+    mkdirSync(join("reports", "demo"), { recursive: true });
+    writeFileSync(
+      join("reports", "demo", "guard-report.json"),
+      JSON.stringify({
+        changeId: "demo",
+        checks: [{ step: "security", status: "PASS" }],
+        allPass: true,
+        generatedAt: "2025-01-01T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    const result = await out("demo");
+    expect(result.status).toBe("SUCCESS");
+    expect(result.allPass).toBe(true);
+    expect(result.artifacts).toContain("changes/demo/proposal.md");
+    expect(result.artifacts).toContain("changes/demo/specs/core/spec.md");
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).toContain("ready to archive");
+    expect(md).toContain("## Artifacts");
+  });
 });
 
 describe("utils", () => {
