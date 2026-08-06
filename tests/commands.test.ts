@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs, main } from "../src/cli/commands.js";
@@ -81,6 +81,16 @@ describe("main dispatcher", () => {
     expect(out).toBe(0);
   });
 
+  it("scale --dry previews stages without writing", async () => {
+    writeFileSync(
+      "preview.ts",
+      "import { readFileSync } from 'fs';\n// c\nconsole.log(1);\n",
+      "utf8",
+    );
+    expect(await main(["scale", "preview.ts", "--dry"])).toBe(0);
+    expect(existsSync("preview.scaled.ts")).toBe(false);
+  });
+
   it("returns 1 for tdd without arguments", async () => {
     expect(await main(["tdd"])).toBe(1);
   });
@@ -92,5 +102,13 @@ describe("main dispatcher", () => {
 
   it("handles metrics placeholder", async () => {
     expect(await main(["metrics"])).toBe(0);
+  });
+
+  it("tdd finalize caches tdd:<task>=DONE via track", async () => {
+    const task = `fin_${Date.now()}`;
+    expect(await main(["tdd", "finalize", task])).toBe(0);
+    const { OrionTrack } = await import("../src/core/track.js");
+    const t = OrionTrack.init();
+    expect(t.load(`tdd:${task}`)).toBe("DONE");
   });
 });

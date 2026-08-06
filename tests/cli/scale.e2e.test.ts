@@ -47,7 +47,7 @@ describe("orion scale (e2e)", () => {
   it("transforms the file through the ladder", () => {
     execSync(`${CLI} scale ${file}`, { encoding: "utf8" });
     expect(existsSync(scaled)).toBe(true);
-    const content = require("node:fs").readFileSync(scaled, "utf8") as string;
+    const content = readFileSync(scaled, "utf8");
     expect(content).toContain("from 'node:fs'");
     expect(content).not.toContain("console");
     expect(content).not.toContain("comment");

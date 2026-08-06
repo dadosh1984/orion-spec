@@ -15,16 +15,16 @@ Orion is a deterministic, token-aware, test-first development workflow built ent
 
 ## Modules
 
-| Module | Responsibility |
-|---|---|
-| `src/cli/` | `index.ts` entry point, `commands.ts` parser/dispatcher, global flags (`--no-cache`, `--dry`, `--watch`, `--json`) |
-| `src/core/track.ts` | `OrionTrack` cache: store/load/exists/prune (TTL + size)/batch/invalidate/getStats; keys URI-encoded for Windows safety |
-| `src/core/scale.ts` | `applyScale(code)` — runs the YAGNI ladder stages in order, caching `scale:<stage>:<hash>` |
-| `src/core/tddCore.ts` | `TddEngine` — RED-GREEN-REFACTOR state machine, test template generation, test runner |
-| `src/scaleStages/` | the 7 ladder stages (`yagni` … `minimum`) |
-| `src/skills/` | `think`, `draft`, `forge`, `shield`, `out` high-level handlers |
-| `src/config/` | `orionTrack.json`, `orionScale.json`, `orionTdd.json` |
-| `src/utils/` | `hash.ts` (sha256, hashFile), `file.ts` (read/write/ensureDir/readJson/writeJson) |
+| Module                | Responsibility                                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `src/cli/`            | `index.ts` entry point, `commands.ts` parser/dispatcher, global flags (`--no-cache`, `--dry`, `--watch`, `--json`)      |
+| `src/core/track.ts`   | `OrionTrack` cache: store/load/exists/prune (TTL + size)/batch/invalidate/getStats; keys URI-encoded for Windows safety |
+| `src/core/scale.ts`   | `applyScale(code)` — runs the YAGNI ladder stages in order, caching `scale:<stage>:<hash>`                              |
+| `src/core/tddCore.ts` | `TddEngine` — RED-GREEN-REFACTOR state machine, test template generation, test runner                                   |
+| `src/scaleStages/`    | the 7 ladder stages (`yagni` … `minimum`)                                                                               |
+| `src/skills/`         | `think`, `draft`, `forge`, `shield`, `out` high-level handlers                                                          |
+| `src/config/`         | `orionTrack.json`, `orionScale.json`, `orionTdd.json`                                                                   |
+| `src/utils/`          | `hash.ts` (sha256, hashFile), `file.ts` (read/write/ensureDir/readJson/writeJson)                                       |
 
 ## How the pieces talk to each other
 
@@ -42,13 +42,13 @@ CLI (commands.ts)
 
 ## Cache key namespaces
 
-| Namespace | Example | Invalidated by |
-|---|---|---|
-| `scale:<stage>:<hash>` | `scale:stdlib:9f2a…` | — (immutable per code hash) |
-| `tdd:<task>` | `tdd:calcSum` | `track clear` |
-| `shield:<step>` | `shield:lint` | `forge` after each code change |
-| `proposal:<title>` | `proposal:csv-tool` | — |
-| `forge:<slug>` | `forge:implement_add` | `track clear` |
+| Namespace              | Example               | Invalidated by                 |
+| ---------------------- | --------------------- | ------------------------------ |
+| `scale:<stage>:<hash>` | `scale:stdlib:9f2a…`  | — (immutable per code hash)    |
+| `tdd:<task>`           | `tdd:calcSum`         | `track clear`                  |
+| `shield:<step>`        | `shield:lint`         | `forge` after each code change |
+| `proposal:<title>`     | `proposal:csv-tool`   | —                              |
+| `forge:<slug>`         | `forge:implement_add` | `track clear`                  |
 
 ## Determinism & testability
 

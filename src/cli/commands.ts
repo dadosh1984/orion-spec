@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
+import { watch } from "node:fs";
 import { writeFileSafe } from "../utils/file.js";
 import { OrionTrack } from "../core/track.js";
-import { applyScale } from "../core/scale.js";
+import { applyScale, previewScale } from "../core/scale.js";
 import { TddEngine } from "../core/tddCore.js";
 import { think } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
@@ -169,24 +170,29 @@ export async function main(argv: string[]): Promise<number> {
       if (!file)
         return fail("scale requires a file, e.g. orion scale src/foo.ts");
       const code = await readFile(file, "utf8");
-      const result = await applyScale(code, { noCache: opts.noCache });
       if (opts.dry) {
+        const preview = await previewScale(code);
+        const changed = preview.stages.filter((s) => s.changed);
         printOut(
           opts,
           {
-            stages: [
-              "yagni",
-              "reuse",
-              "stdlib",
-              "native",
-              "dep",
-              "oneLiner",
-              "minimum",
-            ],
+            dry: true,
+            file,
+            stages: preview.stages.map((s) => ({
+              name: s.name,
+              changed: s.changed,
+            })),
+            diff: changed.length ? lineDiff(code, preview.final) : "no changes",
           },
-          `[dry] would transform ${file}`,
+          [
+            `[dry] ${file}: ${changed.length}/${preview.stages.length} stages would change the code`,
+            ...changed.map((s) => `  • ${s.name} → changed`),
+            "",
+            ...lineDiff(code, preview.final),
+          ].join("\n"),
         );
       } else {
+        const result = await applyScale(code, { noCache: opts.noCache });
         await writeFileSafe(file.replace(/\.ts$/, ".scaled.ts"), result);
         printOut(
           opts,
@@ -281,15 +287,41 @@ async function tddCommand(args: string[], opts: CliOptions): Promise<number> {
     }
     case "implement": {
       if (!path) return fail("tdd implement requires a snippet path");
-      const snippet = await readFile(path, "utf8");
-      await engine.applyCode(snippet);
-      const passed = await engine.runTest();
-      engine.transition(passed);
-      printOut(
-        opts,
-        { task, state: engine.state, passed },
-        passed ? "GREEN: tests pass" : "RED: tests still failing",
-      );
+      const runOnce = async (): Promise<boolean> => {
+        const snippet = await readFile(path, "utf8");
+        await engine.applyCode(snippet);
+        const passed = await engine.runTest();
+        engine.transition(passed);
+        printOut(
+          opts,
+          { task, state: engine.state, passed },
+          passed ? "GREEN: tests pass" : "RED: tests still failing",
+        );
+        return passed;
+      };
+      const passed = await runOnce();
+      if (opts.watch) {
+        // --watch: re-run the tests automatically after every edit.
+        console.log(
+          `[watch] watching ${path} — edit to re-run tests (Ctrl+C to stop)`,
+        );
+        const watcher = watch(path, async () => {
+          try {
+            await runOnce();
+          } catch (err) {
+            console.error(
+              `orion: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        });
+        process.once("SIGINT", () => {
+          watcher.close();
+          process.exit(0);
+        });
+        await new Promise<void>(() => {
+          /* keep the process alive until SIGINT */
+        });
+      }
       return passed ? 0 : 1;
     }
     case "refactor": {
@@ -298,6 +330,15 @@ async function tddCommand(args: string[], opts: CliOptions): Promise<number> {
         opts,
         { task, state: engine.state },
         "REFACTOR: lint --fix + format applied",
+      );
+      return 0;
+    }
+    case "finalize": {
+      engine.finalize();
+      printOut(
+        opts,
+        { task, status: engine.status() },
+        `DONE: task "${task}" finalized and cached as tdd:${task}`,
       );
       return 0;
     }
@@ -315,4 +356,22 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/**
+ * Minimal line-level diff for the `scale --dry` preview.
+ * Produces `+`/`-` prefixed lines; unchanged lines are omitted.
+ */
+function lineDiff(before: string, after: string): string[] {
+  const a = before.split("\n");
+  const b = after.split("\n");
+  const out: string[] = [];
+  const max = Math.max(a.length, b.length);
+  for (let i = 0; i < max; i++) {
+    if (a[i] !== b[i]) {
+      if (a[i] !== undefined) out.push(`- ${a[i]}`);
+      if (b[i] !== undefined) out.push(`+ ${b[i]}`);
+    }
+  }
+  return out;
 }

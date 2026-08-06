@@ -1,0 +1,60 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { execSync } from "node:child_process";
+import { rmSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+const CLI = "node dist/cli/index.js";
+
+beforeAll(() => {
+  execSync("node node_modules/typescript/bin/tsc -p tsconfig.json", {
+    stdio: "pipe",
+  });
+}, 120_000);
+
+/**
+ * tdd e2e: the CLI drives a task through RED → GREEN → DONE with real
+ * vitest runs, and the status is observable through `track get tdd:<task>`.
+ */
+describe("orion tdd (e2e)", () => {
+  const task = `tdd_e2e_${Date.now()}`;
+  const testFile = join("tests", `${task}.test.ts`);
+  const taskFile = join("src", "tasks", `${task}.ts`);
+  const snippet = join(process.cwd(), `snippet_${task}.ts`);
+
+  beforeAll(() => {
+    // The generated test imports { <task> } from '../src/tasks/<task>'.
+    writeFileSync(snippet, `export function ${task}() { return 0; }`, "utf8");
+  });
+
+  afterAll(() => {
+    rmSync(testFile, { force: true });
+    rmSync(taskFile, { force: true });
+    rmSync(snippet, { force: true });
+  });
+
+  it("tdd start generates a failing test (RED)", () => {
+    const out = execSync(`${CLI} tdd start ${task}`, { encoding: "utf8" });
+    expect(out).toContain("RED");
+    expect(existsSync(testFile)).toBe(true);
+  });
+
+  it("tdd implement turns it GREEN with real vitest", () => {
+    const out = execSync(`${CLI} tdd implement ${task} ${snippet}`, {
+      encoding: "utf8",
+    });
+    expect(out).toContain("GREEN");
+  });
+
+  it("tdd finalize caches tdd:<task>=DONE, visible via track", () => {
+    execSync(`${CLI} tdd finalize ${task}`, { encoding: "utf8" });
+    const status = execSync(`${CLI} track get tdd:${task}`, {
+      encoding: "utf8",
+    });
+    expect(status.trim()).toBe("DONE");
+  });
+
+  it("tdd refactor applies formatting (no crash)", () => {
+    const out = execSync(`${CLI} tdd refactor ${task}`, { encoding: "utf8" });
+    expect(out).toContain("REFACTOR");
+  });
+});

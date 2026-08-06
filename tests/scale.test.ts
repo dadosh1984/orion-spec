@@ -5,7 +5,7 @@ import { handler as native } from "../src/scaleStages/native.js";
 import { handler as dep } from "../src/scaleStages/dep.js";
 import { handler as oneLiner } from "../src/scaleStages/oneLiner.js";
 import { handler as minimum } from "../src/scaleStages/minimum.js";
-import { applyScale, hashCode } from "../src/core/scale.js";
+import { applyScale, hashCode, previewScale } from "../src/core/scale.js";
 
 describe("scale stages", () => {
   it("yagni is a no-op", () => {
@@ -81,5 +81,26 @@ describe("scale core", () => {
     expect(result).toContain("from 'node:fs'");
     expect(result).not.toContain("console");
     expect(result).not.toContain("comment");
+  });
+
+  it("previewScale reports which stages would change the code", async () => {
+    const code = `import { readFileSync } from 'fs';\n// c\nconsole.log(1);\n`;
+    const preview = await previewScale(code);
+    expect(preview.stages.length).toBeGreaterThanOrEqual(7);
+    const changed = preview.stages.filter((s) => s.changed);
+    expect(changed.map((s) => s.name)).toContain("stdlib");
+    expect(changed.map((s) => s.name)).toContain("minimum");
+    // yagni must never change anything
+    expect(preview.stages[0]).toEqual({
+      name: "yagni",
+      changed: false,
+      result: code,
+    });
+    // no-op input → only minimum may trim the trailing newline
+    const clean = await previewScale("export const a = 1;\n");
+    const cleanChanged = clean.stages.filter((s) => s.changed);
+    expect(cleanChanged.every((s) => s.name === "minimum")).toBe(true);
+    // yagni / reuse / stdlib must never touch clean code
+    expect(clean.stages.find((s) => s.name === "stdlib")?.changed).toBe(false);
   });
 });

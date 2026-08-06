@@ -44,6 +44,38 @@ export function loadStages(): ScaleStageName[] {
   }
 }
 
+/** One stage's output during a scale preview. */
+export interface ScaleStagePreview {
+  name: ScaleStageName;
+  changed: boolean;
+  result: string;
+}
+
+/** Full preview of the ladder without persisting anything. */
+export interface ScalePreview {
+  stages: ScaleStagePreview[];
+  final: string;
+}
+
+/**
+ * Run the ladder and report each stage's output so the CLI can render a
+ * diff-preview for `--dry` runs. Caching is disabled on purpose: a preview
+ * must reflect what WOULD happen right now.
+ */
+export async function previewScale(code: string): Promise<ScalePreview> {
+  let current = code;
+  const stages: ScaleStagePreview[] = [];
+  for (const stage of loadStages()) {
+    const handlerFn = STAGE_HANDLERS[stage];
+    if (!handlerFn) continue;
+    const next = await handlerFn(current);
+    const result = typeof next === "string" ? next : next;
+    stages.push({ name: stage, changed: result !== current, result });
+    current = result;
+  }
+  return { stages, final: current };
+}
+
 /**
  * Apply the YAGNI ladder to a piece of code: run every configured stage
  * in order, caching each intermediate result in OrionTrack under
