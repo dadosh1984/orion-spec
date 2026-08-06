@@ -142,8 +142,9 @@ from-scratch take on the same idea as rtk, built into Orion's core:
   raw output, never fabricates), `matched=false` when no rule applied, token figures are
   always labeled *≈ bytes/4 estimate (no tokenizer)*, repeated identical input is served
   from the OrionTrack cache and labeled `cached=true`.
-- **Measured, not guessed**: every operation is appended to the ledger `~/.orion/economy.json`;
-  `orion metrics` reports real bytes/tokens saved.
+- **Measured, not guessed**: every operation is appended to the ledger `~/.orion/economy.json`
+  (per project: package.json name, git-root dir, or cwd); `orion metrics` reports real
+  bytes/tokens saved with a per-project breakdown.
 - **Cost-aware companion**: `orion next` estimates the token cost of each alternative
   (bytes/4 of the plan artifacts) and lists options cheapest-first.
 

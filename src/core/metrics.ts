@@ -1,7 +1,11 @@
 import { performance } from "node:perf_hooks";
 import { statSync } from "node:fs";
 import { applyScale, previewScale } from "./scale.js";
-import { estimateTokens, economyStats } from "./compress.js";
+import {
+  estimateTokens,
+  economyStats,
+  type ProjectEconomy,
+} from "./compress.js";
 import type { OrionTrack } from "./track.js";
 
 export { estimateTokens } from "./compress.js";
@@ -37,7 +41,12 @@ export interface MetricsReport {
   totalTokens: number;
   cached: { count: number; bytes: number };
   /** Token-economy ledger (v0.11): real measured savings from compress ops. */
-  economy: { entries: number; savedBytes: number; savedTokens: number };
+  economy: {
+    entries: number;
+    savedBytes: number;
+    savedTokens: number;
+    byProject: ProjectEconomy[];
+  };
 }
 
 /** Rough token estimate: ~4 bytes per token (BPE heuristic). */

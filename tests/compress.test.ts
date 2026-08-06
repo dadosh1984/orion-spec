@@ -11,6 +11,7 @@ import {
   readEconomy,
   economyStats,
   firstToken,
+  currentProject,
 } from "../src/core/compress.js";
 import { OrionTrack } from "../src/core/track.js";
 
@@ -97,22 +98,41 @@ describe("compress core", () => {
       "",
       "E:/proj/src/a.ts",
       "  1:7  error  'x' is defined but never used  @typescript-eslint/no-unused-vars",
+      "  3:14  error  'y' is defined but never used  @typescript-eslint/no-unused-vars",
+      "E:/proj/src/b.ts",
+      "  2:9  error  'z' is defined but never used  @typescript-eslint/no-unused-vars",
+      "E:/proj/src/c.ts",
+      "  1:1  error  'w' is defined but never used  @typescript-eslint/no-unused-vars",
+      "  4:22  error  'v' is defined but never used  @typescript-eslint/no-unused-vars",
+      "  9:3  error  'u' is defined but never used  @typescript-eslint/no-unused-vars",
+      "E:/proj/src/d.ts",
+      "  5:5  error  't' is defined but never used  @typescript-eslint/no-unused-vars",
       "",
-      "✖ 1 problem (1 error, 0 warnings)",
+      "✖ 7 problems (7 errors, 0 warnings)",
     ].join("\n");
     const r = compress("eslint src --max-warnings=0", out);
     expect(r.matched).toBe(true);
     expect(r.out).toContain("no-unused-vars");
-    expect(r.out).toContain("1 error");
+    expect(r.out).toContain("7 error line(s)");
     expect(r.out).not.toContain("scrubbed");
   });
 
   it("tsc: error TS lines only", () => {
-    const out = "src/a.ts:1:7 - error TS6133: 'x' is declared but its value is never read.\n\nFound 1 error.\n";
+    const out = [
+      "src/a.ts:1:7 - error TS6133: 'x' is declared but its value is never read.",
+      "src/a.ts:2:9 - error TS6133: 'y' is declared but its value is never read.",
+      "src/b.ts:1:1 - error TS2304: Cannot find name 'foo'.",
+      "src/c.ts:4:22 - error TS6133: 'z' is declared but its value is never read.",
+      "src/c.ts:9:3 - error TS2304: Cannot find name 'bar'.",
+      "src/d.ts:5:5 - error TS6133: 'q' is declared but its value is never read.",
+      "",
+      "Found 6 errors in 4 files.",
+    ].join("\n");
     const r = compress("tsc --noEmit", out);
     expect(r.matched).toBe(true);
     expect(r.out).toContain("error TS6133");
-    expect(r.out).not.toContain("Found 1 error");
+    expect(r.out).toContain("error TS2304");
+    expect(r.out).not.toContain("Found 6 errors");
   });
 
   it("git status: compact codes + counts", () => {
@@ -159,10 +179,15 @@ describe("compress core", () => {
   });
 
   it("git log: hash + subject only", () => {
-    const r = compress("git log", "a1b2c3d feat: thing\n  details that are dropped\n");
+    const commits = Array.from(
+      { length: 30 },
+      (_, i) => `a1b2c3d${i.toString(16).padStart(2, "0")} feat: commit number ${i}\n  body line that gets dropped ${i}\n`,
+    ).join("");
+    const r = compress("git log", commits);
     expect(r.matched).toBe(true);
-    expect(r.out).toContain("a1b2c3d feat: thing");
-    expect(r.out).not.toContain("details that are dropped");
+    expect(r.out).toContain("a1b2c3d00 feat: commit number 0");
+    expect(r.out).toContain("30 commit(s)");
+    expect(r.out).not.toContain("body line that gets dropped");
   });
 
   it("ls: names + dir counts", () => {
@@ -180,20 +205,35 @@ describe("compress core", () => {
     expect(r.out).toContain("core");
   });
 
-  it("grep: groups matches by file", () => {
-    const out = "src/a.ts:1:export const x = 1;\nsrc/a.ts:2:export const y = 2;\nsrc/b.ts:9:export const z = 3;\n";
+  it("grep: groups matches by file and truncates long lines", () => {
+    const longText = "some very long matched line with lots of context that goes on and on far beyond the truncation threshold of one hundred twenty characters to prove the point of saving tokens";
+    const rows: string[] = [];
+    for (let i = 0; i < 8; i++) rows.push(`src/a.ts:${i + 1}:${longText}`);
+    for (let i = 0; i < 4; i++) rows.push(`src/b.ts:${i + 1}:${longText}`);
+    const out = rows.join("\n");
     const r = compress("rg 'export const' src", out);
     expect(r.matched).toBe(true);
-    expect(r.out).toContain("3 matches in 2 files");
+    expect(r.out).toContain("12 matches in 2 files");
     expect(r.out).toContain("src/a.ts:1");
   });
 
   it("pnpm install: outcome lines only", () => {
-    const out = "Progress: resolved 100, reused 90, downloaded 10, added 5\npackages/ +5\n\nDone in 2.3s\n";
+    const out = [
+      "Progress: resolved 100, reused 90, downloaded 10, added 5",
+      "Progress: resolved 200, reused 190, downloaded 10, added 5",
+      "Progress: resolved 300, reused 290, downloaded 10, added 5",
+      "Progress: resolved 400, reused 390, downloaded 10, added 5",
+      "packages/ +5",
+      "Progress: resolved 500, reused 490, downloaded 10, added 5",
+      "packages/ +5",
+      "",
+      "Done in 2.3s",
+    ].join("\n");
     const r = compress("pnpm install", out);
     expect(r.matched).toBe(true);
     expect(r.out).toContain("Done in 2.3s");
     expect(r.out).toContain("+5");
+    expect(r.out).not.toContain("resolved 400");
   });
 
   it("fail-safe: unrecognized command returns raw output, matched=false", () => {
@@ -243,7 +283,20 @@ describe("compress core", () => {
     // cached hit is excluded from savings; zero-saving run adds 0.
     expect(stats.savedBytes).toBe(900);
     expect(stats.savedTokens).toBe(estimateTokens(900));
+    // per-project aggregation covers every row.
+    const totalPerProject = stats.byProject.reduce((s, g) => s + g.entries, 0);
+    expect(totalPerProject).toBe(3);
     expect(economyLogPath()).toContain("economy.json");
+  });
+
+  it("currentProject resolves package.json name, then git root, then cwd", () => {
+    expect(currentProject()).toBeTruthy();
+    writeFileSync("package.json", JSON.stringify({ name: "my-proj" }), "utf8");
+    expect(currentProject()).toBe("my-proj");
+    // economy entries are stamped with the project scope.
+    appendEconomy({ ts: "t", cmd: "ls", inBytes: 10, outBytes: 5, cached: false });
+    const last = readEconomy().at(-1);
+    expect(last?.project).toBe("my-proj");
   });
 
   it("firstToken handles paths and flags", () => {
@@ -258,5 +311,16 @@ describe("compress is fail-safe on corrupt rules", () => {
     const r = compress("vitest run", "\u0000raw\u0000", "");
     expect(typeof r.out).toBe("string");
     expect(existsSync(join(dir, "economy.json"))).toBe(true);
+  });
+});
+
+describe("compress: no fake savings (v0.11)", () => {
+  it("skips a rule when the candidate would not actually be smaller", () => {
+    // Tiny, already-compact input: wrapping it in headers would cost bytes.
+    const tiny = "On branch main\n\t?? only-one-file.ts\n";
+    const r = compress("git status", tiny);
+    expect(r.matched).toBe(false);
+    expect(r.out).toBe(tiny);
+    expect(r.savedBytes).toBe(0);
   });
 });

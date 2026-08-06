@@ -108,6 +108,7 @@ describe("metrics: token-economy ledger (v0.11)", () => {
     expect(typeof report.economy.entries).toBe("number");
     expect(typeof report.economy.savedBytes).toBe("number");
     expect(typeof report.economy.savedTokens).toBe("number");
+    expect(Array.isArray(report.economy.byProject)).toBe(true);
     expect(report.economy.entries).toBeGreaterThanOrEqual(0);
     expect(report.economy.savedTokens).toBeGreaterThanOrEqual(0);
   });

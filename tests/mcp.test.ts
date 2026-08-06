@@ -329,12 +329,19 @@ describe("mcp: compress tool (token economy)", () => {
       name: "compress",
       arguments: {
         command: "git status",
-        output: "On branch main\n\t?? new-file.ts\n",
+        output: [
+          "On branch main",
+          "\tmodified:   src/core/compress.ts",
+          "\tmodified:   src/core/metrics.ts",
+          "\tmodified:   src/core/mcp.ts",
+          "\t?? new-file.ts",
+        ].join("\n"),
       },
     };
     const a = JSON.parse(textOf(await call(server, "tools/call", 1, args)));
     const b = JSON.parse(textOf(await call(server, "tools/call", 2, args)));
     expect(a.cached).toBe(false);
+    expect(a.matched).toBe(true);
     expect(b.cached).toBe(true);
     expect(b.out).toBe(a.out);
   });

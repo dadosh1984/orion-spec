@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { OrionTrack } from "./track.js";
 
 /**
@@ -57,6 +57,24 @@ export interface EconomyEntry {
   inBytes: number;
   outBytes: number;
   cached: boolean;
+  /** Project scope (package.json name, git-root dir, or cwd basename). */
+  project?: string;
+}
+
+/** Per-project aggregate from the economy ledger (v0.11). */
+export interface ProjectEconomy {
+  project: string;
+  entries: number;
+  savedBytes: number;
+  savedTokens: number;
+}
+
+/** Aggregate savings from the ledger (fresh runs only — cached hits repeat). */
+export interface EconomySummary {
+  entries: number;
+  savedBytes: number;
+  savedTokens: number;
+  byProject: ProjectEconomy[];
 }
 
 /** A single deterministic compression rule. */
@@ -329,11 +347,12 @@ function installRule(input: string, maxLen: number): string | null {
   const lines = input.split(/\r?\n/);
   const kept = lines
     .map((l) => l.trimEnd())
-    .filter((l) =>
-      /(added|removed|changed|up to date|Done in|Packages?[:\s/]|ERR|WARN|ELIFECYCLE|error|warn|dependencies are up to date)/i.test(
+    .filter((l) => {
+      if (/^Progress:/i.test(l)) return false; // noise, never an outcome
+      return /(added|removed|changed|up to date|Done in|Packages?[:\s/]|ERR|WARN|ELIFECYCLE|error|warn|dependencies are up to date)/i.test(
         l,
-      ),
-    )
+      );
+    })
     .slice(0, 12)
     .map((l) => truncateLine(l, maxLen));
   if (kept.length === 0) return null;
@@ -384,12 +403,47 @@ export function appendEconomy(entry: EconomyEntry): void {
     const rows: EconomyEntry[] = existsSync(path)
       ? (JSON.parse(readFileSync(path, "utf8")) as EconomyEntry[])
       : [];
-    rows.push(entry);
+    rows.push({ ...entry, project: entry.project ?? currentProject() });
     if (rows.length > 5000) rows.splice(0, rows.length - 5000);
     writeFileSync(path, JSON.stringify(rows), "utf8");
   } catch {
     /* best effort — economy must never break the caller */
   }
+}
+
+/**
+ * Which project the current working directory belongs to:
+ * package.json name → git-root directory name → cwd basename.
+ * Zero-dependency: git root is found by walking up, no `git` exec.
+ */
+export function currentProject(): string {
+  try {
+    if (existsSync("package.json")) {
+      const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+        name?: unknown;
+      };
+      if (typeof pkg.name === "string" && pkg.name.trim()) {
+        return pkg.name.trim();
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  const root = gitRoot();
+  if (root) return basename(root);
+  return basename(process.cwd());
+}
+
+/** Nearest ancestor directory containing a .git entry, or null. */
+function gitRoot(): string | null {
+  let dir = process.cwd();
+  for (let i = 0; i < 12; i++) {
+    if (existsSync(join(dir, ".git"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+  return null;
 }
 
 /** Read the economy ledger (empty when missing/corrupt). */
@@ -405,19 +459,33 @@ export function readEconomy(): EconomyEntry[] {
 }
 
 /** Aggregate savings from the ledger (fresh runs only — cached hits repeat). */
-export function economyStats(): {
-  entries: number;
-  savedBytes: number;
-  savedTokens: number;
-} {
+export function economyStats(): EconomySummary {
   const rows = readEconomy();
   const savedBytes = rows
     .filter((r) => !r.cached && r.inBytes > r.outBytes)
     .reduce((sum, r) => sum + (r.inBytes - r.outBytes), 0);
+  const byProject = new Map<string, ProjectEconomy>();
+  for (const r of rows) {
+    const project = r.project ?? "unknown";
+    const group = byProject.get(project) ?? {
+      project,
+      entries: 0,
+      savedBytes: 0,
+      savedTokens: 0,
+    };
+    group.entries += 1;
+    if (!r.cached && r.inBytes > r.outBytes)
+      group.savedBytes += r.inBytes - r.outBytes;
+    byProject.set(project, group);
+  }
+  const list = [...byProject.values()]
+    .map((g) => ({ ...g, savedTokens: estimateTokens(g.savedBytes) }))
+    .sort((a, b) => b.savedBytes - a.savedBytes);
   return {
     entries: rows.length,
     savedBytes,
     savedTokens: estimateTokens(savedBytes),
+    byProject: list,
   };
 }
 
@@ -483,11 +551,17 @@ export function compress(
       // Try every matching rule in order; the first that produces a real
       // rewrite wins. A rule returning null (unrecognized format) must not
       // block a later, more specific rule (e.g. "pnpm install" is both a
-      // test-like and an install command).
+      // test-like and an install command). Honesty: the candidate must
+      // actually be smaller than the cleaned input — wrapping a tiny
+      // already-compact output in headers would be fake "savings".
       for (const rule of RULES) {
         if (!rule.test(cmd)) continue;
         const candidate = rule.compress(cleaned, maxLen);
-        if (candidate !== null && candidate.length > 0) {
+        if (
+          candidate !== null &&
+          candidate.length > 0 &&
+          candidate.length < cleaned.length
+        ) {
           out = candidate;
           matched = true;
           break;

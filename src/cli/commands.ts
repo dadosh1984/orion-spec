@@ -356,6 +356,17 @@ export async function main(argv: string[]): Promise<number> {
           report.economy.entries > 0
             ? `  ≈ ${report.economy.savedTokens} tok saved across ${report.economy.entries} compress op(s) (${report.economy.savedBytes} B) — bytes/4 estimate, no tokenizer`
             : "  no compress ops recorded yet — call the compress tool (or run shield) and check again",
+          ...(report.economy.byProject.length > 0
+            ? [
+                "  by project:",
+                ...report.economy.byProject
+                  .slice(0, 6)
+                  .map(
+                    (p) =>
+                      `    ${p.project.padEnd(18)} ≈ ${p.savedTokens} tok (${p.savedBytes} B) / ${p.entries} op(s)`,
+                  ),
+              ]
+            : []),
         ].join("\n"),
       );
       return 0;
