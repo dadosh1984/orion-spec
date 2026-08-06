@@ -37,6 +37,7 @@ afterEach(() => {
 
 describe("out skill", () => {
   it("writes result.md with the guard verdict", async () => {
+    mkdirSync(join("changes", "demo"), { recursive: true });
     mkdirSync(join("reports", "demo"), { recursive: true });
     writeFileSync(
       join("reports", "demo", "guard-report.json"),
@@ -57,6 +58,7 @@ describe("out skill", () => {
   });
 
   it("reports INCOMPLETE when no guard report exists", async () => {
+    mkdirSync(join("changes", "ghost"), { recursive: true });
     const result = await out("ghost");
     expect(result.allPass).toBe(false);
     expect(
@@ -126,6 +128,97 @@ describe("out skill", () => {
     const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
     expect(md).toContain("ready to archive");
     expect(md).toContain("## Artifacts");
+  });
+
+  it("throws when the change does not exist (honesty, v0.10)", async () => {
+    await expect(out("missing-change")).rejects.toThrow(/not found/);
+  });
+
+  it("marks a stale guard verdict STALE and INCOMPLETE (v0.10)", async () => {
+    mkdirSync(join("changes", "demo"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "tasks.md"),
+      "# Tasks\n- [x] one\n",
+      "utf8",
+    );
+    mkdirSync(join("reports", "demo"), { recursive: true });
+    writeFileSync(
+      join("reports", "demo", "guard-report.json"),
+      JSON.stringify({
+        changeId: "demo",
+        checks: [{ step: "security", status: "PASS" }],
+        allPass: true,
+        generatedAt: "2025-01-01T00:00:00.000Z",
+        // Hash that can never match the current context.
+        contextHash: "deadbeef",
+      }),
+      "utf8",
+    );
+    const result = await out("demo");
+    expect(result.staleGuard).toBe(true);
+    expect(result.status).toBe("INCOMPLETE");
+    expect(result.allPass).toBe(false);
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).toContain("STALE");
+    expect(md).toContain("Re-run it");
+  });
+
+  it("says freshness is unknown for legacy reports without a snapshot (v0.10)", async () => {
+    mkdirSync(join("changes", "demo"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "tasks.md"),
+      "# Tasks\n- [x] one\n",
+      "utf8",
+    );
+    mkdirSync(join("reports", "demo"), { recursive: true });
+    writeFileSync(
+      join("reports", "demo", "guard-report.json"),
+      JSON.stringify({
+        changeId: "demo",
+        checks: [{ step: "security", status: "PASS" }],
+        allPass: true,
+        generatedAt: "2025-01-01T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    const result = await out("demo");
+    expect(result.staleGuard).toBe(false);
+    // Legacy verdict is not called stale, but it is not presented as truth
+    // either — the report says to re-run shield for a definitive verdict.
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).toContain("legacy report without a freshness snapshot");
+    expect(result.status).toBe("SUCCESS");
+  });
+
+  it("does not make the guard stale by writing result.md itself (v0.10)", async () => {
+    mkdirSync(join("changes", "demo"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "tasks.md"),
+      "# Tasks\n- [x] one\n",
+      "utf8",
+    );
+    const { projectHash } = await import("../src/skills/shield/handler.js");
+    const hash = projectHash("demo");
+    mkdirSync(join("reports", "demo"), { recursive: true });
+    writeFileSync(
+      join("reports", "demo", "guard-report.json"),
+      JSON.stringify({
+        changeId: "demo",
+        checks: [{ step: "security", status: "PASS" }],
+        allPass: true,
+        generatedAt: new Date().toISOString(),
+        contextHash: hash,
+      }),
+      "utf8",
+    );
+    const first = await out("demo");
+    expect(first.staleGuard).toBe(false);
+    expect(first.status).toBe("SUCCESS");
+    // result.md now exists (and was regenerated) — a second run must still
+    // see the guard as fresh, otherwise every out would poison the verdict.
+    const second = await out("demo");
+    expect(second.staleGuard).toBe(false);
+    expect(second.status).toBe("SUCCESS");
   });
 });
 

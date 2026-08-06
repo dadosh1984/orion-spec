@@ -1,0 +1,7 @@
+# Proposal — v0.10-honesty-companion
+
+**Goal:** Improve Orion for the v0.10 release around two principles: (1) honesty — Orion must never fabricate results, always tell the truth, and explicitly say 'I don't know' instead of guessing or inventing outcomes; (2) companionship — Orion is the user's companion and friend: when the user is stuck or has no ideas left, Orion proactively proposes alternative options, but the user remains the guide. Scope is limited to improving existing commands — no new CLI commands except in exceptional cases. Concretely fix six honesty gaps: 'out' must detect a stale guard report (files changed after the last shield run) and say so instead of using it as-is; 'track' must label cached results as cached with a date instead of presenting them as fresh; 'next' must return an honest 'I don't know / insufficient context' with alternative options instead of guessing when context is ambiguous or missing; 'draft' must mark each generated task and requirement as [fact] or [assumption] and include an Assumptions section in design.md; 'tdd' must report the exact failing test file, name and assertion instead of a generic message; 'mcp' must never return fake success — audit all 13 tools. Companion behavior: 'next' proposes options and asks interactively, while auto-executing for MCP agents; when no changes exist, suggest starting ideas. Also document in the README the thesis that the logical problem-solving sequence matters more than the model.
+
+- Platform: any
+- Constraints: none
+- Budget: unlimited

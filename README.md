@@ -13,6 +13,23 @@
 4. **Test‑First, Always** – **orion‑tdd‑core** enforces the classic RED‑GREEN‑REFACTOR loop for _every_ task.
 5. **Transparency & Auditable Artifacts** – `proposal.md`, `specs/*.md`, `design.md`, `tasks.md`, `guard‑report.md`, `result.md` live in the repository, version‑controlled and human‑readable.
 6. **Open for Extension** – plugin API and benchmark module are planned (v0.3–v0.5).
+7. **Honesty by Default (v0.10)** – Orion never fabricates a result: it says "I don't know" when the context is insufficient, marks stale guard verdicts instead of presenting them as fresh, labels cache hits with their date, and distinguishes what is stated in the proposal (`[fact]`) from what it inferred (`[assumption]`).
+8. **Companion, not Oracle (v0.10)** – the user is the guide (they have the idea), Orion is the companion (it has the knowledge to realise it). When the user is stuck or has no ideas, Orion proactively proposes alternative options — it never silently decides on the user's behalf in an interactive terminal.
+
+## 🏁 Why process matters more than the model
+
+> **The user wins with a clear logical sequence, not with a bigger model.**
+
+The same idea, run through the same deterministic pipeline, produces the
+same verifiable outcome no matter which model you attach. A model can
+hallucinate a `eval()` call or an "operation history" that the goal never
+mentioned — the pipeline catches it: `shield` security scans the code,
+`drift` compares specs vs `src/tasks`, `out` refuses to trust a stale guard
+verdict, and `draft` labels its own inferences as `[assumption]` so a wrong
+guess is visible instead of silent.
+
+That is the point of Orion: **the logical sequence in which a problem is
+solved matters more than the model used to solve it.**
 
 ## 🚀 Quick Start
 
@@ -158,6 +175,7 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - ✅ **v0.8.1** – Quoted-prompt fix — _done_: `orion "multi word idea"` (single argv with spaces) reaches the think fallback instead of “unknown command”
 - ✅ **v0.8.2** – `orion next` — _done_: scans every change and decides the next action from context (`orion draft|forge|shield|out <id>`), picks the highest‑priority unfinished change, exposed to agents as MCP tool `next_step`
 - ✅ **v0.9** – Context depth — _done_: `draft` decomposes goals into concrete tasks (RU+EN: strips action verbs, transliterates known entities, sub‑entity details like “operation history: persistence/replay/undo”), `shield` security scan catches shell injection (`${}` in exec), `$(…)`/`|;&` chaining, `node:vm` escapes and hardcoded credentials — while staying green on legitimate template literals
+- 🔄 **v0.10** – Honesty & companion — _in progress_: `out` detects a stale guard report (context hash) instead of using it as-is; `track` labels cache hits with their date; `next` says "insufficient context" with ranked alternatives instead of guessing, and suggests starting ideas when nothing exists; `draft` marks tasks `[fact]` vs `[assumption]` (with an Assumptions section in design.md) and no longer false-positivizes on `logical`→history or "no new CLI commands"→CLI; `tdd` names the exact failing test; `mcp` never returns fake success; `shield`/`out` fail honestly when the change does not exist; README documents the process‑over‑model thesis
 
 ## 📜 License
 

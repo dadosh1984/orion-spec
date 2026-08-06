@@ -19,6 +19,9 @@ beforeEach(() => {
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
+  // shield() fails honestly when the change does not exist (v0.10), so the
+  // fixture change must exist for every test.
+  mkdirSync(join("changes", "demo"), { recursive: true });
 });
 
 afterEach(() => {
@@ -29,6 +32,15 @@ afterEach(() => {
 });
 
 describe("shield skill", () => {
+  it("throws when the change does not exist (honesty, v0.10)", async () => {
+    await expect(shield("missing")).rejects.toThrow(/not found/);
+  });
+
+  it("records the context hash snapshot in the report (v0.10)", async () => {
+    const report = await shield("demo", { noCache: true });
+    expect(report.contextHash).toMatch(/^[0-9a-f]{12}$/);
+  });
+
   it("reports FAIL when the security scan finds eval()", async () => {
     mkdirSync("src/tasks", { recursive: true });
     writeFileSync("src/tasks/bad.ts", 'export const x = eval("1+1");', "utf8");

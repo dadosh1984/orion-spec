@@ -132,4 +132,48 @@ describe("next skill", () => {
     const r = await nextStep();
     expect(r.next).toContain("orion draft alpha");
   });
+
+  it("refuses to guess when several changes tie at the same stage (v0.10)", async () => {
+    makeChange("alpha"); // draft
+    makeChange("beta"); // draft — same stage, real ambiguity
+    const r = await nextStep();
+    expect(r.next).toBeNull();
+    expect(r.confidence).toBe("low");
+    expect(r.alternatives).toHaveLength(2);
+    expect(r.alternatives.join(" ")).toContain("orion draft alpha");
+    expect(r.alternatives.join(" ")).toContain("orion draft beta");
+    expect(r.summary).toContain("Insufficient context");
+  });
+
+  it("suggests starting ideas when there are no changes (v0.10)", async () => {
+    const r = await nextStep();
+    expect(r.confidence).toBe("none");
+    expect(r.suggestions).toBeDefined();
+    expect(r.summary).toContain("orion think");
+  });
+
+  it("re-runs shield when the guard verdict is stale (v0.10)", async () => {
+    makeChange("cli-tool", true);
+    writeFileSync(
+      join("changes", "cli-tool", "tasks.md"),
+      "# Tasks\n- [x] one\n- [x] two\n",
+      "utf8",
+    );
+    // PASS guard, but with a context hash that no longer matches → stale.
+    mkdirSync(join("reports", "cli-tool"), { recursive: true });
+    writeFileSync(
+      join("reports", "cli-tool", "guard-report.json"),
+      JSON.stringify({
+        changeId: "cli-tool",
+        checks: [{ step: "security", status: "PASS" }],
+        allPass: true,
+        generatedAt: new Date().toISOString(),
+        contextHash: "deadbeef",
+      }),
+      "utf8",
+    );
+    const r = await nextStep();
+    expect(r.next).toContain("orion shield cli-tool");
+    expect(r.next).toContain("stale");
+  });
 });

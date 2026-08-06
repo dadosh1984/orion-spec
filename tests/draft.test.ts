@@ -123,6 +123,59 @@ describe("draft skill", () => {
     expect(enTasks).toContain("CSV: headers");
   });
 
+  it("marks generated tasks [fact] vs [assumption] and lists assumptions (v0.10)", async () => {
+    await think(
+      "build a csv-to-json converter",
+      { noCache: true },
+      async () => "",
+    );
+    await draft("build-a-csv-to-json-converter", { noCache: true });
+    const tasks = readFileSync(
+      join("changes", "build-a-csv-to-json-converter", "tasks.md"),
+      "utf8",
+    );
+    // Restated from the goal = fact; template/inference = assumption.
+    expect(tasks).toContain("- [ ] [fact] Implement the csv-to-json converter");
+    expect(tasks).toContain(
+      "- [ ] [assumption] Scaffold project structure",
+    );
+    expect(tasks).toContain("- [ ] [assumption] Cover the core capability");
+    const design = readFileSync(
+      join("changes", "build-a-csv-to-json-converter", "design.md"),
+      "utf8",
+    );
+    expect(design).toContain("## Assumptions");
+    expect(design).toContain("- Scaffold project structure");
+  });
+
+  it("does not false-positive on 'logical' or 'no new CLI commands' (v0.10)", async () => {
+    await think(
+      "improve the logical sequence of decisions",
+      { noCache: true },
+      async () => "",
+    );
+    await draft("improve-the-logical-sequence-of-decisions", { noCache: true });
+    const tasks = readFileSync(
+      join("changes", "improve-the-logical-sequence-of-decisions", "tasks.md"),
+      "utf8",
+    );
+    // "logical" contains the substring "log" but is not operation history.
+    expect(tasks).not.toContain("operation history");
+
+    await think(
+      "add a feature with no new CLI commands",
+      { noCache: true },
+      async () => "",
+    );
+    await draft("add-a-feature-with-no-new-cli-commands", { noCache: true });
+    const cliTasks = readFileSync(
+      join("changes", "add-a-feature-with-no-new-cli-commands", "tasks.md"),
+      "utf8",
+    );
+    // "no new CLI commands" is a constraint, not a request for a CLI.
+    expect(cliTasks).not.toContain("CLI entry point");
+  });
+
   it("does not clobber hand-edited artifacts (idempotent re-draft)", async () => {
     await makeProposal("csv tool");
     await draft("csv-tool", { noCache: true });

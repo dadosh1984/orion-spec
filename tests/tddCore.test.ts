@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, rmSync, existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { TddEngine, State } from "../src/core/tddCore.js";
+import { TddEngine, State, describeFailure } from "../src/core/tddCore.js";
 import { OrionTrack } from "../src/core/track.js";
 import type { TddConfig } from "../src/type.js";
 
@@ -109,5 +109,25 @@ describe("TddEngine", () => {
     expect(engine.completed).toBe(true);
     expect(engine.status()).toBe("DONE");
     expect(track.loadString("tdd:add")).toBe("DONE");
+  });
+
+  it("describeFailure names the failing test file and assertion (v0.10)", () => {
+    const output = [
+      " ❯ tests/calc.test.ts (3 tests | 1 failed) 21ms",
+      "   ❯ calc > subtract > works 12ms",
+      "     AssertionError: expected 3 to be 2",
+      "     - expected",
+      "     + received",
+      "      2",
+      "      3",
+    ].join("\n");
+    const detail = describeFailure(output);
+    expect(detail).toContain("tests/calc.test.ts");
+    expect(detail).toContain("AssertionError");
+  });
+
+  it("describeFailure never invents details (v0.10)", () => {
+    const detail = describeFailure("process exited with code 1");
+    expect(detail).toContain("no details were invented");
   });
 });

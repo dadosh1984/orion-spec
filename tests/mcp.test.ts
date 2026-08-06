@@ -175,6 +175,51 @@ describe("mcp: tool calls", () => {
     expect(result.content[0].text).toContain("requires a prompt");
   });
 
+  it("tools/call shield fails honestly for a missing change (v0.10)", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "shield",
+      arguments: { changeId: "does-not-exist" },
+    });
+    const result = res.result as {
+      isError: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not found");
+  });
+
+  it("tools/call out fails honestly for a missing change (v0.10)", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "out",
+      arguments: { changeId: "does-not-exist" },
+    });
+    const result = res.result as {
+      isError: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not found");
+  });
+
+  it("tools/call draft fails honestly when the proposal is missing (v0.10)", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "draft",
+      arguments: { title: "ghost" },
+    });
+    const result = res.result as {
+      isError: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("no proposal");
+  });
+
   it("tools/call track_status returns cache stats", async () => {
     const server = makeServer();
     await call(server, "initialize");

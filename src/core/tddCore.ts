@@ -50,6 +50,8 @@ export class TddEngine {
   readonly task: string;
   state: State = State.RED;
   completed = false;
+  /** Honest description of the last test failure (v0.10), if any. */
+  lastFailure?: string;
   readonly config: TddConfig;
   readonly track: OrionTrack;
 
@@ -80,6 +82,15 @@ export class TddEngine {
 
   /** Run the task's tests; returns true when they pass (exit code 0). */
   async runTest(): Promise<boolean> {
+    return (await this.runTestDetailed()).passed;
+  }
+
+  /**
+   * Run the task's tests and honestly report what happened (v0.10): on
+   * failure the output names the failing test file and assertion instead
+   * of a generic "tests failed".
+   */
+  async runTestDetailed(): Promise<{ passed: boolean; output: string }> {
     const root = dirname(this.config.testDir);
     const cmd = this.config.command
       .replaceAll("{{task}}", this.task)
@@ -87,12 +98,32 @@ export class TddEngine {
       .replaceAll("{{srcDir}}", this.config.srcDir)
       .replaceAll("{{root}}", root);
     try {
-      await execAsync(cmd, { cwd: process.cwd(), timeout: 120_000 });
+      const { stdout, stderr } = await execAsync(cmd, {
+        cwd: process.cwd(),
+        timeout: 120_000,
+      });
       this.state = State.GREEN;
-      return true;
-    } catch {
-      return false;
+      this.lastFailure = undefined;
+      return { passed: true, output: (stdout + stderr).slice(0, 2000) };
+    } catch (err) {
+      const output =
+        (err instanceof Error
+          ? `${err.message}\n${err.stack ?? ""}`
+          : String(err))
+          .slice(0, 4000);
+      this.lastFailure = describeFailure(output);
+      this.state = State.RED;
+      return { passed: false, output };
     }
+  }
+
+  /**
+   * Extract the exact failing test file, test name and assertion from a
+   * vitest run's output. Returns a short, honest summary; falls back to
+   * the raw output when nothing is parseable.
+   */
+  describeFailure(): string | undefined {
+    return this.lastFailure;
   }
 
   /** Apply a user-provided implementation snippet. */
@@ -142,4 +173,35 @@ export class TddEngine {
   status(): TaskStatus {
     return this.completed ? "DONE" : (this.state as TaskStatus);
   }
+}
+
+/**
+ * Parse vitest output into a precise failure summary (v0.10). Looks for the
+ * FAIL header (test file + name) and the first assertion message. Never
+ * invents details — when nothing parses, says exactly that.
+ */
+export function describeFailure(output: string): string {
+  const head = output.split(/\r?\n/).slice(0, 120).join("\n");
+
+  // vitest marks failing tests with a ✗/× marker and the file:line where
+  // the failure happened; the assertion text follows in the summary block.
+  const fileMatch = head.match(/\u2717|\u00d7/);
+  const failLines: string[] = [];
+  for (const line of head.split(/\r?\n/)) {
+    if (
+      /FAIL|failed|✗|×|AssertionError|expected .* to (?:be|equal|deep|match)|Unhandled Rejection|Cannot find module|SyntaxError|TypeError|ReferenceError/.test(
+        line,
+      )
+    ) {
+      failLines.push(line.trim().slice(0, 160));
+    }
+    if (failLines.length >= 3) break;
+  }
+
+  if (failLines.length === 0) {
+    return fileMatch
+      ? "tests failed (see vitest output below)"
+      : "test run failed — the output did not name a failing assertion; this is reported as-is (no details were invented)";
+  }
+  return failLines.join(" · ");
 }

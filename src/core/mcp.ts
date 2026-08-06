@@ -212,7 +212,7 @@ export function getMcpTools(): McpTool[] {
     {
       name: "shield",
       description:
-        "Run lint, type-check, tests, drift and security guard-rails against a change. Returns the guard report.",
+        "Run lint, type-check, tests, drift and security guard-rails against a change. Returns the guard report. Fails honestly (isError) when the change does not exist — a PASS for a missing change would be a lie.",
       inputSchema: {
         type: "object",
         properties: {
@@ -230,7 +230,8 @@ export function getMcpTools(): McpTool[] {
     },
     {
       name: "out",
-      description: "Produce the final result.md summary for a change.",
+      description:
+        "Produce the final result.md summary for a change. Marks the guard verdict STALE when the change moved after the last shield run; fails honestly (isError) when the change does not exist.",
       inputSchema: {
         type: "object",
         properties: { changeId: { type: "string" } },

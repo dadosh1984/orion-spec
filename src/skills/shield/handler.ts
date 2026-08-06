@@ -29,6 +29,13 @@ export async function shield(
   changeId: string,
   opts?: { noCache?: boolean },
 ): Promise<GuardReport> {
+  // Honesty first: a change that does not exist cannot be verified.
+  // Fabricating a PASS for a missing id would be a lie — fail loudly.
+  if (!existsSync(`changes/${changeId}`)) {
+    throw new Error(
+      `change "${changeId}" not found under changes/ — run "orion think ..." (or "orion draft <title>") first`,
+    );
+  }
   const track = OrionTrack.init();
   const checks: GuardCheckResult[] = [];
   // Test escape hatch: skip the (slow, recursive) shell steps so e2e runs
@@ -46,14 +53,15 @@ export async function shield(
       continue;
     }
     // Cache hits only when the code hash matches — edited code is re-checked.
-    if (
-      !opts?.noCache &&
-      track.loadString(`shield:${step}`) === `PASS:${hash}`
-    ) {
+    if (!opts?.noCache && track.loadString(`shield:${step}`) === `PASS:${hash}`) {
+      const hit = track.loadWithDate(`shield:${step}`);
+      const since = hit?.storedAt
+        ? ` since ${new Date(hit.storedAt).toISOString()}`
+        : "";
       checks.push({
         step,
         status: "SKIP",
-        detail: "cached PASS (hash unchanged)",
+        detail: `cached PASS${since} (hash unchanged)`,
       });
       continue;
     }
@@ -69,6 +77,9 @@ export async function shield(
     checks,
     allPass: checks.every((c) => c.status !== "FAIL"),
     generatedAt: new Date().toISOString(),
+    // Snapshot of what was verified — lets `out`/`next` tell stale truth
+    // from fresh truth instead of presenting old results as new.
+    contextHash: hash,
   };
 
   const md = [
@@ -137,8 +148,22 @@ export function stepCommand(step: "lint" | "type" | "test"): string | null {
 }
 
 /**
+ * Pipeline outputs inside changes/<id> that must NOT invalidate the context
+ * hash (v0.10). The pipeline regenerates these files itself — hashing them
+ * would make every guard verdict permanently "stale" after the first
+ * `out`/`forge`, which would be a lie.
+ */
+const CONTEXT_OUTPUTS = new Set([
+  "result.md",
+  "forge-report.md",
+  "forge-report.json",
+]);
+
+/**
  * Stable hash of the project source + the change, used to validate the
- * shield cache: any hand edit invalidates the cached PASS.
+ * shield cache: any hand edit invalidates the cached PASS. Pipeline outputs
+ * (result.md, forge-report.*) are excluded so generated artifacts do not
+ * poison the freshness check.
  */
 export function projectHash(changeId: string): string {
   const h = createHash("sha1");
@@ -156,6 +181,12 @@ export function projectHash(changeId: string): string {
     );
   }
   for (const f of files.sort()) {
+    // path.join uses backslashes on Windows — normalize before comparing.
+    const normalized = f.replace(/\\/g, "/");
+    if (normalized.startsWith(`changes/${changeId}/`)) {
+      const base = normalized.split("/").pop()!;
+      if (CONTEXT_OUTPUTS.has(base)) continue;
+    }
     try {
       h.update(f);
       h.update(readFileSync(f, "utf8"));

@@ -81,6 +81,12 @@ export interface GuardReport {
   checks: GuardCheckResult[];
   allPass: boolean;
   generatedAt: string;
+  /**
+   * Hash of the project source + the change at shield time (v0.10).
+   * `out` and `next` compare it with the current hash to detect a stale
+   * guard verdict — never present yesterday's PASS as today's truth.
+   */
+  contextHash?: string;
 }
 
 /** Statistics exposed by OrionTrack.getStats(). */

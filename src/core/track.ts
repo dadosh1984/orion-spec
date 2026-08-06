@@ -79,6 +79,18 @@ export class OrionTrack {
     return typeof value === "string" ? value : null;
   }
 
+  /** Load a value together with its stored timestamp, or null. */
+  loadWithDate(key: string): { value: unknown; storedAt: string } | null {
+    const file = this.entryPath(key);
+    if (!existsSync(file)) return null;
+    try {
+      const entry = JSON.parse(readFileSync(file, "utf8")) as CacheEntry;
+      return { value: entry.value, storedAt: entry.storedAt };
+    } catch {
+      return null;
+    }
+  }
+
   /** Check whether a key exists on disk. */
   exists(key: string): boolean {
     return existsSync(this.entryPath(key));

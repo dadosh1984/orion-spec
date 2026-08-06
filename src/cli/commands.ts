@@ -5,7 +5,7 @@ import { writeFileSafe } from "../utils/file.js";
 import { OrionTrack } from "../core/track.js";
 import { applyScale, previewScale } from "../core/scale.js";
 import { TddEngine } from "../core/tddCore.js";
-import { think } from "../skills/think/handler.js";
+import { think, askQuestion } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
 import { forge, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
@@ -251,6 +251,22 @@ export async function main(argv: string[]): Promise<number> {
 
     case "next": {
       const result = await nextStep();
+      // Companion logic (v0.10): when the state is ambiguous, propose the
+      // alternatives and let the user (the guide) choose — never decide
+      // silently on their behalf in an interactive terminal. Agents keep
+      // the full options in the returned JSON and auto-execute.
+      if (process.stdin.isTTY && result.confidence === "low" && result.alternatives.length > 0) {
+        console.log(result.summary);
+        console.log("");
+        const answer = await askQuestion(
+          `Choose one (1-${result.alternatives.length}, or Enter to do nothing): `,
+        );
+        const picked = Number(answer);
+        if (Number.isInteger(picked) && picked >= 1 && picked <= result.alternatives.length) {
+          console.log(result.alternatives[picked - 1]);
+        }
+        return 0;
+      }
       printOut(opts, result, result.summary);
       return 0;
     }
@@ -496,10 +512,13 @@ async function tddCommand(args: string[], opts: CliOptions): Promise<number> {
         await engine.applyCode(snippet);
         const passed = await engine.runTest();
         engine.transition(passed);
+        const why = engine.describeFailure();
         printOut(
           opts,
-          { task, state: engine.state, passed },
-          passed ? "GREEN: tests pass" : "RED: tests still failing",
+          { task, state: engine.state, passed, failure: why },
+          passed
+            ? "GREEN: tests pass"
+            : `RED: tests still failing — ${why ?? "no detail captured"}`,
         );
         return passed;
       };

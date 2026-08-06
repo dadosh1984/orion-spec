@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { readdirSync } from "node:fs";
 import { writeFileSafe, readJson } from "../../utils/file.js";
 import { readTasks } from "../forge/handler.js";
+import { projectHash } from "../shield/handler.js";
 import type { GuardReport, Proposal } from "../../type.js";
 
 /** Result of the `out` skill. */
@@ -15,18 +16,28 @@ export interface OutResult {
   tasksDone: number;
   tasksTotal: number;
   artifacts: string[];
+  /** True when the guard verdict may be outdated (v0.10). */
+  staleGuard: boolean;
 }
 
 /**
  * `orion out` — produce the final result.md summary for a change, built
  * entirely from context: task checklist progress, guard verdict, proposal
  * budget/constraints and the artifact list. No flags, no re-running of
- * expensive gates — the last shield report is used as-is.
+ * expensive gates — the last shield report is used as-is, BUT only after
+ * checking it is not stale (v0.10): a verdict from before the code changed
+ * is never presented as the truth.
  */
 export async function out(
   changeId: string,
   _opts?: { noCache?: boolean },
 ): Promise<OutResult> {
+  // Honesty first: a change that does not exist has nothing to summarize.
+  if (!existsSync(`changes/${changeId}`)) {
+    throw new Error(
+      `change "${changeId}" not found under changes/ — run "orion think ..." first`,
+    );
+  }
   const guardPath = `reports/${changeId}/guard-report.json`;
   const guard: GuardReport | null = existsSync(guardPath)
     ? (JSON.parse(readFileSync(guardPath, "utf8")) as GuardReport)
@@ -38,14 +49,33 @@ export async function out(
   const allTasksDone = tasksTotal === 0 || tasksDone === tasksTotal;
 
   const guardOk = guard?.allPass === true;
+  // Staleness: the guard report carries a context hash (since v0.10); if the
+  // code or the change moved after the last shield run, the verdict is stale.
+  // Reports written before v0.10 have no hash — freshness is unknown, so we
+  // say so instead of guessing.
+  const currentHash = projectHash(changeId);
+  const freshnessUnknown = guard !== null && guard.contextHash === undefined;
+  const staleGuard =
+    guard !== null &&
+    guard.contextHash !== undefined &&
+    guard.contextHash !== currentHash;
   const status: "SUCCESS" | "INCOMPLETE" =
-    guardOk && allTasksDone ? "SUCCESS" : "INCOMPLETE";
+    guardOk && allTasksDone && !staleGuard ? "SUCCESS" : "INCOMPLETE";
 
   const artifacts = listArtifacts(changeId);
 
   const proposal = await readJson<Proposal>(
     `changes/${changeId}/proposal.json`,
   );
+
+  const guardDetail = guard
+    ? guard.checks.map((c) => `${c.step}:${c.status}`).join(", ")
+    : "no guard report";
+  const guardLine = staleGuard
+    ? `**Guard:** ${guardDetail} — **STALE**: the change moved after the last \`orion shield\` run (${new Date(guard!.generatedAt).toISOString()})`
+    : freshnessUnknown
+      ? `**Guard:** ${guardDetail} — legacy report without a freshness snapshot; re-run \`orion shield\` for a definitive verdict`
+      : `**Guard:** ${guardDetail}`;
 
   const summary = [
     `# Result — ${changeId}`,
@@ -54,11 +84,7 @@ export async function out(
     tasksTotal > 0
       ? `- **Tasks:** ${tasksDone}/${tasksTotal} done`
       : "- **Tasks:** none tracked",
-    `- **Guard:** ${
-      guard
-        ? guard.checks.map((c) => `${c.step}:${c.status}`).join(", ")
-        : "no guard report"
-    }`,
+    guardLine,
     proposal?.budget
       ? `- **Budget:** ${proposal.budget}`
       : "- **Budget:** unset",
@@ -94,9 +120,11 @@ export async function out(
     "",
     !guardOk
       ? `Run \`orion shield ${changeId}\` to get a guard verdict.`
-      : !allTasksDone
-        ? `Complete the ${tasksTotal - tasksDone} open task(s): \`orion forge ${changeId}\`.`
-        : "The change passed every guard-rail and all tasks are done — ready to archive.",
+      : staleGuard
+        ? `The guard report is **stale** — the change moved after the last \`orion shield ${changeId}\` run. Re-run it before trusting this result.`
+        : !allTasksDone
+          ? `Complete the ${tasksTotal - tasksDone} open task(s): \`orion forge ${changeId}\`.`
+          : "The change passed every guard-rail and all tasks are done — ready to archive.",
     "",
   ].join("\n");
 
@@ -111,6 +139,7 @@ export async function out(
     tasksDone,
     tasksTotal,
     artifacts,
+    staleGuard,
   };
 }
 

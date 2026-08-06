@@ -42,20 +42,18 @@ Deterministic plan derived from the proposal.
 - \`src/tasks/*\` — test-driven implementation units
 - \`tests/*\` — RED-GREEN-REFACTOR test files
 
+## Assumptions
+{{assumptions}}
+
 ## Verification
 - [ ] lint (pnpm lint)
 - [ ] type-check (tsc --noEmit)
 - [ ] unit tests (pnpm test)
 `;
 
-/**
- * Derive a task checklist from the proposal's context (goal + platform)
- * instead of returning the same five generic tasks for every idea.
- * Deterministic keyword mapping — no model involved.
- */
 /** Leading action verbs / filler phrases stripped from the goal. */
 const LEADING_ACTION =
-  /^\s*(?:please\s+)?(?:make|build|create|implement|write|add|develop|design|need|needed|want|i want|i need|сделай|создай|построй|разработай|реализуй|напиши|добавь|нужен|нужно|сделать|создать|построить|разработать|реализовать|написать|добавить|требуется)(?:\s+|$)/i;
+  /^\s*(?:please\s+)?(?:make|build|create|implement|write|add|develop|design|need|needed|want|i want|i need|improve|improving|enhance|enhancing|refactor|refactoring|update|upgrade|сделай|создай|построй|разработай|реализуй|напиши|добавь|нужен|нужно|улучш|сделать|создать|построить|разработать|реализовать|написать|добавить|требуется)(?:\s+|$)/i;
 
 const LEADING_FILLER = /^(?:an?|the)\s+/i;
 
@@ -86,7 +84,7 @@ const CATEGORIES: Array<[RegExp, string]> = [
 /** Known sub-entities with concrete implementation details (max 2). */
 const DETAILS: Array<[RegExp, string]> = [
   [
-    /history|истори|journal|log/,
+    /history|истори|journal|\blog(?:s|ging|ged)?\b/,
     "operation history: persistence, replay, undo",
   ],
   [
@@ -138,31 +136,71 @@ function toEnglish(text: string): string {
   return out;
 }
 
-export function deriveTasks(proposal: Proposal): string[] {
+/**
+ * Derive a task checklist from the proposal's context (goal + platform)
+ * instead of returning the same five generic tasks for every idea.
+ * Deterministic keyword mapping — no model involved.
+ *
+ * Every task is honestly marked (v0.10):
+ * - `fact`       — restated from the proposal itself (the goal verbatim);
+ * - `assumption` — Orion's template/inference from keywords, which may be
+ *   wrong (a false keyword match is possible). The user can see at a glance
+ *   what was stated vs what was assumed.
+ */
+export interface DerivedTask {
+  text: string;
+  mark: "fact" | "assumption";
+}
+
+export function deriveTasks(proposal: Proposal): DerivedTask[] {
   const goal = proposal.goal.toLowerCase();
   const platform = proposal.platform.toLowerCase();
   const core = toEnglish(extractCore(goal));
-  const tasks: string[] = [];
+  const tasks: DerivedTask[] = [];
 
-  tasks.push(`Scaffold project structure for ${proposal.title}`);
+  tasks.push({
+    text: `Scaffold project structure for ${proposal.title}`,
+    mark: "assumption",
+  });
 
-  const match = CATEGORIES.find(([re]) => re.test(goal));
-  tasks.push(match ? match[1] : "Implement the core capability");
+  // "no new CLI commands" is a constraint, not a request for a CLI — a
+  // naive keyword match would turn it into the very thing the goal forbids.
+  const forbidsCli = /\bno (?:new )?cli commands?\b/i.test(goal);
+  const match = CATEGORIES.find(
+    ([re]) => re.test(goal) && !(forbidsCli && re === CATEGORIES[0][0]),
+  );
+  tasks.push(
+    match
+      ? { text: match[1], mark: "assumption" }
+      : { text: "Implement the core capability", mark: "assumption" },
+  );
 
   // Concrete decomposition: the goal minus action words becomes a task.
-  if (core && core !== goal) tasks.push(`Implement the ${core}`);
+  // Only when it is short and well-formed — the whole goal as a task line
+  // would be noise, not honesty.
+  if (core && core !== goal && core.length <= 90 && !core.includes(":")) {
+    tasks.push({ text: `Implement the ${core}`, mark: "fact" });
+  }
 
   // Known sub-entities become their own tasks with real details.
   const details = DETAILS.filter(([re]) => re.test(goal)).slice(0, 2);
-  for (const [, detail] of details) tasks.push(`Add ${detail}`);
-
-  tasks.push("Cover the core capability with tests");
-
-  if (platform && !/(cli|web|server|node)/.test(platform)) {
-    tasks.push(`Integrate with the ${proposal.platform} platform`);
+  for (const [, detail] of details) {
+    tasks.push({ text: `Add ${detail}`, mark: "assumption" });
   }
 
-  tasks.push("Document usage in README");
+  tasks.push({
+    text: "Cover the core capability with tests",
+    mark: "assumption",
+  });
+
+  if (platform && !/(cli|web|server|node)/.test(platform)) {
+    tasks.push({
+      text: `Integrate with the ${proposal.platform} platform`,
+      mark: "fact",
+    });
+  }
+
+  tasks.push({ text: "Document usage in README", mark: "assumption" });
   return tasks;
 }
 
@@ -215,11 +253,18 @@ export async function draft(
     "{{goal}}",
     proposal.goal,
   );
-  const designMd = DESIGN_TEMPLATE.replaceAll("{{title}}", title);
+  const derived = deriveTasks(proposal);
+  const assumptions = derived.filter((t) => t.mark === "assumption");
+  const designMd = DESIGN_TEMPLATE.replaceAll("{{title}}", title).replace(
+    "{{assumptions}}",
+    assumptions.length > 0
+      ? assumptions.map((t) => `- ${t.text}`).join("\n")
+      : "- none — everything below is stated in the proposal",
+  );
   const tasksMd = [
     `# Tasks — ${title}`,
     "",
-    ...deriveTasks(proposal).map((t) => `- [ ] ${t}`),
+    ...derived.map((t) => `- [ ] [${t.mark}] ${t.text}`),
     "",
   ].join("\n");
 

@@ -1,0 +1,33 @@
+{
+  "changeId": "v0.10-honesty-companion",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "\n\u001b[7m\u001b[1m\u001b[36m RUN \u001b[39m\u001b[22m\u001b[27m \u001b[36mv1.6.1\u001b[39m \u001b[90mE:/SYSTEM/Desktop/AI_Projects/orion-dev\u001b[39m\n\n \u001b[32m✓\u001b[39m tests/stages.test.ts \u001b[2m (\u001b[22m\u001b[2m11 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[90m 70\u001b[2mms\u001b[22m\u001b[39m\n"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-06T14:36:00.235Z",
+  "contextHash": "d8a66e2f6905"
+}
