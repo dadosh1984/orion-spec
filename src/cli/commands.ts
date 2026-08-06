@@ -10,7 +10,8 @@ import { draft } from "../skills/draft/handler.js";
 import { forge } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
-import { startServer } from "./serve.js";
+import { startServer, readVersion } from "./serve.js";
+import { metricsReport, asciiBar } from "../core/metrics.js";
 import {
   listPlugins,
   installPlugin,
@@ -52,7 +53,7 @@ Commands:
   tdd start <task>        Begin a TDD task (generates a failing test)
   tdd implement <task> <path>  Apply an implementation snippet
   tdd refactor <task>     Run lint --fix + format
-  metrics                 (reserved) benchmark module
+  metrics                 Benchmark + token-budget report (v0.5)
   serve [--port N] [--ui] Start the web dashboard (v0.2)
   plugin new <name>       Scaffold a plugin skeleton (v0.3)
   plugin install <dir>    Copy a plugin into ~/.orion/plugins
@@ -239,13 +240,38 @@ export async function main(argv: string[]): Promise<number> {
     case "tdd":
       return await tddCommand(args, opts);
 
-    case "metrics":
+    case "metrics": {
+      const report = await metricsReport(track, readVersion());
+      const maxBar = Math.max(...report.budget.map((b) => b.bytes), 1);
+      const budgetLines = report.budget.length
+        ? report.budget
+            .map(
+              (b) =>
+                `  ${b.namespace.padEnd(14)} ${asciiBar(b.bytes, maxBar)} ${b.bytes} B (~${b.tokens} tok, ${(b.share * 100).toFixed(1)}%)`,
+            )
+            .join("\n")
+        : "  (cache empty — run orion track status)";
+      const timingLines = report.timings
+        .map(
+          (t) => `  ${t.pass.padEnd(4)} ${String(t.durationMs).padStart(8)} ms`,
+        )
+        .join("\n");
       printOut(
         opts,
-        { module: "metrics", status: "reserved" },
-        "metrics: reserved for the benchmark module (planned v0.5)",
+        report,
+        [
+          `orion metrics v${report.version}`,
+          "",
+          "Benchmark (YAGNI ladder on reference snippet):",
+          timingLines,
+          "",
+          "Token budget by cache namespace (~4 B/token):",
+          budgetLines,
+          `  total ~${report.totalTokens} tok in ${report.cached.count} entries (${report.cached.bytes} B)`,
+        ].join("\n"),
       );
       return 0;
+    }
 
     case "serve": {
       const server = await startServer(track, {
