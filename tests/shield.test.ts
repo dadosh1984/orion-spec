@@ -10,6 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { shield } from "../src/skills/shield/handler.js";
+import { OrionTrack } from "../src/core/track.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -19,6 +20,7 @@ beforeEach(() => {
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
+  process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
   // shield() fails honestly when the change does not exist (v0.10), so the
   // fixture change must exist for every test.
@@ -28,6 +30,7 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
   delete process.env.ORION_LESSONS_FILE;
+  delete process.env.ORION_ECONOMY_FILE;
   delete process.env.ORION_SHIELD_SKIP_SHELL;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
@@ -261,5 +264,62 @@ describe("shield: yagni signal (v0.15)", () => {
     const yagni = report.checks.find((c) => c.step === "yagni");
     expect(yagni?.status).toBe("SKIP");
     expect(yagni?.detail).toContain("no existing .ts sources");
+  });
+});
+
+describe("shield: economy step (v0.17)", () => {
+  function smallBudget(bytes: number): void {
+    // track config lives at src/config/orionTrack.json (resolveConfig)
+    mkdirSync(join("src", "config"), { recursive: true });
+    writeFileSync(
+      join("src", "config", "orionTrack.json"),
+      JSON.stringify({ maxSize: bytes, ttlDays: 30 }),
+      "utf8",
+    );
+  }
+
+  it("WARNs above 60% of the cache budget and keeps allPass", async () => {
+    smallBudget(1000); // 60% = 600 B
+    const track = OrionTrack.init();
+    for (let i = 0; i < 5; i++) {
+      track.store(`key-${i}`, "x".repeat(300)); // ~1750 B total > 600 B
+    }
+    const report = await shield("demo", { noCache: true });
+    const eco = report.checks.find((c) => c.step === "economy");
+    expect(eco?.status).toBe("WARN");
+    expect(eco?.detail).toContain("above 60% of budget");
+    expect(eco?.detail).toContain("consider orion track prune");
+    expect(report.allPass).toBe(true);
+  });
+
+  it("PASSes within budget with honest numbers", async () => {
+    smallBudget(10_000);
+    const track = OrionTrack.init();
+    track.store("tiny", "ok");
+    const report = await shield("demo", { noCache: true });
+    const eco = report.checks.find((c) => c.step === "economy");
+    expect(eco?.status).toBe("PASS");
+    expect(eco?.detail).toContain("within budget");
+  });
+
+  it("PASSes honestly when the cache is empty", async () => {
+    smallBudget(10_000);
+    const report = await shield("demo", { noCache: true });
+    const eco = report.checks.find((c) => c.step === "economy");
+    expect(eco?.status).toBe("PASS");
+    expect(eco?.detail).toContain("cache is empty");
+  });
+
+  it("is never cache-cached — a second run re-checks live state", async () => {
+    smallBudget(10_000);
+    const track = OrionTrack.init();
+    track.store("a", "x");
+    await shield("demo"); // run 1: PASS, cached hash
+    // grow the cache above budget, same source hash
+    smallBudget(100);
+    for (let i = 0; i < 5; i++) track.store(`grow-${i}`, "y".repeat(200));
+    const report = await shield("demo"); // run 2: must see the growth
+    const eco = report.checks.find((c) => c.step === "economy");
+    expect(eco?.status).toBe("WARN");
   });
 });

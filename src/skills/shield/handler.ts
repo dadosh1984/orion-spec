@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { writeFileSafe } from "../../utils/file.js";
 import { OrionTrack } from "../../core/track.js";
 import { compress } from "../../core/compress.js";
+import { economyStats } from "../../core/compress.js";
 import { recordLesson } from "../../core/lessons.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
@@ -20,6 +21,7 @@ const STEPS: StepName[] = [
   "test",
   "drift",
   "yagni",
+  "economy",
   "security",
 ];
 
@@ -62,7 +64,10 @@ export async function shield(
       continue;
     }
     // Cache hits only when the code hash matches — edited code is re-checked.
+    // The `economy` step is NEVER cache-cached: cache size is live state,
+    // a cached verdict would present stale truth (v0.17).
     if (
+      step !== "economy" &&
       !opts?.noCache &&
       track.loadString(`shield:${step}`) === `PASS:${hash}`
     ) {
@@ -90,7 +95,7 @@ export async function shield(
         fix: `fix the ${result.step} check, then re-run orion shield ${changeId}`,
       });
     }
-    if (result.status === "PASS" && !opts?.noCache) {
+    if (result.status === "PASS" && !opts?.noCache && step !== "economy") {
       track.store(`shield:${step}`, `PASS:${hash}`);
     }
   }
@@ -248,6 +253,8 @@ async function runStep(
       return driftCheck(changeId);
     case "yagni":
       return yagniCheck(changeId);
+    case "economy":
+      return economyCheck();
     case "security":
       return securityScan(changeId);
   }
@@ -441,6 +448,53 @@ export function median(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)];
+}
+
+/**
+ * Economy check (v0.17) — read-only, always fresh (never cache-cached).
+ * The token-economy cache is measured against its own budget (track
+ * config maxSize, default 100 MB): above 60% → WARN with honest numbers
+ * and a prune hint — a signal, never a gate (only FAIL breaks allPass).
+ * The detail also carries the ledger savings so the shield report shows
+ * both sides of the economy: what the cache costs and what compress saved.
+ */
+export function economyCheck(): GuardCheckResult {
+  const track = OrionTrack.init();
+  const { maxSize } = track.config();
+  const stats = track.getStats();
+  const eco = economyStats();
+  const budget = 0.6 * maxSize;
+  const base = `cache ${formatBytes(stats.size)} of ${formatBytes(maxSize)} (${stats.count} entries)`;
+  const ledger =
+    eco.entries > 0
+      ? `≈ ${eco.savedTokens} tok saved across ${eco.entries} compress op(s)`
+      : "no compress ops recorded yet";
+  if (stats.count === 0) {
+    return {
+      step: "economy",
+      status: "PASS",
+      detail: `cache is empty — ${ledger}`,
+    };
+  }
+  if (stats.size > budget) {
+    return {
+      step: "economy",
+      status: "WARN",
+      detail: `${base} — above 60% of budget, consider orion track prune; ${ledger}`,
+    };
+  }
+  return {
+    step: "economy",
+    status: "PASS",
+    detail: `${base} — within budget; ${ledger}`,
+  };
+}
+
+/** Human-readable byte size (B/KB/MB). */
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
 }
 
 /**

@@ -1,0 +1,43 @@
+{
+  "changeId": "v0.17-economy-in-shield-and-next",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  30 passed (30)\n      Tests  325 passed (325)\n   Duration  15.59s (transform 2.29s, setup 10ms, collect 7.02s, tests 51.71s, environment 13ms, prepare 12.85s)\n\n[orion: −35435 B (−99.4%) ≈ 8859 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 85 LOC, 3 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 780 B of 100.0 MB (5 entries) — within budget; ≈ 128566 tok saved across 152 compress op(s)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-06T18:52:00.140Z",
+  "contextHash": "d4a2d3f4163e"
+}

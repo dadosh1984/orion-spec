@@ -53,6 +53,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env.ORION_CACHE_DIR = "";
+  delete process.env.ORION_ECONOMY_FILE;
   process.chdir(ORIGINAL_CWD);
 });
 
@@ -205,5 +206,25 @@ describe("next: cost-aware alternatives (v0.11)", () => {
     expect(r.confidence).toBe("high");
     expect(r.alternativeCosts).toEqual([expect.any(Number)]);
     expect(r.alternativeCosts![0]).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("next: economy footer (v0.17)", () => {
+  it("appends honest savings when a fixture ledger exists", async () => {
+    process.env.ORION_ECONOMY_FILE = join(process.cwd(), "economy.json");
+    const rows = [
+      { project: "demo", tool: "docker", inBytes: 8000, outBytes: 2000, cached: false, savedBytes: 6000, savedTokens: 1500, ts: new Date().toISOString() },
+    ];
+    writeFileSync(process.env.ORION_ECONOMY_FILE, JSON.stringify(rows), "utf8");
+    makeChange("cli-tool", true);
+    const r = await nextStep();
+    expect(r.summary).toContain("Token economy: ≈ 1500 tok saved across 1 compress op(s)");
+  });
+
+  it("says the honest nothing-yet line when the ledger is empty", async () => {
+    process.env.ORION_ECONOMY_FILE = join(process.cwd(), "economy-empty.json");
+    makeChange("cli-tool", true);
+    const r = await nextStep();
+    expect(r.summary).toContain("no compress ops recorded yet");
   });
 });

@@ -279,6 +279,7 @@ describe("capability manifests (drift-gate proof, v0.12–v0.14)", () => {
     const yagni = await import("../src/tasks/yagni.js");
     const sessionMetrics = await import("../src/tasks/session-metrics.js");
     const waves = await import("../src/tasks/waves.js");
+    const economy = await import("../src/tasks/economy.js");
     expect(node.node).toBeDefined();
     expect(self.self).toBe("self-correction");
     expect(session.session).toBe("session-learning");
@@ -288,10 +289,12 @@ describe("capability manifests (drift-gate proof, v0.12–v0.14)", () => {
     expect(yagni.yagni).toBe("warn-signal");
     expect(sessionMetrics.sessionMetrics).toBe("per-role-breakdown");
     expect(waves.waves).toBe("parallel-forge-waves");
+    expect(economy.economy).toBe("budget-warn");
     // contracts carry the honest capability description
     expect(compress.compressContract.description).toMatch(/≈ bytes\/4/);
     expect(lessons.lessonsContract.description).toMatch(/Уроков нет|нет уроков/);
     expect(yagni.yagniContract.description).toMatch(/WARN/);
     expect(waves.wavesContract.description).toMatch(/--parallel/);
+    expect(economy.economyContract.description).toMatch(/economy step/);
   });
 });

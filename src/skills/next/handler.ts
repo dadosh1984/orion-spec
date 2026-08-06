@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
-import { estimateTokens } from "../../core/compress.js";
+import { estimateTokens, economyStats } from "../../core/compress.js";
 import { listLessons, type Lesson } from "../../core/lessons.js";
 import type { GuardReport } from "../../type.js";
 
@@ -199,7 +199,8 @@ export async function nextStep(): Promise<NextResult> {
       summary:
         `Insufficient context to pick a single next action: ${candidates.length} changes sit at the same stage.\n` +
         "I won't guess on your behalf — you choose (or I can run any of these, cheapest first):\n" +
-        candidateCmds.map((c) => `  ${c}`).join("\n"),
+        candidateCmds.map((c) => `  ${c}`).join("\n") +
+        economyFooter(),
       changes: sorted,
       alternatives: candidateCmds,
       alternativeCosts,
@@ -210,14 +211,32 @@ export async function nextStep(): Promise<NextResult> {
   const first = candidates[0].state;
   return {
     next: `${first.nextCommand} — ${first.detail}`,
-    summary: `Next: ${first.nextCommand} — ${first.detail}\n\nAll changes:\n${sorted
-      .map((c) => `  ${c.id}  [${c.phase}]  ${c.detail}`)
-      .join("\n")}`,
+    summary:
+      `Next: ${first.nextCommand} — ${first.detail}\n\nAll changes:\n${sorted
+        .map((c) => `  ${c.id}  [${c.phase}]  ${c.detail}`)
+        .join("\n")}` + economyFooter(),
     changes: sorted,
     alternatives: candidateCmds,
     alternativeCosts,
     confidence: "high",
   };
+}
+
+/**
+ * Honest token-economy footer (v0.17): what compress has actually saved
+ * so far, or the same honest "nothing yet" line `orion metrics` uses.
+ * Numbers come from the ledger (fresh runs only — cached hits don't
+ * double-count). Always present so the economy is visible where the work
+ * is decided.
+ */
+function economyFooter(): string {
+  const eco = economyStats();
+  return (
+    "\n\nToken economy: " +
+    (eco.entries > 0
+      ? `≈ ${eco.savedTokens} tok saved across ${eco.entries} compress op(s)`
+      : "no compress ops recorded yet — call the compress tool (or run shield) and check again")
+  );
 }
 
 /** Sum of file sizes under a directory (recursive). */

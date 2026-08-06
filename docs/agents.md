@@ -135,12 +135,32 @@ Set `ORION_MCP_VERBOSE=0` to silence it.
 | `think`                        | Capture an idea → `changes/<title>/proposal.json` (non-interactive: pass `platform`/`constraints`/`budget` inline) |
 | `draft`                        | Generate `design.md`, `specs/`, `tasks.md`                                                                         |
 | `forge`                        | Drive every task through RED-GREEN-REFACTOR (needs snippets in `changes/<title>/snippets/`)                        |
-| `shield`                       | lint → type-check → tests → drift → security guard-rails                                                           |
+| `shield`                       | lint → type → tests → drift → yagni → **economy** → security guard-rails (v0.17: economy = cache vs its 60% budget, WARN not a gate) |
 | `out`                          | Final `result.md` summary                                                                                          |
 | `scale`                        | YAGNI ladder on a file (`dry: true` = diff preview, no write)                                                      |
 | `track_status` / `track_prune` | Cache (token economy) statistics and maintenance                                                                   |
 | `metrics`                      | Benchmark + token budget by namespace                                                                              |
 | `plugin_*`                     | Plugin marketplace management                                                                                      |
+
+## Wiring an agent (v0.17 live proof)
+
+Every MCP-capable agent connects the same way — the server is a plain
+JSON-RPC 2.0 process over stdio. The handshake below was executed verbatim
+against `orion mcp` (v0.16→v0.17): `initialize` answers `orion`, `tools/list`
+returns 17 tools, `tools/call metrics` returns the live report:
+
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"metrics","arguments":{}}}' \
+| orion mcp
+```
+
+Tool → workflow mapping: `think`+`draft` capture and shape an idea,
+`forge` implements tasks, `shield` gates the change, `out` closes it,
+`next_step` decides what comes next (now with the token-economy footer),
+`compress`/`track_*`/`metrics` keep the context budget honest.
 
 Tools return JSON text; failures come back as `isError: true` with a message
 — the agent can read them directly.
