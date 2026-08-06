@@ -78,6 +78,45 @@ describe("forge skill", () => {
     expect(tasks).toContain("- [ ] Implement add function");
   });
 
+  it("reports the exact snippet paths forge is waiting on", async () => {
+    seedChange("demo", ["Implement add function", "Export the module"]);
+    const summary = await forge(
+      "demo",
+      { noCache: true },
+      async () => null,
+      fakeEngineFactory,
+    );
+    expect(summary.missingSnippets).toEqual([
+      "changes/demo/snippets/implement_add_function.ts",
+      "changes/demo/snippets/export_the_module.ts",
+    ]);
+    expect(summary.message).toContain(
+      "changes/demo/snippets/implement_add_function.ts",
+    );
+  });
+
+  it("writes a forge report next to tasks.md", async () => {
+    seedChange("demo", ["Implement add function"]);
+    const summary = await forge(
+      "demo",
+      { noCache: true },
+      async () => "export function add() { return 1; }",
+      fakeEngineFactory,
+    );
+    expect(summary.reportPath).toContain("forge-report.md");
+
+    const md = readFileSync(join("changes", "demo", "forge-report.md"), "utf8");
+    expect(md).toContain("complete");
+    expect(md).toContain("Implement add function");
+    expect(md).toContain("done");
+
+    const json = JSON.parse(
+      readFileSync(join("changes", "demo", "forge-report.json"), "utf8"),
+    ) as { ok: boolean; done: number };
+    expect(json.ok).toBe(true);
+    expect(json.done).toBe(1);
+  });
+
   it("skips tasks already marked DONE in the cache", async () => {
     seedChange("demo", ["Implement add function"]);
     const track = new OrionTrack(cacheDir);

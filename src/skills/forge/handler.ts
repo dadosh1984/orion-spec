@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { TddEngine } from "../../core/tddCore.js";
 import { OrionTrack } from "../../core/track.js";
+import { writeFileSafe } from "../../utils/file.js";
 import { slugify } from "../think/handler.js";
 
 /** Result of the forge loop over all open tasks. */
@@ -11,7 +12,11 @@ export interface ForgeSummary {
   total: number;
   skipped: number;
   pending: string[];
+  /** Exact paths forge is waiting on (implementation snippets). */
+  missingSnippets: string[];
   message: string;
+  /** Where the forge report was written (changes/<title>/forge-report.md). */
+  reportPath: string;
 }
 
 /** Factory that creates the TDD engine used per task (injectable in tests). */
@@ -55,6 +60,9 @@ export async function forge(
     .map((m) => m[1]);
 
   const pending: string[] = [];
+  const missingSnippets: string[] = [];
+  const rows: Array<{ desc: string; status: "done" | "skipped" | "pending" }> =
+    [];
   let done = 0;
   let skipped = 0;
 
@@ -64,6 +72,7 @@ export async function forge(
     const slug = slugify(desc).replace(/-/g, "_");
     if (!opts?.noCache && track.loadString(`forge:${slug}`) === "DONE") {
       skipped++;
+      rows.push({ desc, status: "skipped" });
       markTaskDone(tasksPath, desc);
       continue;
     }
@@ -74,6 +83,8 @@ export async function forge(
     const snippet = await snippetProvider(slug);
     if (snippet === null) {
       pending.push(slug);
+      missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
+      rows.push({ desc, status: "pending" });
       continue;
     }
 
@@ -82,6 +93,8 @@ export async function forge(
     engine.transition(passed);
     if (!passed) {
       pending.push(slug);
+      missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
+      rows.push({ desc, status: "pending" });
       continue;
     }
 
@@ -99,20 +112,56 @@ export async function forge(
       ]);
     }
     markTaskDone(tasksPath, desc);
+    rows.push({ desc, status: "done" });
     done++;
   }
 
-  return {
+  const summary: ForgeSummary = {
     ok: pending.length === 0,
     done,
     total: open.length,
     skipped,
     pending,
+    missingSnippets,
+    reportPath: `changes/${title}/forge-report.md`,
     message:
       pending.length === 0
         ? `forge complete: ${done} done, ${skipped} skipped from cache`
-        : `forge paused: ${done} done, ${skipped} skipped, ${pending.length} pending (${pending.join(", ")})`,
+        : `forge paused: ${done} done, ${skipped} skipped, ${pending.length} pending — add snippets: ${missingSnippets.join(", ")}`,
   };
+
+  await writeForgeReport(title, summary, rows);
+  return summary;
+}
+
+/** Write the forge summary as markdown + JSON next to tasks.md. */
+async function writeForgeReport(
+  title: string,
+  summary: ForgeSummary,
+  rows: Array<{ desc: string; status: "done" | "skipped" | "pending" }>,
+): Promise<void> {
+  const md = [
+    `# Forge Report — ${title}`,
+    "",
+    `- **Status:** ${summary.ok ? "complete" : "paused"}`,
+    `- **Done:** ${summary.done} · **Skipped (cache):** ${summary.skipped} · **Pending:** ${summary.pending.length}`,
+    `- **Generated:** ${new Date().toISOString()}`,
+    "",
+    "| Task | Status |",
+    "|------|--------|",
+    ...rows.map((r) => `| ${r.desc} | ${r.status} |`),
+    "",
+    summary.missingSnippets.length > 0
+      ? `Waiting for implementation snippets:\n${summary.missingSnippets.map((s) => `- \`${s}\``).join("\n")}`
+      : "",
+    "",
+  ].join("\n");
+
+  await writeFileSafe(`changes/${title}/forge-report.md`, md);
+  await writeFileSafe(
+    `changes/${title}/forge-report.json`,
+    JSON.stringify(summary, null, 2),
+  );
 }
 
 /** Flip a `- [ ]` checklist line to `- [x]` in tasks.md. */
