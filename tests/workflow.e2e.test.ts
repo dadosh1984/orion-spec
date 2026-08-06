@@ -135,6 +135,9 @@ describe("full workflow (e2e)", () => {
       rmSync(wdir, { recursive: true, force: true });
       rmSync(wreport, { recursive: true, force: true });
       rmSync(wcache, { recursive: true, force: true });
+      // the workers write generated test + snippet into the real repo
+      rmSync(join("tests", "implement_multiply.test.ts"), { force: true });
+      rmSync(join("src", "tasks", "implement_multiply.ts"), { force: true });
     }
   });
 });
