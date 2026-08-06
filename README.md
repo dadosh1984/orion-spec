@@ -32,10 +32,23 @@ Or run the CLI directly from source: `node dist/cli/index.js think "…"`.
 ## 📦 Installation
 
 ```bash
-npm i -g orion-cli      # adds `orion` to your PATH
+npm i -g orion-spec     # adds `orion` to your PATH
 # or locally
-pnpm add -D orion-cli
+pnpm add -D orion-spec
 ```
+
+## 🔄 Updating
+
+```bash
+npm i -g orion-spec@latest      # update the global CLI (check: npm view orion-spec version)
+# or, from the source repo:
+git pull                        # fetch the latest source
+pnpm install && pnpm run build  # install + rebuild dist/
+pnpm update                     # dev deps within declared semver ranges (safe)
+pnpm update --latest            # allow major bumps — may be breaking, check the changelog
+```
+
+The installed version can be checked with `npm ls -g orion-spec`; the latest published one with `npm view orion-spec version`.
 
 ## 🛠️ Components
 
