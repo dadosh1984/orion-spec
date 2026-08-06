@@ -142,6 +142,8 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - ✅ **v0.6** – Security hardening — _done_: audit fixes (RCE guard, path traversal, stored XSS, configs resolve from the package, TDD RED rollback, string-safe YAGNI stages)
 - ✅ **v0.7** – Universal MCP server — _done_: `orion mcp` (JSON‑RPC 2.0 over stdio) exposes 13 tools; any MCP‑capable agent (Claude Code, Codex, opencode, Cursor, Cline, …) attaches via `orion mcp` — see `docs/agents.md`
 - ✅ **v0.8** – Context-driven workflow polish — _done_: `think` refines vague prompts (language‑aware clarifying questions, idempotent titles), `draft` never clobbers hand edits and derives tasks from the goal, `forge` ticks tasks off live in the terminal, `shield` detects the package manager + validates its cache by code hash + honest drift, `out` builds a full verdict from tasks/guard/artifacts; MCP activity indicator (`⚙ orion:think …` on stderr) and `orion tasks <title>` checklist command
+- ✅ **v0.8.1** – Quoted-prompt fix — _done_: `orion "multi word idea"` (single argv with spaces) reaches the think fallback instead of “unknown command”
+- ✅ **v0.8.2** – `orion next` — _done_: scans every change and decides the next action from context (`orion draft|forge|shield|out <id>`), picks the highest‑priority unfinished change, exposed to agents as MCP tool `next_step`
 
 ## 📜 License
 

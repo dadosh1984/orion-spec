@@ -10,6 +10,7 @@ import { draft } from "../skills/draft/handler.js";
 import { forge, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
+import { nextStep } from "../skills/next/handler.js";
 import { applyScale, previewScale } from "./scale.js";
 import { OrionTrack } from "./track.js";
 import { metricsReport } from "./metrics.js";
@@ -237,6 +238,19 @@ export function getMcpTools(): McpTool[] {
       },
       handler: async (args) => {
         const r = await out(String(args.changeId));
+        return JSON.stringify(r, null, 2);
+      },
+    },
+    {
+      name: "next_step",
+      description:
+        "Decide the next action to take: scans every change under changes/ and returns the highest-priority unfinished step (draft, forge, shield or out) plus a per-change status table. Call this when you are unsure what to do next.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+      handler: async () => {
+        const r = await nextStep();
         return JSON.stringify(r, null, 2);
       },
     },

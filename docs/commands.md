@@ -13,14 +13,15 @@
 
 ## Skills
 
-| Command                    | Description                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------- |
-| `orion think <prompt>`     | Refines the prompt (language-aware clarifying questions), then stores the proposal |
-| `orion draft <title>`      | Generates `proposal.md`, `specs/`, `design.md`, `tasks.md` (never clobbers edits)  |
-| `orion forge <title>`      | Drives tasks through RED-GREEN-REFACTOR, ticking each off live in the terminal     |
-| `orion tasks <title>`      | Shows the task checklist with check marks and progress (✓ = done)                  |
-| `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, security scan (package-manager aware)   |
-| `orion out <change-id>`    | Writes the final `result.md` (tasks + guard + artifacts + next steps)              |
+| Command                    | Description                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `orion think <prompt>`     | Refines the prompt (language-aware clarifying questions), then stores the proposal     |
+| `orion draft <title>`      | Generates `proposal.md`, `specs/`, `design.md`, `tasks.md` (never clobbers edits)      |
+| `orion forge <title>`      | Drives tasks through RED-GREEN-REFACTOR, ticking each off live in the terminal         |
+| `orion tasks <title>`      | Shows the task checklist with check marks and progress (✓ = done)                      |
+| `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, security scan (package-manager aware)       |
+| `orion out <change-id>`    | Writes the final `result.md` (tasks + guard + artifacts + next steps)                  |
+| `orion next`               | Decides the next action from context across all changes (draft → forge → shield → out) |
 
 ## Track (cache)
 

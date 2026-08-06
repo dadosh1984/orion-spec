@@ -10,6 +10,7 @@ import { draft } from "../skills/draft/handler.js";
 import { forge, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
+import { nextStep } from "../skills/next/handler.js";
 import { startServer, readVersion } from "./serve.js";
 import { metricsReport, asciiBar } from "../core/metrics.js";
 import { McpServer, toolManifest } from "../core/mcp.js";
@@ -245,6 +246,12 @@ export async function main(argv: string[]): Promise<number> {
       if (!changeId) return fail("out requires a change id");
       const result = await out(changeId, opts);
       printOut(opts, result, `Result written to changes/${changeId}/result.md`);
+      return 0;
+    }
+
+    case "next": {
+      const result = await nextStep();
+      printOut(opts, result, result.summary);
       return 0;
     }
 
