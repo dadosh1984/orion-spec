@@ -53,7 +53,10 @@ export async function shield(
       continue;
     }
     // Cache hits only when the code hash matches — edited code is re-checked.
-    if (!opts?.noCache && track.loadString(`shield:${step}`) === `PASS:${hash}`) {
+    if (
+      !opts?.noCache &&
+      track.loadString(`shield:${step}`) === `PASS:${hash}`
+    ) {
       const hit = track.loadWithDate(`shield:${step}`);
       const since = hit?.storedAt
         ? ` since ${new Date(hit.storedAt).toISOString()}`

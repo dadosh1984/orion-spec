@@ -58,7 +58,7 @@ const STARTER_SUGGESTIONS = [
   "orion serve — open the web dashboard and inspect cache/state",
   "orion metrics — benchmark + token-budget report",
   "orion track status — cache size and age",
-  'orion next — after the first proposal, I will tell you the next step',
+  "orion next — after the first proposal, I will tell you the next step",
 ];
 
 /**
@@ -111,9 +111,7 @@ export async function nextStep(): Promise<NextResult> {
   const candidates = sorted.filter(
     (c) => PHASE_RANK[c.phase] === earliestPhase,
   );
-  const candidateCmds = candidates.map(
-    (c) => `${c.nextCommand} — ${c.detail}`,
-  );
+  const candidateCmds = candidates.map((c) => `${c.nextCommand} — ${c.detail}`);
 
   if (candidates.length > 1) {
     return {

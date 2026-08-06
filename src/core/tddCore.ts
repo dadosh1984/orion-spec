@@ -106,11 +106,11 @@ export class TddEngine {
       this.lastFailure = undefined;
       return { passed: true, output: (stdout + stderr).slice(0, 2000) };
     } catch (err) {
-      const output =
-        (err instanceof Error
+      const output = (
+        err instanceof Error
           ? `${err.message}\n${err.stack ?? ""}`
-          : String(err))
-          .slice(0, 4000);
+          : String(err)
+      ).slice(0, 4000);
       this.lastFailure = describeFailure(output);
       this.state = State.RED;
       return { passed: false, output };

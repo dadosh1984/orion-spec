@@ -255,14 +255,22 @@ export async function main(argv: string[]): Promise<number> {
       // alternatives and let the user (the guide) choose — never decide
       // silently on their behalf in an interactive terminal. Agents keep
       // the full options in the returned JSON and auto-execute.
-      if (process.stdin.isTTY && result.confidence === "low" && result.alternatives.length > 0) {
+      if (
+        process.stdin.isTTY &&
+        result.confidence === "low" &&
+        result.alternatives.length > 0
+      ) {
         console.log(result.summary);
         console.log("");
         const answer = await askQuestion(
           `Choose one (1-${result.alternatives.length}, or Enter to do nothing): `,
         );
         const picked = Number(answer);
-        if (Number.isInteger(picked) && picked >= 1 && picked <= result.alternatives.length) {
+        if (
+          Number.isInteger(picked) &&
+          picked >= 1 &&
+          picked <= result.alternatives.length
+        ) {
           console.log(result.alternatives[picked - 1]);
         }
         return 0;
