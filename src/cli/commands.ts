@@ -4,7 +4,11 @@ import { join } from "node:path";
 import { writeFileSafe } from "../utils/file.js";
 import { OrionTrack } from "../core/track.js";
 import { lessonsStats, listLessons } from "../core/lessons.js";
-import { learnFromSessions, sessionFiles } from "../core/sessions.js";
+import {
+  learnFromSessions,
+  sessionFiles,
+  sessionRoleBreakdown,
+} from "../core/sessions.js";
 import { applyScale, previewScale } from "../core/scale.js";
 import { TddEngine } from "../core/tddCore.js";
 import { think, askQuestion } from "../skills/think/handler.js";
@@ -37,6 +41,8 @@ export interface CliOptions {
   ui: boolean;
   /** Bind host for `serve` (default 127.0.0.1). */
   host?: string;
+  /** Session file for `metrics --session <path>` (v0.15). */
+  session?: string;
 }
 
 const HELP = `orion — self-contained AI-agent toolkit
@@ -123,6 +129,13 @@ export function parseArgs(argv: string[]): {
         throw new Error("--host requires a hostname or IP");
       }
       opts.host = value;
+      i++;
+    } else if (arg === "--session") {
+      const value = argv[i + 1];
+      if (!value || value.startsWith("-")) {
+        throw new Error("--session requires a path to a .jsonl session file");
+      }
+      opts.session = value;
       i++;
     } else if (arg === "--ui") {
       opts.ui = true;
@@ -344,6 +357,44 @@ export async function main(argv: string[]): Promise<number> {
       return await tddCommand(args, opts);
 
     case "metrics": {
+      // `metrics --session <file.jsonl>` (v0.15): per-role token breakdown
+      // of one session instead of the benchmark report. Honest by default:
+      // a missing/unreadable/non-jsonl path is an error, never an empty table.
+      if (opts.session) {
+        const path = opts.session;
+        if (!path.toLowerCase().endsWith(".jsonl")) {
+          return fail(`--session expects a .jsonl file, got: ${path}`);
+        }
+        let text: string;
+        try {
+          text = await readFile(path, "utf8");
+        } catch {
+          return fail(`--session: cannot read ${path}`);
+        }
+        const b = sessionRoleBreakdown(text);
+        const maxBytes = Math.max(...b.roles.map((r) => r.bytes), 1);
+        printOut(
+          opts,
+          b,
+          [
+            `orion metrics --session ${path}`,
+            `records: ${b.records} | invalid lines: ${b.skipped} | ≈ total ${b.totalTokens} tok (${b.totalBytes} B)`,
+            "",
+            b.roles.length === 0
+              ? "(no recognizable message roles in this session)"
+              : [
+                  `  ${"role".padEnd(10)} ${asciiBar(maxBytes, maxBytes)} ${"bytes".padStart(8)} ${"≈tokens".padStart(8)} share`,
+                  ...b.roles.map(
+                    (r) =>
+                      `  ${r.role.padEnd(10)} ${asciiBar(r.bytes, maxBytes)} ${String(r.bytes).padStart(8)} ${String(r.tokens).padStart(8)} ${(r.share * 100).toFixed(1)}%`,
+                  ),
+                ].join("\n"),
+            "",
+            "≈ tokens: bytes/4 estimate (no tokenizer)",
+          ].join("\n"),
+        );
+        return 0;
+      }
       const report = await metricsReport(track, readVersion());
       const maxBar = Math.max(...report.budget.map((b) => b.bytes), 1);
       const budgetLines = report.budget.length

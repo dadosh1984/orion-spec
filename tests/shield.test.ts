@@ -219,3 +219,47 @@ describe("shield skill", () => {
     expect(stepCommand("type")).toBe("yarn run typecheck");
   });
 });
+
+describe("shield: yagni signal (v0.15)", () => {
+  it("WARNs on a snippet far above the repo median — and stays allPass", async () => {
+    mkdirSync("src", { recursive: true });
+    writeFileSync("src/base.ts", "export const a = 1;\nexport const b = 2;\n", "utf8");
+    mkdirSync("changes/demo/snippets", { recursive: true });
+    const big = Array.from({ length: 220 }, (_, i) => `const v${i} = ${i};`).join("\n");
+    writeFileSync("changes/demo/snippets/big.ts", big + "\nexport const big = 1;\n", "utf8");
+    const report = await shield("demo", { noCache: true });
+    const yagni = report.checks.find((c) => c.step === "yagni");
+    expect(yagni?.status).toBe("WARN");
+    expect(yagni?.detail).toMatch(/vs median 2 \(/);
+    expect(yagni?.detail).toContain("big.ts");
+    // WARN is a signal, not a gate: allPass stays true
+    expect(report.allPass).toBe(true);
+  });
+
+  it("PASSes when snippets are within repo norms", async () => {
+    mkdirSync("src", { recursive: true });
+    writeFileSync("src/base.ts", "export const a = 1;\nexport const b = 2;\n", "utf8");
+    mkdirSync("changes/demo/snippets", { recursive: true });
+    writeFileSync("changes/demo/snippets/small.ts", "export const s = 1;\n", "utf8");
+    const report = await shield("demo", { noCache: true });
+    const yagni = report.checks.find((c) => c.step === "yagni");
+    expect(yagni?.status).toBe("PASS");
+    expect(yagni?.detail).toContain("within repo norms");
+  });
+
+  it("PASSes with an honest reason when there are no snippets", async () => {
+    mkdirSync("src", { recursive: true });
+    writeFileSync("src/base.ts", "export const a = 1;\n", "utf8");
+    const report = await shield("demo", { noCache: true });
+    const yagni = report.checks.find((c) => c.step === "yagni");
+    expect(yagni?.status).toBe("PASS");
+    expect(yagni?.detail).toContain("no snippets to check");
+  });
+
+  it("SKIPs honestly when there is no repo baseline", async () => {
+    const report = await shield("demo", { noCache: true });
+    const yagni = report.checks.find((c) => c.step === "yagni");
+    expect(yagni?.status).toBe("SKIP");
+    expect(yagni?.detail).toContain("no existing .ts sources");
+  });
+});

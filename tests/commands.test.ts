@@ -218,3 +218,39 @@ describe("main dispatcher", () => {
     expect(t.load(`tdd:${task}`)).toBe("DONE");
   });
 });
+
+describe("metrics --session (v0.15)", () => {
+  it("renders a per-role breakdown and exits 0", async () => {
+    writeFileSync(
+      join(dir, "s.jsonl"),
+      [
+        JSON.stringify({ type: "message", message: { role: "user", content: "hello" } }),
+        JSON.stringify({ type: "message", message: { role: "assistant", content: [{ type: "toolCall", id: "a", name: "bash", arguments: { command: "ls" } }] } }),
+        JSON.stringify({ type: "message", message: { role: "toolResult", toolCallId: "a", toolName: "bash", content: "src" } }),
+      ].join("\n"),
+      "utf8",
+    );
+    const out: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((m) => out.push(String(m)));
+    const exit = await main(["metrics", "--session", join(dir, "s.jsonl")]);
+    spy.mockRestore();
+    expect(exit).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("orion metrics --session");
+    expect(text).toContain("user");
+    expect(text).toContain("toolCall");
+    expect(text).toContain("toolResult");
+    expect(text).toContain("bytes/4 estimate");
+  });
+
+  it("fails honestly on a missing or non-jsonl path", async () => {
+    expect(await main(["metrics", "--session", join(dir, "nope.jsonl")])).toBe(1);
+    expect(await main(["metrics", "--session", join(dir, "dir")])).toBe(1);
+  });
+
+  it("parseArgs consumes --session value (not a positional arg)", () => {
+    const { opts, args } = parseArgs(["metrics", "--session", "sess.jsonl", "extra"]);
+    expect(opts.session).toBe("sess.jsonl");
+    expect(args).toEqual(["extra"]);
+  });
+});

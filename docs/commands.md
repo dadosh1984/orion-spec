@@ -58,6 +58,7 @@
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
+| `orion metrics --session <file.jsonl>`     | Per-role token breakdown of a session (v0.15)                          |
 | `orion mcp`                                | MCP server over stdio; exposes 17 tools incl. `compress`, `lessons_list`, `lessons_learn` (v0.7, v0.11–v0.13)    |
 
 `out <change-id>` on SUCCESS also writes an honest **«Уроки и решения»** section
@@ -66,7 +67,39 @@ relevant shared ones (matched on the change goal), rendered as
 `> error → use: fix`; a change with no recorded errors says so explicitly:
 `_Уроков нет — эта задача прошла без зафиксированных ошибок._`
 
+### YAGNI signal in shield (v0.15)
+
+`orion shield` now runs a deterministic YAGNI check alongside the classic
+gates: every snippet under `changes/<id>/snippets/` is measured against the
+repo's own code norms (median LOC and import count of existing `.ts`
+sources). A snippet far above the median (> 3×) is reported as **WARN**
+with an honest per-file breakdown (`snippets/x.ts: 212 LOC vs median 12
+(17.7×)`). YAGNI is advice, not a gate: `allPass` only looks at FAIL, so a
+legitimately large snippet cannot silently block a change — but it is
+visible in the guard report and in `out` result.md.
+
+### Session metrics (v0.15)
+
+`orion metrics --session <file.jsonl>` replaces the benchmark report with a
+per-role token breakdown of one agent session:
+
+```
+orion metrics --session ~/.pi/agent/sessions/s.jsonl
+records: 42 | invalid lines: 0 | ≈ total 5130 tok (20520 B)
+
+  role        ████████████░░░░░░░░      bytes  ≈tokens  share
+  assistant   ████████████████░░░░     11200     2800   54.6%
+  toolResult  ██████████░░░░░░░░░░      6400     1600   31.2%
+  ...
+≈ tokens: bytes/4 estimate (no tokenizer)
+```
+
+Buckets: user / assistant / toolCall / toolResult / thinking (parts typed
+`thinking`/`reasoning`) / other. Invalid JSONL lines are counted in
+`invalid lines`, never hidden. `--json` emits the structured object.
+
 ### Token-economy compress rules (v0.11, v0.14)
+
 | Surface | Command | Collapse behaviour |
 |---------|---------|--------------------|
 | tests | vitest/jest/mocha/…, npm test | failures + summary only |

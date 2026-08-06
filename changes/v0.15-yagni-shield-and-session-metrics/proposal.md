@@ -1,0 +1,8 @@
+# Proposal — v0.15-yagni-shield-and-session-metrics
+
+**Goal:** E: add a deterministic yagni check to the shield gate — for each snippet added in this change, compare its LOC and import count against the repo's existing median; when a snippet is an outlier (e.g. LOC > 3x median or imports > 3x median) report it as a WARN (signal, not a ban) in the guard report with an honest per-file breakdown. F: extend orion metrics with a --session <file.jsonl> flag that breaks a session's token usage down by role (user / assistant / toolResult / toolCall / thinking) with the honest ≈ bytes/4 estimate per role and totals
+
+- Platform: any
+- Constraints: none
+- Budget: unlimited
+- **Lessons applied (v0.12):** v0.14-lessons-in-result-and-compress-rules:out:5de90ec114d9, v0.14-lessons-in-result-and-compress-rules:shield:a4e1424604aa, orion-spec:session:34adfd1f5b25, orion-spec:session:4d99052ba17f, orion-spec:session:675e310bd560

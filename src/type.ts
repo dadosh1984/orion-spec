@@ -72,8 +72,8 @@ export interface ArtifactSet {
 
 /** Result of one guard-rail check in `shield`. */
 export interface GuardCheckResult {
-  step: "lint" | "type" | "test" | "drift" | "security";
-  status: "PASS" | "FAIL" | "SKIP";
+  step: "lint" | "type" | "test" | "drift" | "yagni" | "security";
+  status: "PASS" | "FAIL" | "SKIP" | "WARN";
   detail?: string;
 }
 

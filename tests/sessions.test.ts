@@ -16,6 +16,7 @@ import {
   signatureOf,
   learnFromSessions,
   sessionFiles,
+  sessionRoleBreakdown,
 } from "../src/core/sessions.js";
 import { listLessons, readLessons } from "../src/core/lessons.js";
 
@@ -221,5 +222,57 @@ describe("learnFromSessions + CLI/MCP helpers", () => {
     expect(sessionFiles(dir)).toHaveLength(2);
     expect(sessionFiles(join(dir, "a", "x.jsonl"))).toHaveLength(1);
     expect(sessionFiles(join(dir, "missing"))).toHaveLength(0);
+  });
+});
+
+describe("sessionRoleBreakdown (v0.15, metrics --session)", () => {
+  it("buckets all five roles with honest ≈ bytes/4 totals", () => {
+    const jsonl = [
+      JSON.stringify({
+        type: "message",
+        message: { role: "user", content: [{ type: "text", text: "build a parser" }] },
+      }),
+      JSON.stringify({
+        type: "message",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "thinking", text: "let me plan this carefully" },
+            { type: "toolCall", id: "a", name: "bash", arguments: { command: "ls" } },
+            { type: "text", text: "I will check the files" },
+          ],
+        },
+      }),
+      JSON.stringify({
+        type: "message",
+        message: {
+          role: "toolResult",
+          toolCallId: "a",
+          toolName: "bash",
+          content: [{ type: "text", text: "src\npackage.json" }],
+        },
+      }),
+      "not valid json at all",
+    ].join("\n");
+    const b = sessionRoleBreakdown(jsonl);
+    const roles = Object.fromEntries(b.roles.map((r) => [r.role, r.bytes]));
+    expect(roles["user"]).toBeGreaterThan(0);
+    expect(roles["toolCall"]).toBeGreaterThan(0);
+    expect(roles["toolResult"]).toBeGreaterThan(0);
+    expect(roles["thinking"]).toBeGreaterThan(0);
+    expect(roles["assistant"]).toBeGreaterThan(0);
+    expect(b.records).toBe(3);
+    expect(b.skipped).toBe(1); // the invalid line is counted, not hidden
+    expect(b.totalBytes).toBeGreaterThan(0);
+    expect(b.totalTokens).toBe(Math.round(b.totalBytes / 4));
+    const shareSum = b.roles.reduce((s, r) => s + r.share, 0);
+    expect(shareSum).toBeCloseTo(1, 5);
+  });
+
+  it("returns an empty honest breakdown for an empty session", () => {
+    const b = sessionRoleBreakdown("");
+    expect(b.roles).toEqual([]);
+    expect(b.totalBytes).toBe(0);
+    expect(b.skipped).toBe(0);
   });
 });

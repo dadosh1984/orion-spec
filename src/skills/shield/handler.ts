@@ -14,7 +14,14 @@ const execAsync = promisify(exec);
 type StepName = GuardCheckResult["step"];
 
 /** Guard-rail steps in execution order. */
-const STEPS: StepName[] = ["lint", "type", "test", "drift", "security"];
+const STEPS: StepName[] = [
+  "lint",
+  "type",
+  "test",
+  "drift",
+  "yagni",
+  "security",
+];
 
 /**
  * `orion shield` — run every guard-rail against the change:
@@ -239,6 +246,8 @@ async function runStep(
     }
     case "drift":
       return driftCheck(changeId);
+    case "yagni":
+      return yagniCheck(changeId);
     case "security":
       return securityScan(changeId);
   }
@@ -332,6 +341,13 @@ function collectExports(source: string, out: Set<string>): void {
   const list = /\bexport\s*\{([^}]*)\}/g;
   while ((m = list.exec(source))) {
     for (const part of m[1].split(",")) {
+      // string-named aliases (`export { x as "cap-name" }`) are real
+      // exports too (v0.15) — drift specs may use dashed capability names
+      const alias = part.trim().match(/as\s+"([^"]+)"\s*$/);
+      if (alias) {
+        out.add(alias[1]);
+        continue;
+      }
       const name = part
         .trim()
         .split(/\s+as\s+/)[0]
@@ -339,6 +355,92 @@ function collectExports(source: string, out: Set<string>): void {
       if (name && /^[A-Za-z0-9_$]+$/.test(name)) out.add(name);
     }
   }
+}
+
+/**
+ * YAGNI signal (v0.15) — deterministic, advisory, never a gate.
+ * Snippets added by this change are measured against the repo's own code
+ * norms (median LOC and import count of existing `.ts` sources). An outlier
+ * (> 3× the median in either metric) is reported as WARN with an honest
+ * per-file breakdown — a signal to reconsider scope, not a ban: `allPass`
+ * only looks at FAIL, so a legitimately large snippet cannot silently
+ * block the change.
+ */
+export function yagniCheck(changeId: string): GuardCheckResult {
+  const repoFiles = walk("src").filter((f) => f.endsWith(".ts"));
+  if (repoFiles.length === 0) {
+    return {
+      step: "yagni",
+      status: "SKIP",
+      detail: "no existing .ts sources to build a baseline from",
+    };
+  }
+  const locs: number[] = [];
+  const importCounts: number[] = [];
+  for (const f of repoFiles) {
+    const code = readFileSync(f, "utf8");
+    locs.push(code.split(/\r?\n/).filter((l) => l.trim().length > 0).length);
+    const imports =
+      (code.match(/\bimport\b[^;]*/g) ?? []).length +
+      (code.match(/\brequire\s*\(/g) ?? []).length;
+    importCounts.push(imports);
+  }
+  const medianLoc = median(locs);
+  const medianImports = median(importCounts);
+
+  const snippetsDir = `changes/${changeId}/snippets`;
+  const snippets = existsSync(snippetsDir)
+    ? walk(snippetsDir).filter((f) => f.endsWith(".ts"))
+    : [];
+  if (snippets.length === 0) {
+    return {
+      step: "yagni",
+      status: "PASS",
+      detail: `no snippets to check (repo median: ${medianLoc} LOC, ${medianImports} imports)`,
+    };
+  }
+
+  const warnings: string[] = [];
+  for (const s of snippets) {
+    const code = readFileSync(s, "utf8");
+    const loc = code.split(/\r?\n/).filter((l) => l.trim().length > 0).length;
+    const imports =
+      (code.match(/\bimport\b[^;]*/g) ?? []).length +
+      (code.match(/\brequire\s*\(/g) ?? []).length;
+    const reasons: string[] = [];
+    if (medianLoc > 0 && loc > 3 * medianLoc) {
+      reasons.push(
+        `${loc} LOC vs median ${medianLoc} (${(loc / medianLoc).toFixed(1)}×)`,
+      );
+    }
+    if (medianImports > 0 && imports > 3 * medianImports) {
+      reasons.push(
+        `${imports} imports vs median ${medianImports} (${(imports / medianImports).toFixed(1)}×)`,
+      );
+    }
+    if (reasons.length > 0) {
+      warnings.push(`${s}: ${reasons.join("; ")}`);
+    }
+  }
+  if (warnings.length > 0) {
+    return {
+      step: "yagni",
+      status: "WARN",
+      detail: `${warnings.length} snippet(s) far above repo norms (median ${medianLoc} LOC, ${medianImports} imports): ${warnings.join(" | ")}`,
+    };
+  }
+  return {
+    step: "yagni",
+    status: "PASS",
+    detail: `${snippets.length} snippet(s) within repo norms (median ${medianLoc} LOC, ${medianImports} imports)`,
+  };
+}
+
+/** Median of a numeric array (middle element of a sorted copy). */
+export function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
 }
 
 /**

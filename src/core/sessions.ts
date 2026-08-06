@@ -194,6 +194,131 @@ export function findPairs(actions: SessionAction[]): SessionPair[] {
   return [...seen.values()];
 }
 
+/** Per-role token breakdown of one session (v0.15, `metrics --session`). */
+export interface RoleStat {
+  role: string;
+  bytes: number;
+  tokens: number;
+  /** Fraction of the session total, 0..1. */
+  share: number;
+}
+
+export interface SessionBreakdown {
+  roles: RoleStat[];
+  totalBytes: number;
+  totalTokens: number;
+  records: number;
+  skipped: number;
+}
+
+/**
+ * Bucket a session's text by role for the token-budget view: user,
+ * assistant, toolCall, toolResult, thinking (parts typed thinking/reasoning)
+ * and other. Fail-safe like `parseSession` — invalid lines are counted in
+ * `skipped`, never thrown away silently. Text length uses the honest
+ * `≈ bytes/4` token estimate (no tokenizer).
+ */
+export function sessionRoleBreakdown(jsonl: string): SessionBreakdown {
+  const buckets = new Map<string, number>();
+  let records = 0;
+  let skipped = 0;
+  for (const line of jsonl.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let rec: Record<string, unknown>;
+    try {
+      rec = JSON.parse(line) as Record<string, unknown>;
+    } catch {
+      skipped++;
+      continue;
+    }
+    records++;
+    const msg = (rec.message as Record<string, unknown> | undefined) ?? rec;
+    const role = String(msg.role ?? rec.type ?? "");
+    const content = msg.content;
+    if (role === "user") {
+      add(buckets, "user", extractText(content ?? rec.content));
+    } else if (
+      role === "toolResult" ||
+      role === "tool_result" ||
+      role === "tool"
+    ) {
+      add(buckets, "toolResult", extractText(content ?? rec.content));
+    } else if (role === "assistant") {
+      let assistantBytes = 0;
+      let thinkingBytes = 0;
+      if (typeof content === "string") {
+        assistantBytes += Buffer.byteLength(content, "utf8");
+      } else if (Array.isArray(content)) {
+        for (const p of content) {
+          const part = (p ?? {}) as Record<string, unknown>;
+          const kind = String(part.type ?? "");
+          if (kind === "thinking" || kind === "reasoning") {
+            thinkingBytes += Buffer.byteLength(extractText(part), "utf8");
+          } else if (
+            kind === "toolCall" ||
+            kind === "tool_call" ||
+            kind === "function_call"
+          ) {
+            add(buckets, "toolCall", JSON.stringify(part));
+          } else {
+            assistantBytes += Buffer.byteLength(extractText(part), "utf8");
+          }
+        }
+      }
+      if (thinkingBytes > 0) {
+        buckets.set("thinking", (buckets.get("thinking") ?? 0) + thinkingBytes);
+      }
+      if (assistantBytes > 0) {
+        buckets.set(
+          "assistant",
+          (buckets.get("assistant") ?? 0) + assistantBytes,
+        );
+      }
+    } else if (role === "toolCall" || role === "tool_use") {
+      add(buckets, "toolCall", JSON.stringify(msg));
+    } else if (role) {
+      add(buckets, "other", JSON.stringify(msg));
+    }
+  }
+  const totalBytes = [...buckets.values()].reduce((s, b) => s + b, 0);
+  const ORDER = [
+    "assistant",
+    "user",
+    "toolCall",
+    "toolResult",
+    "thinking",
+    "other",
+  ];
+  const roles: RoleStat[] = [...buckets.entries()]
+    .map(([role, bytes]) => ({
+      role,
+      bytes,
+      tokens: estimateTokensFromBytes(bytes),
+      share: totalBytes > 0 ? bytes / totalBytes : 0,
+    }))
+    .sort(
+      (a, b) =>
+        ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.bytes - a.bytes,
+    );
+  return {
+    roles,
+    totalBytes,
+    totalTokens: estimateTokensFromBytes(totalBytes),
+    records,
+    skipped,
+  };
+}
+
+function add(buckets: Map<string, number>, role: string, text: string): void {
+  const bytes = Buffer.byteLength(text ?? "", "utf8");
+  if (bytes > 0) buckets.set(role, (buckets.get(role) ?? 0) + bytes);
+}
+
+/** ≈ bytes/4 token estimate (BPE heuristic, no tokenizer). */
+function estimateTokensFromBytes(bytes: number): number {
+  return Math.round(bytes / 4);
+}
+
 /** Recursively collect *.jsonl files under a path (file or directory). */
 export function sessionFiles(path: string): string[] {
   if (!existsSync(path)) return [];
