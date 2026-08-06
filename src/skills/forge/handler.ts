@@ -26,6 +26,33 @@ export type EngineFactory = (slug: string, track: OrionTrack) => TddEngine;
 export const defaultEngineFactory: EngineFactory = (slug, track) =>
   new TddEngine(slug, track);
 
+/** Live progress callback fired once per task decision. */
+export interface ForgeOptions {
+  noCache?: boolean;
+  /** Called as each task is resolved (done/skipped/pending) — CLI progress. */
+  onTask?: (row: {
+    desc: string;
+    status: "done" | "skipped" | "pending";
+  }) => void;
+}
+
+/** One task entry parsed from tasks.md. */
+export interface TaskItem {
+  text: string;
+  done: boolean;
+}
+
+/** Parse the task checklist from `changes/<title>/tasks.md`. */
+export function readTasks(title: string): TaskItem[] {
+  const path = `changes/${title}/tasks.md`;
+  if (!existsSync(path)) return [];
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .map((l) => l.match(/^- \[( |x)\]\s+(.+)$/))
+    .filter((m): m is RegExpMatchArray => m !== null)
+    .map((m) => ({ done: m[1] === "x", text: m[2] }));
+}
+
 /**
  * `orion forge` — walk `changes/<title>/tasks.md` and drive each open
  * `- [ ]` task through the RED-GREEN-REFACTOR engine.
@@ -36,7 +63,7 @@ export const defaultEngineFactory: EngineFactory = (slug, track) =>
  */
 export async function forge(
   title: string,
-  opts?: { noCache?: boolean },
+  opts?: ForgeOptions,
   snippetProvider: (slug: string) => Promise<string | null> = async (slug) => {
     const file = `changes/${title}/snippets/${slug}.ts`;
     if (!existsSync(file)) return null;
@@ -52,12 +79,9 @@ export async function forge(
     );
   }
 
-  const tasksMd = await readFile(tasksPath, "utf8");
-  const open = tasksMd
-    .split("\n")
-    .map((l) => l.match(/^- \[ \]\s+(.+)$/))
-    .filter((m): m is RegExpMatchArray => m !== null)
-    .map((m) => m[1]);
+  const open = readTasks(title)
+    .filter((t) => !t.done)
+    .map((t) => t.text);
 
   const pending: string[] = [];
   const missingSnippets: string[] = [];
@@ -73,6 +97,7 @@ export async function forge(
     if (!opts?.noCache && track.loadString(`forge:${slug}`) === "DONE") {
       skipped++;
       rows.push({ desc, status: "skipped" });
+      opts?.onTask?.({ desc, status: "skipped" });
       markTaskDone(tasksPath, desc);
       continue;
     }
@@ -85,6 +110,7 @@ export async function forge(
       pending.push(slug);
       missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
       rows.push({ desc, status: "pending" });
+      opts?.onTask?.({ desc, status: "pending" });
       continue;
     }
 
@@ -95,6 +121,7 @@ export async function forge(
       pending.push(slug);
       missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
       rows.push({ desc, status: "pending" });
+      opts?.onTask?.({ desc, status: "pending" });
       continue;
     }
 
@@ -113,6 +140,7 @@ export async function forge(
     }
     markTaskDone(tasksPath, desc);
     rows.push({ desc, status: "done" });
+    opts?.onTask?.({ desc, status: "done" });
     done++;
   }
 

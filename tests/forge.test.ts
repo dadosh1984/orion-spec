@@ -151,6 +151,23 @@ describe("forge skill", () => {
     expect(track.exists("shield:test")).toBe(false);
   });
 
+  it("fires onTask with each task decision (live progress)", async () => {
+    seedChange("demo", ["Implement add function", "Export the module"]);
+    const seen: Array<{ desc: string; status: string }> = [];
+    await forge(
+      "demo",
+      {
+        noCache: true,
+        onTask: (row) => seen.push(row),
+      },
+      async () => "export function add() { return 1; }",
+      fakeEngineFactory,
+    );
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toEqual({ desc: "Implement add function", status: "done" });
+    expect(seen[1]).toEqual({ desc: "Export the module", status: "done" });
+  });
+
   it("throws when tasks.md is missing", async () => {
     await expect(
       forge("ghost", { noCache: true }, async () => null, fakeEngineFactory),

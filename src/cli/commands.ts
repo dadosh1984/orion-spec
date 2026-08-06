@@ -7,7 +7,7 @@ import { applyScale, previewScale } from "../core/scale.js";
 import { TddEngine } from "../core/tddCore.js";
 import { think } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
-import { forge } from "../skills/forge/handler.js";
+import { forge, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { startServer, readVersion } from "./serve.js";
@@ -45,6 +45,7 @@ Commands:
   think <prompt>          Gather a proposal by asking guided questions
   draft <title>           Generate proposal.md, specs/, design.md, tasks.md
   forge <title>           Run the RED-GREEN-REFACTOR loop over tasks.md
+  tasks <title>           Show the task checklist (✓ = done) (v0.8)
   shield <change-id>      Run lint, type-check, tests, drift and security gates
   out <change-id>         Produce the final result.md summary
   track status            Show cache statistics
@@ -181,9 +182,47 @@ export async function main(argv: string[]): Promise<number> {
       const title = args[0];
       if (!title)
         return fail("forge requires a draft id, e.g. orion forge my-csv-tool");
-      const summary = await forge(title, opts);
+      // Live checklist: each task is ticked off in the terminal as it runs.
+      const summary = await forge(title, {
+        noCache: opts.noCache,
+        onTask: (row) => {
+          const mark =
+            row.status === "done"
+              ? "✓"
+              : row.status === "skipped"
+                ? "✓ (cached)"
+                : "· (no snippet)";
+          console.log(`  ${mark} ${row.desc}`);
+        },
+      });
       printOut(opts, summary, summary.message);
       return summary.ok ? 0 : 1;
+    }
+
+    case "tasks": {
+      const title = args[0];
+      if (!title)
+        return fail("tasks requires a change id, e.g. orion tasks my-csv-tool");
+      const tasks = readTasks(title);
+      if (tasks.length === 0)
+        return fail(
+          `no tasks under changes/${title}/ — run "orion draft ${title}" first`,
+        );
+      const done = tasks.filter((t) => t.done).length;
+      printOut(
+        opts,
+        { title, done, total: tasks.length, tasks },
+        [
+          `Tasks — ${title}  (${done}/${tasks.length})`,
+          "",
+          ...tasks.map((t) => `${t.done ? "✓" : "·"} ${t.text}`),
+          "",
+          done === tasks.length
+            ? "All tasks complete."
+            : `${tasks.length - done} task(s) left.`,
+        ].join("\n"),
+      );
+      return 0;
     }
 
     case "shield": {

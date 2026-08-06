@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs, main } from "../src/cli/commands.js";
@@ -57,6 +63,30 @@ describe("main dispatcher", () => {
     expect(
       existsSync(join(dir, "changes", "build-a-calculator", "proposal.json")),
     ).toBe(true);
+  });
+
+  it("tasks prints the checklist with check marks", async () => {
+    mkdirSync(join(dir, "changes", "demo"), { recursive: true });
+    writeFileSync(
+      join(dir, "changes", "demo", "tasks.md"),
+      "# Tasks\n- [x] one\n- [ ] two\n",
+      "utf8",
+    );
+    const lines: string[] = [];
+    const spy = vi
+      .spyOn(console, "log")
+      .mockImplementation((...a: unknown[]) => {
+        lines.push(a.join(" "));
+      });
+    try {
+      const code = await main(["tasks", "demo"]);
+      expect(code).toBe(0);
+      expect(lines.join("\n")).toContain("✓ one");
+      expect(lines.join("\n")).toContain("· two");
+      expect(lines.join("\n")).toContain("1/2");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("returns 1 for think without a prompt", async () => {

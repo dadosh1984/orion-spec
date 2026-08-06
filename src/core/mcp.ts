@@ -7,7 +7,7 @@ import {
 } from "node:process";
 import { think } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
-import { forge } from "../skills/forge/handler.js";
+import { forge, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { applyScale, previewScale } from "./scale.js";
@@ -99,6 +99,17 @@ function logToolDone(name: string): void {
 
 function logToolFail(name: string, msg: string): void {
   processStderr.write(`❌ orion:${name} failed — ${msg.slice(0, 140)}\n`);
+}
+
+/** Print the change's task checklist (✓ = done) to stderr. */
+function printChecklistStderr(title: string): void {
+  const tasks = readTasks(title);
+  if (tasks.length === 0) return;
+  const done = tasks.filter((t) => t.done).length;
+  processStderr.write(`  checklist ${title} (${done}/${tasks.length}):\n`);
+  for (const t of tasks) {
+    processStderr.write(`    ${t.done ? "✓" : "·"} ${t.text}\n`);
+  }
 }
 
 function error(
@@ -404,7 +415,15 @@ export class McpServer {
         if (verboseEnabled()) announceTool(name, args);
         try {
           const text = await this.tools.get(name)!.handler(args);
-          if (verboseEnabled()) logToolDone(name);
+          if (verboseEnabled()) {
+            logToolDone(name);
+            // Live checklist in the terminal: draft creates the plan,
+            // forge ticks tasks off as they complete.
+            if (name === "draft" || name === "forge") {
+              const title = String(args.title ?? "");
+              if (title) printChecklistStderr(title);
+            }
+          }
           return result(id, { content: [{ type: "text", text }] });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
