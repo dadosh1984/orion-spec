@@ -88,7 +88,7 @@ export function getMcpTools(): McpTool[] {
     {
       name: "think",
       description:
-        "Capture an idea as a proposal. Creates changes/<title>/proposal.json and caches it. Non-interactive: supply the three guided answers directly.",
+        "Capture an idea as a proposal. Creates changes/<title>/proposal.json and caches it. Non-interactive: supply the three guided answers directly. BEFORE calling this tool, rephrase/refine the user's raw request into a clear, actionable goal (add the missing action verb, name the deliverable, resolve ambiguity) — if the request is ambiguous, ask the user clarifying questions first. The refined goal flows into draft, specs and tasks.",
       inputSchema: {
         type: "object",
         properties: {

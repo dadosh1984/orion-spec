@@ -94,4 +94,38 @@ describe("think skill", () => {
     );
     expect(third.title).toBe("build-a-tool-3");
   });
+
+  it("asks clarifying questions for a vague prompt and refines the goal", async () => {
+    const asked: string[] = [];
+    const answers = [
+      "создать CLI калькулятор с историей",
+      "калькулятор с историей операций в консоли",
+      "node",
+      "small",
+      "10min",
+    ];
+    const ask = async (msg: string) => {
+      asked.push(msg);
+      return answers.shift() ?? "";
+    };
+    const proposal = await think("калькулятор", { noCache: true }, ask);
+
+    // Two clarifying questions (action + detail), then the guided ones.
+    expect(asked.length).toBe(QUESTIONS.length + 2);
+    expect(asked[0]).toMatch(/сделать|делать/);
+    expect(proposal.goal).toContain("создать CLI калькулятор с историей");
+    expect(proposal.clarity).toBe("clear");
+    expect(proposal.language).toBe("ru");
+    expect(proposal.platform).toBe("node");
+  });
+
+  it("keeps the raw goal when clarification answers are empty", async () => {
+    const proposal = await think(
+      "калькулятор",
+      { noCache: true },
+      async () => "",
+    );
+    expect(proposal.goal).toBe("калькулятор");
+    expect(proposal.clarity).toBe("vague");
+  });
 });

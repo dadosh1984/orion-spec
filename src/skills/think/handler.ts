@@ -3,11 +3,18 @@ import { stdin, stdout } from "node:process";
 import { readJson, writeJson } from "../../utils/file.js";
 import { OrionTrack } from "../../core/track.js";
 import type { Proposal } from "../../type.js";
+import {
+  assessPrompt,
+  clarifyingQuestions,
+  composeGoal,
+  normalizePrompt,
+  type PromptAssessment,
+} from "./refine.js";
 
 /** One guided question in the `think` flow. */
 export interface Question {
   msg: string;
-  key: keyof Proposal;
+  key: "platform" | "constraints" | "budget";
 }
 
 /** The guided questions asked by `orion think`. The goal comes from the prompt. */
@@ -36,6 +43,10 @@ export async function askQuestion(msg: string): Promise<string> {
  * so tests can mock stdin.
  *
  * Context-driven decisions (no flags):
+ * - the raw prompt is normalized and assessed; if it is vague
+ *   (missing an action verb or enough detail), interactive terminals
+ *   get clarifying questions in their own language and the refined
+ *   goal is what flows into draft/specs/tasks;
  * - same idea already captured → returns the existing proposal unchanged;
  * - title collision with a *different* idea → asks in an interactive
  *   terminal, otherwise auto-suffixes (`title`, `title-2`, `title-3`, …)
@@ -46,16 +57,20 @@ export async function think(
   opts?: { noCache?: boolean },
   ask: (msg: string) => Promise<string> = askQuestion,
 ): Promise<Proposal> {
+  const base = normalizePrompt(prompt);
+  const assessment: PromptAssessment = assessPrompt(base);
   const track = OrionTrack.init();
-  const { title, existing } = await resolveTitle(prompt, ask, track);
+  const { title, existing } = await resolveTitle(base, ask, track);
   if (existing) return existing;
 
   const proposal: Proposal = {
     title,
-    goal: prompt,
+    goal: base,
     platform: "",
     constraints: "",
     budget: "",
+    clarity: assessment.clarity,
+    language: assessment.language,
   };
 
   // Context decides: interactive terminals (or an injected ask, i.e. tests
@@ -63,6 +78,20 @@ export async function think(
   // a prompt-only proposal without blocking or polluting stdout.
   const interactive = process.stdin.isTTY === true || ask !== askQuestion;
   if (interactive) {
+    // Clarify vague prompts first — the refined goal is what downstream
+    // artifacts (draft, specs, tasks) build on.
+    if (assessment.clarity === "vague") {
+      const clarifications: string[] = [];
+      for (const q of clarifyingQuestions(assessment)) {
+        const answer = await ask(q.msg);
+        if (answer) clarifications.push(answer);
+      }
+      if (clarifications.length > 0) {
+        proposal.goal = composeGoal(base, clarifications);
+        proposal.clarity = "clear";
+      }
+    }
+
     for (const q of QUESTIONS) {
       const answer = await ask(q.msg);
       if (answer) proposal[q.key] = answer;
