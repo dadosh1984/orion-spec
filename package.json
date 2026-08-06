@@ -1,6 +1,7 @@
 {
   "name": "orion-cli",
   "version": "0.1.0",
+  "packageManager": "pnpm@11.18.0",
   "description": "Self-contained AI-agent toolkit: deterministic think → draft → forge → shield workflow with zero dependencies at runtime.",
   "type": "module",
   "bin": {
