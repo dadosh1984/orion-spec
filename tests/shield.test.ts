@@ -38,6 +38,50 @@ describe("shield skill", () => {
     expect(report.allPass).toBe(false);
   });
 
+  it("security scan catches shell injection, vm and hardcoded secrets", async () => {
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      "src/tasks/ci.ts",
+      'import { execSync } from "node:child_process";\n' +
+        "export const run = (cmd: string) => execSync(`echo ${cmd}`);",
+      "utf8",
+    );
+    writeFileSync(
+      "src/tasks/sandbox.ts",
+      'import vm from "node:vm";\nvm.runInNewContext(code, {});',
+      "utf8",
+    );
+    writeFileSync(
+      "src/tasks/creds.ts",
+      'export const API_KEY = "sk-abcdefghijklmnopqrstuvwxyz123456";',
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const security = report.checks.find((c) => c.step === "security");
+    expect(security?.status).toBe("FAIL");
+    expect(security?.detail).toContain("child_process");
+    expect(security?.detail).toContain("interpolated variable");
+    expect(security?.detail).toContain("node:vm");
+    expect(security?.detail).toContain("hardcoded credential");
+  });
+
+  it("security scan stays green on legitimate template literals", async () => {
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      "src/tasks/ok.ts",
+      "export const greet = (name: string) => `hello ${name}!`;",
+      "utf8",
+    );
+    writeFileSync(
+      "src/tasks/fs.ts",
+      "export const save = (p: string, s: string) => fs.writeFileSync(p, s);",
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const security = report.checks.find((c) => c.step === "security");
+    expect(security?.status).toBe("PASS");
+  });
+
   it("drift check flags capabilities missing from src/tasks", async () => {
     mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
     writeFileSync(

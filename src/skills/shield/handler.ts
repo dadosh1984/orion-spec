@@ -303,6 +303,39 @@ function securityScan(changeId: string): GuardCheckResult {
     [new RegExp("\\bnew\\s+Function\\s*\\("), "new Function()"],
     [new RegExp("process\\.env\\."), "process.env.*"],
     [new RegExp("\\bchild_process\\b"), "child_process usage"],
+    [
+      new RegExp("(?:exec|execSync|spawnSync|spawn|fork)\\s*\\([^)]*\\$\\{"),
+      "interpolated variable in shell exec",
+    ],
+    [
+      new RegExp(
+        "(?:exec|execSync|spawnSync)\\s*\\([^)]*[\"'`][^\"'`]*\\$\\s*\\(",
+      ),
+      "shell command substitution $(...) in exec",
+    ],
+    [
+      new RegExp("(?:exec|execSync|spawnSync)\\s*\\([^)]*[|;&]"),
+      "shell command chaining in exec",
+    ],
+    [
+      new RegExp(
+        "(?:require\\s*\\(\\s*[\"'](?:node:)?vm[\"']\\s*\\)|from\\s*[\"'](?:node:)?vm[\"'])",
+      ),
+      "node:vm sandbox escape risk",
+    ],
+    [
+      new RegExp(
+        "(?:api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*[\"'][^\"']{16,}",
+        "i",
+      ),
+      "hardcoded credential",
+    ],
+    [
+      new RegExp(
+        "\\b(?:API[_-]?KEY|KEY|SECRET|PASSWORD|TOKEN)\\b\\s*[:=]\\s*[\"'][^\"']{16,}",
+      ),
+      "hardcoded credential (UPPERCASE)",
+    ],
   ];
   for (const root of roots) {
     for (const file of walk(root)) {
