@@ -100,6 +100,49 @@ Cline → MCP Servers → Add:
 gemini mcp add orion -- command "orion" --args "mcp"
 ```
 
+### Pi agent harness (v0.18)
+
+Pi does not have native MCP, but the
+[`pi-mcp-extension`](https://pi.dev/packages/pi-mcp-extension) package
+bridges any MCP server into Pi as native tools — the recommended way to
+connect Orion.
+
+```bash
+# 1. Install the MCP client extension
+pi install npm:pi-mcp-extension
+
+# 2. Add an MCP server entry in ~/.pi/agent/mcp.json (global)
+#    or .pi/mcp.json (per-project):
+```
+
+```json
+{
+  "settings": { "requestTimeoutMs": 300000 },
+  "mcpServers": {
+    "orion": {
+      "transport": "stdio",
+      "command": "orion",
+      "args": ["mcp"],
+      "lifecycle": "eager"
+    }
+  }
+}
+```
+
+Restart Pi after installing — the 17 Orion tools appear with the
+`mcp_orion_` prefix: `mcp_orion_metrics`, `mcp_orion_think`,
+`mcp_orion_forge`, … Live check:
+
+```
+/mcp                → status summary
+/mcp orion          → server details with stderr log
+/mcp:start orion    → start manually if lifecycle is "lazy"
+```
+
+When Pi calls an Orion tool, the **MCP activity indicator** (v0.8) prints
+`⚙ orion:<name> …` / `✅ … done` / `❌ … failed` on stderr — the same
+vocabulary **direct CLI invocations** (v0.18) also use.
+
 ### Goose (Block)
 
 ```bash
