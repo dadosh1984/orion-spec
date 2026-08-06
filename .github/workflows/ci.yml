@@ -36,14 +36,11 @@ jobs:
       - name: Type-check
         run: pnpm exec tsc --noEmit
 
-      - name: Test with coverage
-        run: pnpm run test:coverage
-
-      - name: Prune cache
-        run: node dist/cli/index.js track prune
-
       - name: Build
         run: pnpm run build
+
+      - name: Test with coverage
+        run: pnpm run test:coverage
 
       - name: Prune cache after build
         run: node dist/cli/index.js track prune

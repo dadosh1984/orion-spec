@@ -1,12 +1,17 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const CLI = "node dist/cli/index.js";
 
 beforeAll(() => {
-  execSync("node node_modules/typescript/bin/tsc -p tsconfig.json", {
-    stdio: "pipe",
-  });
+  // dist/ is built before tests (CI: build step; local: pretest).
+  // Fallback for direct `vitest run` invocations without a prior build:
+  if (!existsSync("dist/cli/index.js")) {
+    execSync("node node_modules/typescript/bin/tsc -p tsconfig.json", {
+      stdio: "pipe",
+    });
+  }
 }, 120_000);
 
 function run(args: string): { code: number; out: string } {

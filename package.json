@@ -33,14 +33,14 @@
     "lint": "eslint src --max-warnings=0",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "test": "vitest run",
+    "test": "pnpm run build && vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "pnpm run build && vitest run --coverage",
     "watch": "tsc -w -p tsconfig.json",
     "prepare": "pnpm run build",
     "tdd": "node dist/cli/index.js tdd",
     "metrics": "node dist/cli/index.js metrics",
-    "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run test:coverage && pnpm run build",
+    "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run build && pnpm run test:coverage",
     "publish": "npm publish"
   },
   "devDependencies": {
