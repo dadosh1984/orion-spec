@@ -25,7 +25,13 @@ export function loadTddConfig(): TddConfig {
   } catch {
     return {
       testTemplate:
-        "import { describe, it, expect } from 'vitest';\nimport { {{task}} } from '../src/tasks/{{task}}';\n",
+        "import { describe, it, expect } from 'vitest';\n" +
+        "import { {{task}} } from '../src/tasks/{{task}}';\n\n" +
+        "describe('{{task}}', () => {\n" +
+        "  it('works', () => {\n" +
+        "    expect({{task}}()).toBeDefined();\n" +
+        "  });\n" +
+        "});\n",
       testDir: "tests",
       srcDir: "src/tasks",
       command: "pnpm vitest run tests/{{task}}.test.ts",

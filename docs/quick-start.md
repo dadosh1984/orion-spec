@@ -4,12 +4,23 @@
 
 ## 1. Install & build
 
+**Option A — published package (recommended):**
+
 ```bash
-git clone <your-repo-url>
+npm i -g orion-spec
+orion help
+```
+
+**Option B — from source:**
+
+```bash
+git clone https://github.com/dadosh1984/orion-spec.git
 cd orion-dev
 pnpm install
 pnpm run build
 ```
+
+The rest of this guide uses `node dist/cli/index.js` for source builds — substitute `orion` when using the published package.
 
 ## 2. Think — capture the idea
 
