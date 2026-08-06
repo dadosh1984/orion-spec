@@ -324,3 +324,171 @@ describe("compress: no fake savings (v0.11)", () => {
     expect(r.savedBytes).toBe(0);
   });
 });
+
+describe("compress: high-value rules (v0.14)", () => {
+  it("docker ps: header + first rows + honest total count", () => {
+    const rows = Array.from(
+      { length: 25 },
+      (_, i) =>
+        `${(i + 1).toString(16).padStart(12, "a")}   node:20     \"docker-entrypoint.s…\"   ${i} hours ago   Up ${i} hours   3000/tcp   api${i}`,
+    );
+    const out = [
+      "CONTAINER ID   IMAGE     COMMAND                  CREATED       STATUS       PORTS     NAMES",
+      ...rows,
+    ].join("\n");
+    const r = compress("docker ps -a", out, "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("[orion] docker — 25 container(s), 15 shown:");
+    expect(r.out).toContain("(+10 more containers)");
+    expect(r.out).toContain("CONTAINER ID");
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("docker logs: keeps the tail (where the error lives), counts dropped", () => {
+    const lines = [
+      ...Array.from({ length: 60 }, (_, i) => `2026-08-06T10:00:0${i % 10}.123Z request ${i}`),
+      "2026-08-06T10:01:00.000Z Error: connection refused",
+    ];
+    const r = compress("docker logs api", lines.join("\n"), "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("Error: connection refused"); // error kept verbatim
+    expect(r.out).toContain("earlier dropped");
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("pytest: FAILED lines + === verdict kept, progress dots dropped", () => {
+    const out = [
+      "============================= test session starts =============================",
+      "platform win32 -- Python 3.12.2",
+      "collected 12 items",
+      "test_api.py ...F",
+      "test_db.py .......",
+      "",
+      "FAILED test_api.py::test_create_user - AssertionError: user not saved",
+      "",
+      "=============== 1 failed, 11 passed in 2.34s ===============",
+    ].join("\n");
+    const r = compress("pytest -q", out, "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("FAILED test_api.py::test_create_user");
+    expect(r.out).toContain("1 failed, 11 passed");
+    expect(r.out).not.toContain("test_db.py ......."); // dots are noise
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("cargo test: test result + compiler errors kept", () => {
+    const out = [
+      "   Compiling orion v0.14.0",
+      "error[E0308]: mismatched types",
+      "   --> src/main.rs:12:5",
+      "   |",
+      "12 |     let x: u32 = \"s\";",
+      "   |                  ^^^ expected `u32`, found `&str`",
+      "",
+      "test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out",
+    ].join("\n");
+    const r = compress("cargo test", out, "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("error[E0308]: mismatched types");
+    expect(r.out).toContain("test result: FAILED");
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("terraform plan: Plan: summary + Error diagnostics, resource noise dropped", () => {
+    const out = [
+      "Terraform will perform the following actions:",
+      "",
+      "  # aws_instance.web will be created",
+      "  + resource \"aws_instance\" \"web\" {",
+      "      + ami                          = \"ami-0c55b159cbfafe1f0\"",
+      "      + instance_type                = \"t3.micro\"",
+      "    }",
+      "",
+      "Error: creating instance: timeout",
+      "",
+      "Plan: 1 to add, 0 to change, 0 to destroy.",
+    ].join("\n");
+    const r = compress("terraform plan", out, "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("Plan: 1 to add");
+    expect(r.out).toContain("Error: creating instance: timeout");
+    expect(r.out).not.toContain("aws_instance"); // plan noise dropped
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("npm list: tree head + UNMET problem lines kept", () => {
+    const out = [
+      "app@0.1.0 E:/proj",
+      "├── UNMET DEPENDENCY debug@^4.3.0",
+      "├── express@4.19.2",
+      "├── express/node_modules/accepts@1.3.8",
+      "├── express/node_modules/array-flatten@1.1.1",
+      "├── express/node_modules/body-parser@1.20.2",
+      "├── express/node_modules/content-disposition@0.5.4",
+      "├── express/node_modules/content-type@1.0.5",
+      "├── express/node_modules/cookie@0.6.0",
+      "├── express/node_modules/debug@2.6.9",
+      "├── express/node_modules/depd@2.0.0",
+      "├── express/node_modules/encodeurl@2.0.0",
+      "├── express/node_modules/escape-html@1.0.3",
+      "├── express/node_modules/etag@1.8.1",
+      "├── express/node_modules/finalhandler@1.2.0",
+      "├── express/node_modules/forwarded@0.2.0",
+      "├── express/node_modules/iconv-lite@0.4.24",
+      "├── express/node_modules/ipaddr.js@1.9.1",
+      "├── express/node_modules/media-typer@0.3.0",
+      "├── express/node_modules/merge-descriptors@1.0.1",
+      "├── express/node_modules/methods@1.1.2",
+      "├── express/node_modules/mime@1.6.0",
+      "├── express/node_modules/mime-types@2.1.35",
+      "├── express/node_modules/negotiator@0.6.3",
+      "├── express/node_modules/on-finished@2.4.1",
+      "├── express/node_modules/path-to-regexp@0.1.7",
+      "├── express/node_modules/proxy-addr@2.0.7",
+      "├── express/node_modules/qs@6.11.0",
+      "├── express/node_modules/range-parser@1.2.1",
+      "├── express/node_modules/safe-buffer@5.2.1",
+      "├── express/node_modules/send@0.18.0",
+      "├── express/node_modules/serve-static@1.15.0",
+      "├── express/node_modules/setprototypeof@1.2.0",
+      "├── express/node_modules/statuses@2.0.1",
+      "├── express/node_modules/type-is@1.6.18",
+      "├── express/node_modules/utils-merge@1.0.1",
+      "├── express/node_modules/vary@1.1.2",
+      "└── zod@3.23.8",
+    ].join("\n");
+    const r = compress("npm list", out, "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("UNMET DEPENDENCY");
+    expect(r.out).toContain("1 problem(s)");
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("pip freeze: long lists collapse to a count + head", () => {
+    const lines = Array.from({ length: 80 }, (_, i) => `pkg${i}==1.0.${i}`);
+    const r = compress("pip freeze", lines.join("\n"), "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("80 line(s), 40 shown (+40 dropped)");
+    expect(r.out).toContain("pkg0==1.0.0");
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("ps: header + first rows + count", () => {
+    const lines = [
+      "PID   PPID   CMD",
+      ...Array.from({ length: 60 }, (_, i) => `${1000 + i} ${1000} node index.js --port ${i}`),
+    ];
+    const r = compress("ps aux", lines.join("\n"), "");
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("61 line(s), 40 shown");
+    expect(r.out).toContain("PID   PPID   CMD");
+    expect(r.out).toMatch(/≈ \d+ tok/);
+  });
+
+  it("small outputs pass through untouched (no fake savings)", () => {
+    const tiny = "CONTAINER ID   IMAGE\na1b2c3d4e5f6   node:20\n";
+    const r = compress("docker ps", tiny, "");
+    expect(r.matched).toBe(false);
+    expect(r.out).toBe(tiny);
+  });
+});

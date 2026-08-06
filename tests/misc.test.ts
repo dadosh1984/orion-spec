@@ -267,3 +267,23 @@ describe("scale via main()", () => {
     expect(readFileSync("a.scaled.ts", "utf8")).toContain("from 'node:fs'");
   });
 });
+
+describe("capability manifests (drift-gate proof, v0.12–v0.14)", () => {
+  it("every # Spec: capability has a real exported manifest", async () => {
+    const node = await import("../src/tasks/node.js");
+    const self = await import("../src/tasks/self.js");
+    const session = await import("../src/tasks/session.js");
+    const template = await import("../src/tasks/template.js");
+    const compress = await import("../src/tasks/compress.js");
+    const lessons = await import("../src/tasks/lessons.js");
+    expect(node.node).toBeDefined();
+    expect(self.self).toBe("self-correction");
+    expect(session.session).toBe("session-learning");
+    expect(template.template).toBeDefined();
+    expect(compress.compress).toBe("token-economy");
+    expect(lessons.lessons).toBe("lessons-in-result");
+    // contracts carry the honest capability description
+    expect(compress.compressContract.description).toMatch(/≈ bytes\/4/);
+    expect(lessons.lessonsContract.description).toMatch(/Уроков нет|нет уроков/);
+  });
+});

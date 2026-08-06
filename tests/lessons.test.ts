@@ -18,7 +18,7 @@ import {
   lessonsPath,
   type Lesson,
 } from "../src/core/lessons.js";
-import { shield } from "../src/skills/shield/handler.js";
+import { shield, projectHash } from "../src/skills/shield/handler.js";
 import { out } from "../src/skills/out/handler.js";
 import { forge } from "../src/skills/forge/handler.js";
 import { nextStep } from "../src/skills/next/handler.js";
@@ -183,6 +183,93 @@ describe("honest auto-capture", () => {
     const one = listLessons("demo").find((l) => l.step === "forge");
     expect(one).toBeTruthy();
     expect(one?.error).toMatch(/task not green/);
+  });
+});
+
+describe("out — «Уроки и решения» section (v0.14)", () => {
+  function seedPassingChange(title: string, goal: string): void {
+    seedChange(title, ["one", "two"]);
+    // seedChange writes goal `build ${title}` — overwrite with the real one
+    writeFileSync(
+      join("changes", title, "proposal.json"),
+      JSON.stringify({ title, goal }),
+      "utf8",
+    );
+    writeFileSync(
+      join("changes", title, "tasks.md"),
+      "# Tasks\n- [x] one\n- [x] two\n",
+      "utf8",
+    );
+    mkdirSync(join("reports", title), { recursive: true });
+    writeFileSync(
+      join("reports", title, "guard-report.json"),
+      JSON.stringify({
+        changeId: title,
+        checks: [
+          { step: "lint", status: "PASS" },
+          { step: "type", status: "PASS" },
+          { step: "test", status: "PASS" },
+          { step: "drift", status: "PASS" },
+          { step: "security", status: "PASS" },
+        ],
+        allPass: true,
+        generatedAt: new Date().toISOString(),
+        contextHash: projectHash(title),
+      }),
+      "utf8",
+    );
+  }
+
+  it("lists the change's recorded lessons on SUCCESS", async () => {
+    seedPassingChange("demo", "build demo");
+    recordLesson({
+      changeId: "demo",
+      step: "shield",
+      error: "drift: missing exported capability",
+      fix: "export the capability, then re-run orion shield demo",
+    });
+    const result = await out("demo");
+    expect(result.status).toBe("SUCCESS");
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).toContain("## Уроки и решения");
+    expect(md).toContain(
+      "> drift: missing exported capability → export the capability, then re-run orion shield demo",
+    );
+  });
+
+  it("says «нет уроков» honestly when the ledger has nothing for the change", async () => {
+    seedPassingChange("demo", "build demo");
+    const result = await out("demo");
+    expect(result.status).toBe("SUCCESS");
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).toContain(
+      "_Уроков нет — эта задача прошла без зафиксированных ошибок._",
+    );
+  });
+
+  it("includes relevant shared lessons with their changeId context", async () => {
+    seedPassingChange("demo", "compress pytest output");
+    recordLesson({
+      changeId: "other-project",
+      step: "session",
+      error: "pytest run failed on flaky ordering",
+      fix: "add --randomly-seed",
+    });
+    const result = await out("demo");
+    expect(result.status).toBe("SUCCESS");
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).toContain("## Уроки и решения");
+    expect(md).toContain(
+      "> [other-project] pytest run failed on flaky ordering → add --randomly-seed",
+    );
+  });
+
+  it("never renders the section on INCOMPLETE", async () => {
+    seedChange("demo", ["one"]); // task not done
+    const result = await out("demo");
+    expect(result.status).toBe("INCOMPLETE");
+    const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
+    expect(md).not.toContain("## Уроки и решения");
   });
 });
 

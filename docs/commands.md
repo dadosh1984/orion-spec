@@ -59,6 +59,29 @@
 | `orion help`                               | Show the help text                                                     |
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
 | `orion mcp`                                | MCP server over stdio; exposes 17 tools incl. `compress`, `lessons_list`, `lessons_learn` (v0.7, v0.11–v0.13)    |
+
+`out <change-id>` on SUCCESS also writes an honest **«Уроки и решения»** section
+(v0.14): the change's recorded lessons from `lessons.json` plus up to 3
+relevant shared ones (matched on the change goal), rendered as
+`> error → use: fix`; a change with no recorded errors says so explicitly:
+`_Уроков нет — эта задача прошла без зафиксированных ошибок._`
+
+### Token-economy compress rules (v0.11, v0.14)
+| Surface | Command | Collapse behaviour |
+|---------|---------|--------------------|
+| tests | vitest/jest/mocha/…, npm test | failures + summary only |
+| eslint / tsc | `eslint`, `tsc` | error lines + count |
+| git | status / diff / log | compact status / +/- lines / commits |
+| ls / grep | `ls`, `rg`, `grep` | grouped by file / name lists |
+| install | npm/pnpm/yarn install | outcome lines only |
+| docker (v0.14) | ps / images / logs | header + first rows + honest total; logs keep the tail where the error lives |
+| pytest (v0.14) | `pytest` | FAILED lines + `===` verdict |
+| cargo (v0.14) | test / build | test result + compiler errors |
+| terraform (v0.14) | `terraform plan` | Plan: summary + Error diagnostics |
+| lists (v0.14) | npm list / pip freeze / ps | first N lines + count, problems kept |
+
+Every rule collapses only when it actually shrinks the output (no fake
+savings) and reports savings with the honest `≈ bytes/4` token label.
 | `orion <multi-word prompt>`                | Shorthand for `think` — captures an idea as a proposal (v0.7)          |
 | `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2)             |
 | `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |

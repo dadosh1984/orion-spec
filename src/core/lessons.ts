@@ -125,6 +125,21 @@ export function findLessons(text: string): Lesson[] {
     .reverse();
 }
 
+/**
+ * Lessons for an `out` summary (v0.14): the change's own recorded lessons,
+ * recent first, plus up to 3 shared lessons matched against the change goal
+ * via `findLessons` — deduplicated by id so a lesson never appears twice.
+ */
+export function lessonsForChange(changeId: string, goal: string): Lesson[] {
+  const own = new Map<string, Lesson>();
+  for (const l of listLessons(changeId)) own.set(l.id, l);
+  for (const l of findLessons(`${changeId} ${goal}`)) {
+    if (own.has(l.id) || l.changeId === changeId) continue;
+    own.set(l.id, l); // once included, never again
+  }
+  return [...own.values()];
+}
+
 /** Aggregate stats for dashboards (`orion track status`). */
 export function lessonsStats(): { count: number; lastTs: string | null } {
   const rows = readLessons();

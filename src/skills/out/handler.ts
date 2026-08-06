@@ -4,7 +4,7 @@ import { readdirSync } from "node:fs";
 import { writeFileSafe, readJson } from "../../utils/file.js";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
-import { recordLesson } from "../../core/lessons.js";
+import { recordLesson, lessonsForChange } from "../../core/lessons.js";
 import type { GuardReport, Proposal } from "../../type.js";
 
 /** Result of the `out` skill. */
@@ -133,6 +133,9 @@ export async function out(
     ...(artifacts.length > 0
       ? ["## Artifacts", "", ...artifacts.map((a) => `- \`${a}\``), ""]
       : []),
+    ...(status === "SUCCESS"
+      ? lessonsSection(changeId, proposal?.goal ?? "")
+      : []),
     "## Next steps",
     "",
     !guardOk
@@ -158,6 +161,28 @@ export async function out(
     artifacts,
     staleGuard,
   };
+}
+
+/**
+ * Honest «Уроки и решения» (Lessons & decisions) block for a SUCCESS
+ * result.md (v0.14): the change's own recorded lessons plus relevant shared
+ * ones, rendered as `> error → use: fix` lines. An empty ledger is reported
+ * explicitly — a task that never hit a recorded error is not padded with
+ * invented wisdom.
+ */
+function lessonsSection(changeId: string, goal: string): string[] {
+  const lessons = lessonsForChange(changeId, goal);
+  const lines = ["## Уроки и решения", ""];
+  if (lessons.length === 0) {
+    lines.push("_Уроков нет — эта задача прошла без зафиксированных ошибок._");
+  } else {
+    for (const l of lessons) {
+      const prefix = l.changeId === changeId ? "" : `[${l.changeId}] `;
+      const fix = l.fix ? ` → ${l.fix}` : "";
+      lines.push(`> ${prefix}${l.error}${fix}`);
+    }
+  }
+  return [...lines, ""];
 }
 
 /** Existing artifacts of a change, best-effort walk. */

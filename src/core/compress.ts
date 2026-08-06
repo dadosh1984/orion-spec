@@ -361,6 +361,132 @@ function installRule(input: string, maxLen: number): string | null {
   );
 }
 
+/** docker ps/images: header + first rows, honest total count. */
+function dockerTableRule(input: string, maxLen: number): string | null {
+  const lines = input.split(/\r?\n/);
+  const header = lines.find((l) => /CONTAINER ID|REPOSITORY/.test(l)) ?? "";
+  const all = lines.filter(
+    (l) => /^[0-9a-f]{12}\s/.test(l) || /^\S+\s+\S+\s+latest\s/.test(l),
+  );
+  if (all.length === 0) return null;
+  const kept = all.slice(0, 15).map((l) => truncateLine(l.trimEnd(), maxLen));
+  const kind = /CONTAINER ID/.test(header) ? "container" : "image";
+  const tail =
+    all.length > kept.length
+      ? `  … (+${all.length - kept.length} more ${kind}s)`
+      : "";
+  return [
+    `[orion] docker — ${all.length} ${kind}(s), ${kept.length} shown:`,
+    header,
+    ...kept,
+    tail,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** docker logs: tail (the error lives at the end), count dropped lines. */
+function dockerLogsRule(input: string, maxLen: number): string | null {
+  const lines = input.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length <= 20) return null;
+  const kept = lines.slice(-40).map((l) => truncateLine(l.trimEnd(), maxLen));
+  const dropped = lines.length - kept.length;
+  return [
+    `[orion] docker logs — last ${kept.length} line(s), ${dropped} earlier dropped:`,
+    ...kept,
+  ].join("\n");
+}
+
+/** pytest: FAILED lines + === summary lines (keeps the verdict). */
+function pytestRule(input: string, maxLen: number): string | null {
+  const lines = input.split(/\r?\n/);
+  const failed = lines
+    .filter((l) => /^FAILED\s/.test(l.trimStart()))
+    .slice(0, 40)
+    .map((l) => truncateLine(l.trimEnd(), maxLen));
+  const summary = lines
+    .filter((l) =>
+      /^={3,}\s.*(passed|failed|error|skipped)/.test(l.trimStart()),
+    )
+    .slice(0, 5)
+    .map((l) => truncateLine(l.trimEnd(), maxLen));
+  if (failed.length === 0 && summary.length === 0) return null;
+  const head = failed.length
+    ? `[orion] pytest — ${failed.length} FAILED test(s):`
+    : "[orion] pytest — summary:";
+  return [head, ...failed, ...summary].join("\n");
+}
+
+/** cargo test: test result lines, compiler errors, failure blocks. */
+function cargoRule(input: string, maxLen: number): string | null {
+  const lines = input.split(/\r?\n/);
+  const kept: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^test result:/.test(line)) {
+      kept.push(line);
+    } else if (/^error(\[E\d+\])?:/.test(line)) {
+      kept.push(truncateLine(line, maxLen));
+    } else if (/^---- /.test(line) || /^thread '/.test(line)) {
+      kept.push(truncateLine(line, maxLen));
+    }
+    if (kept.length >= 40) break;
+  }
+  if (kept.length === 0) return null;
+  return [`[orion] cargo — ${kept.length} result/error line(s):`, ...kept].join(
+    "\n",
+  );
+}
+
+/** terraform plan: Plan: summary + Error diagnostics only. */
+function terraformRule(input: string, maxLen: number): string | null {
+  const lines = input.split(/\r?\n/);
+  const plan = lines.filter((l) => /^Plan: \d+ to add/.test(l.trimStart()));
+  const errors = lines
+    .filter((l) => /Error:|Error: /i.test(l.trimStart()))
+    .slice(0, 20)
+    .map((l) => truncateLine(l.trimEnd(), maxLen));
+  const diag = lines
+    .filter((l) => /^\s*│/.test(l) && /error|failed/i.test(l))
+    .slice(0, 10)
+    .map((l) => truncateLine(l.trimEnd(), maxLen));
+  if (plan.length === 0 && errors.length === 0 && diag.length === 0)
+    return null;
+  return [`[orion] terraform plan —`, ...plan, ...errors, ...diag].join("\n");
+}
+
+/** npm list: tree head + problem lines (UNMET/invalid/extraneous). */
+function npmListRule(input: string, maxLen: number): string | null {
+  const lines = input.split(/\r?\n/);
+  const problems = lines
+    .filter((l) => /UNMET DEPENDENCY|invalid|extraneous/i.test(l))
+    .slice(0, 20)
+    .map((l) => truncateLine(l.trimEnd(), maxLen));
+  const tree = lines
+    .filter((l) => /^\S+@/.test(l.trimStart()) || /^[├└┌─│ ]*\S+@/.test(l))
+    .slice(0, 30)
+    .map((l) => truncateLine(l.trimEnd(), maxLen));
+  if (tree.length === 0 && problems.length === 0) return null;
+  const head = problems.length
+    ? `[orion] npm list — ${problems.length} problem(s):`
+    : `[orion] npm list — ${tree.length} top packages:`;
+  return [head, ...problems, ...tree].join("\n");
+}
+
+/** pip freeze / ps: first rows + count (long lists collapse). */
+function headListRule(input: string, maxLen: number): string | null {
+  const lines = input.split(/\r?\n/).filter((l) => l.trim());
+  const limit = 40;
+  if (lines.length <= limit) return null;
+  const kept = lines
+    .slice(0, limit)
+    .map((l) => truncateLine(l.trimEnd(), maxLen));
+  return [
+    `[orion] list — ${lines.length} line(s), ${kept.length} shown (+${lines.length - kept.length} dropped):`,
+    ...kept,
+  ].join("\n");
+}
+
 const RULES: Rule[] = [
   {
     test: (cmd) => /vitest|jest|mocha|ava|tape|\bnode --test\b/.test(cmd),
@@ -384,6 +510,21 @@ const RULES: Rule[] = [
     test: (cmd) =>
       /(^|[/\\])(npm|pnpm|yarn)( |$).*\b(install|add|remove)\b/.test(cmd),
     compress: installRule,
+  },
+  { test: (cmd) => /^docker ps\b/.test(cmd), compress: dockerTableRule },
+  { test: (cmd) => /^docker images\b/.test(cmd), compress: dockerTableRule },
+  { test: (cmd) => /^docker logs\b/.test(cmd), compress: dockerLogsRule },
+  { test: (cmd) => /\bpytest\b/.test(cmd), compress: pytestRule },
+  { test: (cmd) => /\bcargo (test|build)\b/.test(cmd), compress: cargoRule },
+  { test: (cmd) => /\bterraform plan\b/.test(cmd), compress: terraformRule },
+  { test: (cmd) => /\bnpm list\b/.test(cmd), compress: npmListRule },
+  {
+    test: (cmd) => /\bpip freeze\b/.test(cmd),
+    compress: headListRule,
+  },
+  {
+    test: (cmd) => /(^|\s)ps(\s|$)/.test(cmd),
+    compress: headListRule,
   },
 ];
 
