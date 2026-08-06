@@ -13,13 +13,14 @@
 
 ## Skills
 
-| Command                    | Description                                                                   |
-| -------------------------- | ----------------------------------------------------------------------------- |
-| `orion think <prompt>`     | Asks guided questions (platform, constraints, budget) and stores the proposal |
-| `orion draft <title>`      | Generates `proposal.md`, `specs/`, `design.md`, `tasks.md`                    |
-| `orion forge <title>`      | Drives every open task through the RED-GREEN-REFACTOR loop                    |
-| `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, security scan                      |
-| `orion out <change-id>`    | Writes the final `result.md` summary                                          |
+| Command                    | Description                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `orion think <prompt>`     | Refines the prompt (language-aware clarifying questions), then stores the proposal |
+| `orion draft <title>`      | Generates `proposal.md`, `specs/`, `design.md`, `tasks.md` (never clobbers edits)  |
+| `orion forge <title>`      | Drives tasks through RED-GREEN-REFACTOR, ticking each off live in the terminal     |
+| `orion tasks <title>`      | Shows the task checklist with check marks and progress (✓ = done)                  |
+| `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, security scan (package-manager aware)   |
+| `orion out <change-id>`    | Writes the final `result.md` (tasks + guard + artifacts + next steps)              |
 
 ## Track (cache)
 
