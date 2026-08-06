@@ -92,6 +92,37 @@ describe("draft skill", () => {
     expect(webTasks).toContain("HTTP/API");
   });
 
+  it("decomposes the goal into concrete tasks (RU + EN)", async () => {
+    await think(
+      "сделай CLI калькулятор с историей операций",
+      { noCache: true },
+      async () => "",
+    );
+    // slugify drops Cyrillic, so the change id is "cli".
+    await draft("cli", { noCache: true });
+    const tasks = readFileSync(join("changes", "cli", "tasks.md"), "utf8");
+    expect(tasks).toContain("CLI entry point");
+    // The raw goal verb is stripped; the concrete entity remains.
+    expect(tasks).not.toContain("Implement: сделай");
+    expect(tasks).toContain("calculator with history operations");
+    expect(tasks).toContain("arithmetic operations");
+    expect(tasks).toContain("operation history");
+
+    await think(
+      "build a csv-to-json converter",
+      { noCache: true },
+      async () => "",
+    );
+    await draft("build-a-csv-to-json-converter", { noCache: true });
+    const enTasks = readFileSync(
+      join("changes", "build-a-csv-to-json-converter", "tasks.md"),
+      "utf8",
+    );
+    expect(enTasks).toContain("parsing/transformation pipeline");
+    expect(enTasks).toContain("csv-to-json converter");
+    expect(enTasks).toContain("CSV: headers");
+  });
+
   it("does not clobber hand-edited artifacts (idempotent re-draft)", async () => {
     await makeProposal("csv tool");
     await draft("csv-tool", { noCache: true });
