@@ -99,3 +99,16 @@ describe("metrics: CLI", () => {
     expect(out).toBe(0);
   });
 });
+
+describe("metrics: token-economy ledger (v0.11)", () => {
+  it("metricsReport reports ledger shape with real numbers", async () => {
+    const track = OrionTrack.init();
+    const report = await metricsReport(track, "0.11.0");
+    expect(report.economy).toBeDefined();
+    expect(typeof report.economy.entries).toBe("number");
+    expect(typeof report.economy.savedBytes).toBe("number");
+    expect(typeof report.economy.savedTokens).toBe("number");
+    expect(report.economy.entries).toBeGreaterThanOrEqual(0);
+    expect(report.economy.savedTokens).toBeGreaterThanOrEqual(0);
+  });
+});

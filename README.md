@@ -126,6 +126,35 @@ orion tdd refactor calcSum
 # state = DONE, cached as tdd:calcSum
 ```
 
+### Token economy (`orion-compress`) — own rtk-style output compression (v0.11)
+
+Compresses command output **before an LLM agent reads it** — a zero-dependency,
+from-scratch take on the same idea as rtk, built into Orion's core:
+
+- **Agent-agnostic**: any MCP-capable agent calls the `compress` MCP tool with its
+  own bash output (`{command, output}` → compressed text + honest byte/token savings);
+  Orion's own surfaces (`shield`, `forge`) use the same library, so 35+ models get
+  the savings with zero extra setup.
+- **Deterministic rules**: `vitest`/jest collapse to failures + a count, `eslint`/`tsc`
+  keep error lines only, `git status`/`diff`/`log` become compact, `ls`/`grep`/`pnpm install`
+  are reduced to the signal.
+- **Honest by construction**: fail-safe (a throwing/mismatching rule falls back to the
+  raw output, never fabricates), `matched=false` when no rule applied, token figures are
+  always labeled *≈ bytes/4 estimate (no tokenizer)*, repeated identical input is served
+  from the OrionTrack cache and labeled `cached=true`.
+- **Measured, not guessed**: every operation is appended to the ledger `~/.orion/economy.json`;
+  `orion metrics` reports real bytes/tokens saved.
+- **Cost-aware companion**: `orion next` estimates the token cost of each alternative
+  (bytes/4 of the plan artifacts) and lists options cheapest-first.
+
+```bash
+# any agent: compress its own command output
+orion mcp   # → call the `compress` tool with {command, output}
+
+# see what has actually been saved
+orion metrics   # → Token economy (ledger ~/.orion/economy.json)
+```
+
 ### Skills — the high-level workflow
 
 - **`think <prompt>`** – asks 3 guided questions (platform, constraints, budget) and persists `changes/<title>/proposal.json` + `proposal:<title>` cache entry.
@@ -175,7 +204,8 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - ✅ **v0.8.1** – Quoted-prompt fix — _done_: `orion "multi word idea"` (single argv with spaces) reaches the think fallback instead of “unknown command”
 - ✅ **v0.8.2** – `orion next` — _done_: scans every change and decides the next action from context (`orion draft|forge|shield|out <id>`), picks the highest‑priority unfinished change, exposed to agents as MCP tool `next_step`
 - ✅ **v0.9** – Context depth — _done_: `draft` decomposes goals into concrete tasks (RU+EN: strips action verbs, transliterates known entities, sub‑entity details like “operation history: persistence/replay/undo”), `shield` security scan catches shell injection (`${}` in exec), `$(…)`/`|;&` chaining, `node:vm` escapes and hardcoded credentials — while staying green on legitimate template literals
-- 🔄 **v0.10** – Honesty & companion — _in progress_: `out` detects a stale guard report (context hash) instead of using it as-is; `track` labels cache hits with their date; `next` says "insufficient context" with ranked alternatives instead of guessing, and suggests starting ideas when nothing exists; `draft` marks tasks `[fact]` vs `[assumption]` (with an Assumptions section in design.md) and no longer false-positivizes on `logical`→history or "no new CLI commands"→CLI; `tdd` names the exact failing test; `mcp` never returns fake success; `shield`/`out` fail honestly when the change does not exist; README documents the process‑over‑model thesis
+- 🔄 **v0.10** – Honesty & companion — _done_: `out` detects a stale guard report (context hash) instead of using it as-is; `track` labels cache hits with their date; `next` says "insufficient context" with ranked alternatives instead of guessing, and suggests starting ideas when nothing exists; `draft` marks tasks `[fact]` vs `[assumption]` (with an Assumptions section in design.md) and no longer false-positivizes on `logical`→history or "no new CLI commands"→CLI; `tdd` names the exact failing test; `mcp` never returns fake success; `shield`/`out` fail honestly when the change does not exist; README documents the process‑over‑model thesis
+- ✅ **v0.11** – Token economy — _done_: own rtk-style output compressor in the core (`compress` MCP tool, agent-agnostic for all MCP clients; compact shield/forge test rendering; honest bytes/4 savings notes; RU/EN-safe truncation), `orion metrics` reports real savings from the `~/.orion/economy.json` ledger, `next` ranks alternatives cheapest-first by estimated token cost, repeated outputs are cached by input hash and labeled `cached=true`; `draft` no longer crashes on free-text `platform` answers (path-safe capability names)
 
 ## 📜 License
 

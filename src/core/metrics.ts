@@ -1,7 +1,10 @@
 import { performance } from "node:perf_hooks";
 import { statSync } from "node:fs";
 import { applyScale, previewScale } from "./scale.js";
+import { estimateTokens, economyStats } from "./compress.js";
 import type { OrionTrack } from "./track.js";
+
+export { estimateTokens } from "./compress.js";
 
 /** Timing of a single benchmark pass over the whole ladder. */
 export interface PassTiming {
@@ -25,7 +28,7 @@ export interface NamespaceBudget {
   share: number;
 }
 
-/** The full metrics report (per-step timings + token budget). */
+/** The full metrics report (per-step timings + token budget + economy). */
 export interface MetricsReport {
   version: string;
   timings: PassTiming[];
@@ -33,12 +36,12 @@ export interface MetricsReport {
   budget: NamespaceBudget[];
   totalTokens: number;
   cached: { count: number; bytes: number };
+  /** Token-economy ledger (v0.11): real measured savings from compress ops. */
+  economy: { entries: number; savedBytes: number; savedTokens: number };
 }
 
 /** Rough token estimate: ~4 bytes per token (BPE heuristic). */
-export function estimateTokens(bytes: number): number {
-  return Math.round(bytes / 4);
-}
+// (source of truth lives in src/core/compress.ts; re-exported for callers)
 
 /** Reference snippet that exercises every ladder stage. */
 const BENCHMARK_SNIPPET = [
@@ -136,5 +139,6 @@ export async function metricsReport(
     budget,
     totalTokens: budget.reduce((sum, b) => sum + b.tokens, 0),
     cached: { count: stats.count, bytes: stats.size },
+    economy: economyStats(),
   };
 }

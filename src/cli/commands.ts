@@ -351,6 +351,11 @@ export async function main(argv: string[]): Promise<number> {
           "Token budget by cache namespace (~4 B/token):",
           budgetLines,
           `  total ~${report.totalTokens} tok in ${report.cached.count} entries (${report.cached.bytes} B)`,
+          "",
+          "Token economy (ledger ~/.orion/economy.json):",
+          report.economy.entries > 0
+            ? `  ≈ ${report.economy.savedTokens} tok saved across ${report.economy.entries} compress op(s) (${report.economy.savedBytes} B) — bytes/4 estimate, no tokenizer`
+            : "  no compress ops recorded yet — call the compress tool (or run shield) and check again",
         ].join("\n"),
       );
       return 0;

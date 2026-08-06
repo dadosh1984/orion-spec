@@ -8,6 +8,24 @@ import { existsSync } from "node:fs";
 import { OrionTrack } from "../../core/track.js";
 import type { ArtifactSet, Proposal } from "../../type.js";
 
+/**
+ * Turn a free-text `platform` answer into a path-safe capability name.
+ * Guided answers are free-form sentences ("node >= 22, CLI + MCP"), which
+ * must never become filesystem paths. Identifiers are kept as-is; anything
+ * else collapses to "core".
+ */
+export function toCapability(platform: string): string {
+  const slug = platform
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length >= 2
+    ? slug
+    : "core";
+}
+
 /** Read a proposal from the cache by title. */
 export async function loadProposal(
   title: string,
@@ -225,7 +243,7 @@ export async function draft(
   }
 
   const dir = `changes/${title}`;
-  const capability = proposal.platform || "core";
+  const capability = toCapability(proposal.platform);
   const specsDir = `${dir}/specs/${capability}`;
   const skipped: string[] = [];
 

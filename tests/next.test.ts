@@ -177,3 +177,33 @@ describe("next skill", () => {
     expect(r.next).toContain("stale");
   });
 });
+
+describe("next: cost-aware alternatives (v0.11)", () => {
+  it("ranks tied changes cheapest-first with estimated costs", async () => {
+    makeChange("alpha", true);
+    makeChange("beta", true);
+    makeChange("gamma", true);
+    // Different artifact sizes → different estimated costs.
+    writeFileSync("changes/alpha/tasks.md", "- [ ] task\n" + "a".repeat(4000));
+    writeFileSync("changes/beta/tasks.md", "- [ ] task\n" + "b".repeat(200));
+    writeFileSync("changes/gamma/tasks.md", "- [ ] task\n" + "g".repeat(400));
+    const r = await nextStep();
+    expect(r.confidence).toBe("low");
+    expect(r.alternatives).toHaveLength(3);
+    expect(r.alternativeCosts!.length).toBe(3);
+    // Cheapest (beta) first.
+    expect(r.alternativeCosts![0]).toBeLessThanOrEqual(r.alternativeCosts![1]);
+    expect(r.alternativeCosts![1]).toBeLessThanOrEqual(r.alternativeCosts![2]);
+    expect(r.alternatives[0]).toContain("orion forge beta");
+    // Every cost is a positive estimate.
+    for (const c of r.alternativeCosts!) expect(c).toBeGreaterThanOrEqual(1);
+  });
+
+  it("single candidate carries its cost too", async () => {
+    makeChange("only", true);
+    const r = await nextStep();
+    expect(r.confidence).toBe("high");
+    expect(r.alternativeCosts).toEqual([expect.any(Number)]);
+    expect(r.alternativeCosts![0]).toBeGreaterThanOrEqual(1);
+  });
+});

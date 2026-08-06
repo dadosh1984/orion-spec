@@ -192,3 +192,21 @@ describe("draft skill", () => {
     expect(existsSync(join("changes", "csv-tool", "proposal.md"))).toBe(true);
   });
 });
+
+describe("draft platform sanitization (v0.11 fix)", () => {
+  it("collapses a free-text platform answer to a safe path", async () => {
+    await think(
+      "token saver",
+      { noCache: true },
+      async () => "node >= 22.12, CLI + MCP (stdio), 35+ agents",
+    );
+    const artifacts = await draft("token-saver", { noCache: true });
+    // No crash: every generated path is inside the change dir and path-safe.
+    for (const p of [artifacts.proposal, ...artifacts.specs, artifacts.design, artifacts.tasks]) {
+      expect(p).not.toMatch(/\s|>|=|\+/);
+      expect(p.startsWith("changes/")).toBe(true);
+    }
+    // The free-text answer is not used verbatim as a directory name.
+    expect(artifacts.specs[0]).not.toContain("22.12");
+  });
+});

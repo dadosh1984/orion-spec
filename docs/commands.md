@@ -55,13 +55,23 @@
 | Command                                    | Description                                                            |
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
-| `orion metrics`                            | Benchmark + token-budget report (v0.5)                                 |
+| `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
+| `orion mcp`                                | MCP server over stdio; exposes 15 tools incl. `compress` (v0.7, v0.11)    |
 | `orion <multi-word prompt>`                | Shorthand for `think` — captures an idea as a proposal (v0.7)          |
 | `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2)             |
 | `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
 | `orion plugin install <dir>`               | Copy a plugin into `~/.orion/plugins`                                  |
 | `orion plugin list`                        | List installed plugins (global + local)                                |
 | `orion plugin remove <name>`               | Uninstall a plugin                                                     |
+
+## MCP tools (agent-agnostic, v0.11)
+
+Any MCP-capable agent (Claude Code, Codex, opencode, Cursor, Cline, …) attaches via
+`orion mcp` and gets the workflow tools (`think`, `draft`, `forge`, `shield`, `out`,
+`next_step`, `scale`, `track_*`, `metrics`, `plugin_*`, `version`) plus the token-economy
+`compress` tool: `{command, output, stderr?, verbose?}` → compressed output with honest
+byte/token savings, `matched`, and `cached` flags. Repeated identical input is served
+from the OrionTrack cache and labeled `cached=true`.
 
 ## Examples
 

@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { forge, defaultEngineFactory } from "../src/skills/forge/handler.js";
+import { forge, readTasks, defaultEngineFactory } from "../src/skills/forge/handler.js";
 import { TddEngine } from "../src/core/tddCore.js";
 import { OrionTrack } from "../src/core/track.js";
 
@@ -172,5 +172,20 @@ describe("forge skill", () => {
     await expect(
       forge("ghost", { noCache: true }, async () => null, fakeEngineFactory),
     ).rejects.toThrow(/no tasks.md/);
+  });
+});
+
+describe("readTasks: CRLF robustness (v0.11 fix)", () => {
+  it("parses Windows line endings too", () => {
+    mkdirSync(join("changes", "crlf"), { recursive: true });
+    writeFileSync(
+      join("changes", "crlf", "tasks.md"),
+      "# Tasks\r\n- [x] done task\r\n- [ ] open task\r\n",
+      "utf8",
+    );
+    const tasks = readTasks("crlf");
+    expect(tasks).toHaveLength(2);
+    expect(tasks[0]).toEqual({ done: true, text: "done task" });
+    expect(tasks[1]).toEqual({ done: false, text: "open task" });
   });
 });

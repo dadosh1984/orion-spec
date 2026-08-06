@@ -302,3 +302,49 @@ describe("mcp: CLI wiring", () => {
     expect(await main(["mcp", "--list"])).toBe(0);
   });
 });
+
+describe("mcp: compress tool (token economy)", () => {
+  it("compresses command output and reports honest savings", async () => {
+    const server = new McpServer(getMcpTools(), "7.0.0");
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "compress",
+      arguments: {
+        command: "vitest run",
+        output: " RUN  v1.6.1\n ✓ a.test.ts (1 test) 2ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n",
+      },
+    });
+    const parsed = JSON.parse(textOf(res));
+    expect(parsed.matched).toBe(true);
+    expect(parsed.cached).toBe(false);
+    expect(parsed.savedBytes).toBeGreaterThan(0);
+    expect(parsed.out).toContain("1 passed (1)");
+    expect(parsed.out).toContain("estimate");
+  });
+
+  it("serves repeated identical input from the cache (cached=true)", async () => {
+    const server = new McpServer(getMcpTools(), "7.0.0");
+    await call(server, "initialize");
+    const args = {
+      name: "compress",
+      arguments: {
+        command: "git status",
+        output: "On branch main\n\t?? new-file.ts\n",
+      },
+    };
+    const a = JSON.parse(textOf(await call(server, "tools/call", 1, args)));
+    const b = JSON.parse(textOf(await call(server, "tools/call", 2, args)));
+    expect(a.cached).toBe(false);
+    expect(b.cached).toBe(true);
+    expect(b.out).toBe(a.out);
+  });
+
+  it("lists compress among the registered tools", async () => {
+    const server = new McpServer(getMcpTools(), "7.0.0");
+    const res = await call(server, "tools/list");
+    const names = (res.result as { tools: Array<{ name: string }> }).tools.map(
+      (t) => t.name,
+    );
+    expect(names).toContain("compress");
+  });
+});

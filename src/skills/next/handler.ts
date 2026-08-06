@@ -1,7 +1,8 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
+import { estimateTokens } from "../../core/compress.js";
 import type { GuardReport } from "../../type.js";
 
 /**
@@ -33,6 +34,11 @@ export interface NextResult {
    * decide. Agents can execute the first alternative themselves.
    */
   alternatives: string[];
+  /**
+   * Approximate token cost of each alternative, cheapest first (v0.11).
+   * Estimated as bytes/4 of the change's artifacts — an estimate, not a bill.
+   */
+  alternativeCosts?: number[];
   /**
    * How sure Orion is about `next` (v0.10):
    * - "high"  — exactly one change at the earliest stage;
@@ -81,6 +87,7 @@ export async function nextStep(): Promise<NextResult> {
         STARTER_SUGGESTIONS.map((s) => `  - ${s}`).join("\n"),
       changes: [],
       alternatives: [],
+      alternativeCosts: [],
       confidence: "none",
       suggestions: STARTER_SUGGESTIONS,
     };
@@ -100,33 +107,40 @@ export async function nextStep(): Promise<NextResult> {
         .join("\n")}`,
       changes: sorted,
       alternatives: [],
+      alternativeCosts: [],
       confidence: "none",
     };
   }
 
   // The earliest unfinished stage is the next step — but only when exactly
   // ONE change sits there. Several candidates at the same stage is real
-  // ambiguity: guessing a winner would be a lie.
+  // ambiguity: guessing a winner would be a lie. Ties are ranked by the
+  // estimated token cost of each action, cheapest first (v0.11).
   const earliestPhase = PHASE_RANK[sorted[0].phase];
-  const candidates = sorted.filter(
-    (c) => PHASE_RANK[c.phase] === earliestPhase,
+  const candidates = sorted
+    .filter((c) => PHASE_RANK[c.phase] === earliestPhase)
+    .map((c) => ({ state: c, cost: estimateChangeCost(c.id) }))
+    .sort((a, b) => a.cost - b.cost || a.state.id.localeCompare(b.state.id));
+  const candidateCmds = candidates.map(
+    (c) => `${c.state.nextCommand} — ${c.state.detail} (~${c.cost} tok)`,
   );
-  const candidateCmds = candidates.map((c) => `${c.nextCommand} — ${c.detail}`);
+  const alternativeCosts = candidates.map((c) => c.cost);
 
   if (candidates.length > 1) {
     return {
       next: null,
       summary:
         `Insufficient context to pick a single next action: ${candidates.length} changes sit at the same stage.\n` +
-        "I won't guess on your behalf — you choose (or I can run any of these):\n" +
+        "I won't guess on your behalf — you choose (or I can run any of these, cheapest first):\n" +
         candidateCmds.map((c) => `  ${c}`).join("\n"),
       changes: sorted,
       alternatives: candidateCmds,
+      alternativeCosts,
       confidence: "low",
     };
   }
 
-  const first = candidates[0];
+  const first = candidates[0].state;
   return {
     next: `${first.nextCommand} — ${first.detail}`,
     summary: `Next: ${first.nextCommand} — ${first.detail}\n\nAll changes:\n${sorted
@@ -134,8 +148,51 @@ export async function nextStep(): Promise<NextResult> {
       .join("\n")}`,
     changes: sorted,
     alternatives: candidateCmds,
+    alternativeCosts,
     confidence: "high",
   };
+}
+
+/** Sum of file sizes under a directory (recursive). */
+function dirBytes(dir: string): number {
+  let total = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) total += dirBytes(p);
+    else if (entry.isFile()) {
+      try {
+        total += statSync(p).size;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return total;
+}
+
+/**
+ * Approximate token cost of the next action for a change: bytes of the
+ * plan artifacts (proposal/design/tasks/specs) / 4. An estimate for
+ * ordering options, never presented as a real bill.
+ */
+function estimateChangeCost(id: string): number {
+  let bytes = 0;
+  for (const p of [
+    `changes/${id}/proposal.md`,
+    `changes/${id}/design.md`,
+    `changes/${id}/tasks.md`,
+  ]) {
+    if (existsSync(p)) {
+      try {
+        bytes += statSync(p).size;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  const specs = `changes/${id}/specs`;
+  if (existsSync(specs)) bytes += dirBytes(specs);
+  return Math.max(1, estimateTokens(bytes));
 }
 
 /** All changes with a proposal, in filesystem order. */

@@ -1,5 +1,5 @@
 {
-  "changeId": "v0.10-honesty-companion",
+  "changeId": "v0.11-token-economy",
   "checks": [
     {
       "step": "lint",
@@ -14,7 +14,7 @@
     {
       "step": "test",
       "status": "PASS",
-      "detail": "[orion] no failures detected — summary:\n Test Files  26 passed (26)\n      Tests  239 passed (239)\n   Duration  6.60s (transform 1.38s, setup 2ms, collect 3.98s, tests 13.78s, environment 6ms, prepare 6.77s)\n\n[orion: −26124 B (−99.2%) ≈ 6531 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+      "detail": "[orion] no failures detected — summary:\n Test Files  26 passed (26)\n      Tests  239 passed (239)\n   Duration  7.16s (transform 1.44s, setup 0ms, collect 3.84s, tests 19.21s, environment 6ms, prepare 6.95s)\n\n[orion: −26124 B (−99.2%) ≈ 6531 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
     },
     {
       "step": "drift",
@@ -28,6 +28,6 @@
     }
   ],
   "allPass": true,
-  "generatedAt": "2026-08-06T15:20:34.788Z",
-  "contextHash": "d3e9e2736b74"
+  "generatedAt": "2026-08-06T15:20:04.873Z",
+  "contextHash": "54a7ea7a8c24"
 }

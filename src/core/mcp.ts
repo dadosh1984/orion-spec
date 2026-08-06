@@ -14,6 +14,7 @@ import { nextStep } from "../skills/next/handler.js";
 import { applyScale, previewScale } from "./scale.js";
 import { OrionTrack } from "./track.js";
 import { metricsReport } from "./metrics.js";
+import { compress } from "./compress.js";
 import { listPlugins, installPlugin, removePlugin } from "./plugins.js";
 import { readVersion } from "../cli/serve.js";
 
@@ -252,6 +253,36 @@ export function getMcpTools(): McpTool[] {
       },
       handler: async () => {
         const r = await nextStep();
+        return JSON.stringify(r, null, 2);
+      },
+    },
+    {
+      name: "compress",
+      description:
+        "Compress command output before it reaches the model context (token economy). Pass the command you ran and its raw stdout/stderr; returns the compressed text plus honest byte/token savings. Fail-safe: unmatched output is returned unchanged (matched=false). Repeated identical input is served from the OrionTrack cache (cached=true). Agent-agnostic — works from any MCP client.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description: "The command whose output this is, e.g. 'vitest run'",
+          },
+          output: { type: "string", description: "Raw stdout of the command" },
+          stderr: { type: "string", description: "Raw stderr (optional)" },
+          verbose: {
+            type: "boolean",
+            description: "Return raw output plus a note instead of compressing",
+          },
+        },
+        required: ["command", "output"],
+      },
+      handler: async (args) => {
+        const r = compress(
+          String(args.command ?? ""),
+          String(args.output ?? ""),
+          String(args.stderr ?? ""),
+          { verbose: Boolean(args.verbose) },
+        );
         return JSON.stringify(r, null, 2);
       },
     },

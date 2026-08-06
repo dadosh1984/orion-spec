@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { writeFileSafe } from "../../utils/file.js";
 import { OrionTrack } from "../../core/track.js";
+import { compress } from "../../core/compress.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
 const execAsync = promisify(exec);
@@ -231,7 +232,11 @@ async function runStep(
   }
 }
 
-/** Run an external command and map exit status to PASS/FAIL. */
+/** Run an external command and map exit status to PASS/FAIL. Output is
+ * compressed through the token-economy engine (v0.11): test runners show
+ * failures + a count, linters/tsc show error lines only — the agent reads
+ * the signal, not the noise.
+ */
 async function shellCheck(
   step: StepName,
   cmd: string,
@@ -241,14 +246,18 @@ async function shellCheck(
       cwd: process.cwd(),
       timeout: 300_000,
     });
+    const r = compress(cmd, stdout, stderr);
+    const detail =
+      (r.matched ? r.out : (stdout + stderr).slice(0, 200)) || "ok";
     return {
       step,
       status: "PASS",
-      detail: (stdout + stderr).slice(0, 200) || "ok",
+      detail: detail.slice(0, 500),
     };
   } catch (err) {
-    const detail =
-      err instanceof Error ? err.message.slice(0, 200) : "command failed";
+    const raw = err instanceof Error ? err.message : "command failed";
+    const r = compress(cmd, raw, "");
+    const detail = r.matched ? r.out.slice(0, 500) : raw.slice(0, 200);
     return { step, status: "FAIL", detail };
   }
 }

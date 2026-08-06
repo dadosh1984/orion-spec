@@ -46,11 +46,16 @@ export interface TaskItem {
 export function readTasks(title: string): TaskItem[] {
   const path = `changes/${title}/tasks.md`;
   if (!existsSync(path)) return [];
-  return readFileSync(path, "utf8")
-    .split("\n")
-    .map((l) => l.match(/^- \[( |x)\]\s+(.+)$/))
-    .filter((m): m is RegExpMatchArray => m !== null)
-    .map((m) => ({ done: m[1] === "x", text: m[2] }));
+  return (
+    readFileSync(path, "utf8")
+      .split("\n")
+      // CRLF-safe: `$` without the m flag won't match before `\r`, and `.`
+      // never matches it — so strip the CR so Windows checklists parse.
+      .map((l) => l.replace(/\r$/, ""))
+      .map((l) => l.match(/^- \[( |x)\]\s+(.+)$/))
+      .filter((m): m is RegExpMatchArray => m !== null)
+      .map((m) => ({ done: m[1] === "x", text: m[2] }))
+  );
 }
 
 /**
