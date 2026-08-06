@@ -136,7 +136,7 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 
 - ✅ **v0.2** – Web UI (`orion serve --ui`) — *done*: dashboard with cache stats, key explorer and change list
 - ✅ **v0.3** – Plugin marketplace (`orion-plugin-*`) — *done*: `plugin new/install/list/remove`, unknown commands dispatch to installed plugins
-- **v0.4** – Docker image for sandboxed CI
+- ✅ **v0.4** – Docker image for sandboxed CI — *done*: multi‑stage `Dockerfile`, `docker compose` sandbox with `--network none` + persistent cache volume
 - **v0.5** – Benchmark module (per‑step timings, token‑budget graphs)
 
 ## 📜 License

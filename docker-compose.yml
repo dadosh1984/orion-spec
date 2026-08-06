@@ -1,0 +1,20 @@
+# Orion v0.4 — sandboxed CI via Docker Compose
+#   docker compose up -d            # build the image and start a helper container
+#   docker compose run --rm orion shield my-change
+services:
+  orion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: orion:0.4
+    working_dir: /workspace
+    volumes:
+      # host project is mounted read-write so orion can generate artifacts
+      - .:/workspace
+      # persistent cache survives container restarts
+      - orion-cache:/root/.orion
+    # sandbox: no network access from inside the container
+    network_mode: none
+
+volumes:
+  orion-cache:

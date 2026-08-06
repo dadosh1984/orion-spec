@@ -52,3 +52,6 @@ jobs:
           path: |
             dist/
             orion-report.json
+
+      - name: Build Docker image (sandboxed CI)
+        run: docker build -t orion:0.4 .
