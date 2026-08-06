@@ -4,7 +4,9 @@ import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
 import { estimateTokens, economyStats } from "../../core/compress.js";
 import { listLessons, type Lesson } from "../../core/lessons.js";
-import type { GuardReport } from "../../type.js";
+import { calibrationFactor, readCalibration } from "../../core/calibration.js";
+import { countOpenDebt } from "../../core/debt.js";
+import type { GuardReport, Proposal } from "../../type.js";
 
 /**
  * Phase a change is in. Order matters — the lowest unfinished phase is
@@ -188,9 +190,23 @@ export async function nextStep(): Promise<NextResult> {
     .filter((c) => PHASE_RANK[c.phase] === earliestPhase)
     .map((c) => ({ state: c, cost: estimateChangeCost(c.id) }))
     .sort((a, b) => a.cost - b.cost || a.state.id.localeCompare(b.state.id));
-  const candidateCmds = candidates.map(
-    (c) => `${c.state.nextCommand} — ${c.state.detail} (~${c.cost} tok)`,
-  );
+  // Calibration (v0.18, H): the estimate is honest about whether history
+  // has corrected it yet; the budget zone (J) warns when a candidate is
+  // projected to overshoot its own proposal budget (advisory, never blocks).
+  const cal = calibrationFactor();
+  const calLabel =
+    cal === null
+      ? "uncalibrated"
+      : `calibrated ×${cal} over ${readCalibration().length} change(s)`;
+  const candidateLine = (c: { state: ChangeState; cost: number }): string => {
+    let line = `${c.state.nextCommand} — ${c.state.detail} (~${c.cost} tok, ${calLabel})`;
+    const budget = proposalBudget(c.state.id);
+    if (budget !== null && c.cost > budget) {
+      line += ` — exceeds budget ~${budget} tok, consider splitting`;
+    }
+    return line;
+  };
+  const candidateCmds = candidates.map(candidateLine);
   const alternativeCosts = candidates.map((c) => c.cost);
 
   if (candidates.length > 1) {
@@ -212,7 +228,7 @@ export async function nextStep(): Promise<NextResult> {
   return {
     next: `${first.nextCommand} — ${first.detail}`,
     summary:
-      `Next: ${first.nextCommand} — ${first.detail}\n\nAll changes:\n${sorted
+      `Next: ${candidateLine(candidates[0])}\n\nAll changes:\n${sorted
         .map((c) => `  ${c.id}  [${c.phase}]  ${c.detail}`)
         .join("\n")}` + economyFooter(),
     changes: sorted,
@@ -231,12 +247,33 @@ export async function nextStep(): Promise<NextResult> {
  */
 function economyFooter(): string {
   const eco = economyStats();
+  const base =
+    eco.entries > 0
+      ? `≈ ${eco.savedTokens} tok saved across ${eco.entries} compress op(s)`
+      : "no compress ops recorded yet — call the compress tool (or run shield) and check again";
+  const open = countOpenDebt();
   return (
     "\n\nToken economy: " +
-    (eco.entries > 0
-      ? `≈ ${eco.savedTokens} tok saved across ${eco.entries} compress op(s)`
-      : "no compress ops recorded yet — call the compress tool (or run shield) and check again")
+    base +
+    (open > 0
+      ? `\nOpen debt: ${open} item(s) (from shield yagni warnings)`
+      : "")
   );
+}
+
+/** Proposal budget of a change, or null when unset/unreadable (v0.18, J). */
+function proposalBudget(id: string): number | null {
+  try {
+    const path = `changes/${id}/proposal.json`;
+    if (!existsSync(path)) return null;
+    const p = JSON.parse(readFileSync(path, "utf8")) as Proposal;
+    const raw = p?.budget?.trim();
+    if (!raw) return null;
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Sum of file sizes under a directory (recursive). */
@@ -256,12 +293,11 @@ function dirBytes(dir: string): number {
   return total;
 }
 
-/**
- * Approximate token cost of the next action for a change: bytes of the
+/** Approximate token cost of the next action for a change: bytes of the
  * plan artifacts (proposal/design/tasks/specs) / 4. An estimate for
  * ordering options, never presented as a real bill.
  */
-function estimateChangeCost(id: string): number {
+export function estimateChangeCost(id: string): number {
   let bytes = 0;
   for (const p of [
     `changes/${id}/proposal.md`,

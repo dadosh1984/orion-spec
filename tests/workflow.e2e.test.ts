@@ -140,4 +140,19 @@ describe("full workflow (e2e)", () => {
       rmSync(join("src", "tasks", "implement_multiply.ts"), { force: true });
     }
   });
+
+  it("CLI activity indicator marks Orion work on stderr (v0.18)", () => {
+    // normal command: marker appears on stderr
+    const out = execSync(`${CLI} metrics 2>&1`, { encoding: "utf8" });
+    expect(out).toContain("⚙ orion:metrics");
+    expect(out).toContain("✅ orion:metrics done");
+    expect(out).toContain("0.18.0");
+    // machine-mode commands stay clean: mcp / help / --json
+    const mcp = execSync(`${CLI} mcp --list 2>&1`, { encoding: "utf8" });
+    expect(mcp).not.toContain("⚙ orion:");
+    const help = execSync(`${CLI} help 2>&1`, { encoding: "utf8" });
+    expect(help).not.toContain("⚙ orion:");
+    const json = execSync(`${CLI} metrics --json 2>&1`, { encoding: "utf8" });
+    expect(json).not.toContain("⚙ orion:");
+  });
 });

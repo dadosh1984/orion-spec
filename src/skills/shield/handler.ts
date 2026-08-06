@@ -8,6 +8,7 @@ import { OrionTrack } from "../../core/track.js";
 import { compress } from "../../core/compress.js";
 import { economyStats } from "../../core/compress.js";
 import { recordLesson } from "../../core/lessons.js";
+import { recordDebt, closeDebt } from "../../core/debt.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
 const execAsync = promisify(exec);
@@ -84,6 +85,11 @@ export async function shield(
     }
     const result = await runStep(step, changeId);
     checks.push(result);
+    // Debt sync (v0.18): yagni WARN -> open debt, PASS -> close it. Only
+    // when yagni actually ran (cache hits SKIP above and mutate nothing).
+    if (step === "yagni" && result.status !== "SKIP") {
+      syncDebt(changeId);
+    }
     if (result.status === "FAIL") {
       // Self-correction (v0.12): a failed guard-rail is a lesson, not a
       // secret. `next` will route back to `think` with a corrective task.
@@ -373,13 +379,70 @@ function collectExports(source: string, out: Set<string>): void {
  * only looks at FAIL, so a legitimately large snippet cannot silently
  * block the change.
  */
+/**
+ * YAGNI check: compare the change's new snippets against the repo median
+ * (LOC and import count). Far-above-norm snippets produce a WARN — a
+ * signal, never a gate (v0.15).
+ */
 export function yagniCheck(changeId: string): GuardCheckResult {
-  const repoFiles = walk("src").filter((f) => f.endsWith(".ts"));
-  if (repoFiles.length === 0) {
+  const findings = yagniFindings(changeId);
+  const { medianLoc, medianImports, snippets, warnings } = findings;
+  if (medianLoc === null) {
     return {
       step: "yagni",
       status: "SKIP",
       detail: "no existing .ts sources to build a baseline from",
+    };
+  }
+  if (snippets.length === 0) {
+    return {
+      step: "yagni",
+      status: "PASS",
+      detail: `no snippets to check (repo median: ${medianLoc} LOC, ${medianImports} imports)`,
+    };
+  }
+  if (warnings.length > 0) {
+    return {
+      step: "yagni",
+      status: "WARN",
+      detail: `${warnings.length} snippet(s) far above repo norms (median ${medianLoc} LOC, ${medianImports} imports): ${warnings
+        .map((w) => `${w.path}: ${w.reasons.join("; ")}`)
+        .join(" | ")}`,
+    };
+  }
+  return {
+    step: "yagni",
+    status: "PASS",
+    detail: `${snippets.length} snippet(s) within repo norms (median ${medianLoc} LOC, ${medianImports} imports)`,
+  };
+}
+
+export interface YagniSnippet {
+  path: string;
+  loc: number;
+  imports: number;
+  reasons: string[];
+}
+
+export interface YagniFindings {
+  medianLoc: number | null;
+  medianImports: number;
+  snippets: YagniSnippet[];
+  warnings: YagniSnippet[];
+}
+
+/**
+ * Shared YAGNI computation (v0.18): repo median + per-snippet stats, so
+ * `yagniCheck` and the debt registry (syncDebt) never drift apart.
+ */
+export function yagniFindings(changeId: string): YagniFindings {
+  const repoFiles = walk("src").filter((f) => f.endsWith(".ts"));
+  if (repoFiles.length === 0) {
+    return {
+      medianLoc: null,
+      medianImports: 0,
+      snippets: [],
+      warnings: [],
     };
   }
   const locs: number[] = [];
@@ -399,15 +462,9 @@ export function yagniCheck(changeId: string): GuardCheckResult {
   const snippets = existsSync(snippetsDir)
     ? walk(snippetsDir).filter((f) => f.endsWith(".ts"))
     : [];
-  if (snippets.length === 0) {
-    return {
-      step: "yagni",
-      status: "PASS",
-      detail: `no snippets to check (repo median: ${medianLoc} LOC, ${medianImports} imports)`,
-    };
-  }
 
-  const warnings: string[] = [];
+  const stats: YagniSnippet[] = [];
+  const warnings: YagniSnippet[] = [];
   for (const s of snippets) {
     const code = readFileSync(s, "utf8");
     const loc = code.split(/\r?\n/).filter((l) => l.trim().length > 0).length;
@@ -425,22 +482,30 @@ export function yagniCheck(changeId: string): GuardCheckResult {
         `${imports} imports vs median ${medianImports} (${(imports / medianImports).toFixed(1)}×)`,
       );
     }
-    if (reasons.length > 0) {
-      warnings.push(`${s}: ${reasons.join("; ")}`);
+    const row = { path: s, loc, imports, reasons };
+    stats.push(row);
+    if (reasons.length > 0) warnings.push(row);
+  }
+  return { medianLoc, medianImports, snippets: stats, warnings };
+}
+
+/**
+ * Debt sync (v0.18): every yagni WARN becomes an open debt entry, every
+ * snippet that no longer triggers the WARN closes its entry. Runs only
+ * when yagni is actually executed (never on a cache hit), so a stale
+ * signal can never fabricate a debt.
+ */
+export function syncDebt(changeId: string): void {
+  const { medianLoc, warnings, snippets } = yagniFindings(changeId);
+  if (medianLoc === null) return;
+  const warned = new Set(warnings.map((w) => w.path));
+  for (const s of snippets) {
+    if (warned.has(s.path)) {
+      recordDebt(s.path, s.loc, medianLoc);
+    } else {
+      closeDebt(s.path);
     }
   }
-  if (warnings.length > 0) {
-    return {
-      step: "yagni",
-      status: "WARN",
-      detail: `${warnings.length} snippet(s) far above repo norms (median ${medianLoc} LOC, ${medianImports} imports): ${warnings.join(" | ")}`,
-    };
-  }
-  return {
-    step: "yagni",
-    status: "PASS",
-    detail: `${snippets.length} snippet(s) within repo norms (median ${medianLoc} LOC, ${medianImports} imports)`,
-  };
 }
 
 /** Median of a numeric array (middle element of a sorted copy). */

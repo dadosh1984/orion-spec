@@ -1,10 +1,10 @@
-import { existsSync } from "node:fs";
-import { readFileSync } from "node:fs";
-import { readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { writeFileSafe, readJson } from "../../utils/file.js";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
 import { recordLesson, lessonsForChange } from "../../core/lessons.js";
+import { recordCalibration } from "../../core/calibration.js";
+import { estimateChangeCost } from "../next/handler.js";
 import type { GuardReport, Proposal } from "../../type.js";
 
 /** Result of the `out` skill. */
@@ -150,6 +150,16 @@ export async function out(
 
   const resultPath = `changes/${changeId}/result.md`;
   await writeFileSafe(resultPath, summary);
+  // Calibration (v0.18, H): a SUCCESS verdict records the change's actual
+  // weight — Σ change file bytes ÷ 4, the honest ≈ bytes/4 proxy — next
+  // to the estimate next would give. Future estimates learn from reality.
+  if (status === "SUCCESS") {
+    recordCalibration(
+      changeId,
+      estimateChangeCost(changeId),
+      changeBytes(changeId),
+    );
+  }
   return {
     changeId,
     resultPath,
@@ -183,6 +193,37 @@ function lessonsSection(changeId: string, goal: string): string[] {
     }
   }
   return [...lines, ""];
+}
+
+/**
+ * Actual weight of a completed change: Σ bytes of every file under
+ * changes/<id> (and its guard report) ÷ 4 — the honest ≈ bytes/4 proxy.
+ */
+function changeBytes(changeId: string): number {
+  const dir = `changes/${changeId}`;
+  const files = existsSync(dir) ? walkFiles(dir) : [];
+  const guard = `reports/${changeId}/guard-report.md`;
+  if (existsSync(guard)) files.push(guard);
+  let bytes = 0;
+  for (const f of files) {
+    try {
+      bytes += statSync(f).size;
+    } catch {
+      /* ignore */
+    }
+  }
+  return Math.max(1, Math.round(bytes / 4));
+}
+
+/** Recursively list files under a directory (best-effort). */
+function walkFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) out.push(...walkFiles(full));
+    else out.push(full);
+  }
+  return out;
 }
 
 /** Existing artifacts of a change, best-effort walk. */

@@ -1,21 +1,15 @@
 # Guard Report — v0.17-economy-in-shield-and-next
 
-Generated: 2026-08-06T18:52:00.140Z
+Generated: 2026-08-06T18:53:22.525Z
 
 | Step | Status | Detail |
 |------|--------|--------|
-| lint | PASS | $ eslint src --max-warnings=0
- |
-| type | PASS | ok |
-| test | PASS | [orion] no failures detected — summary:
- Test Files  30 passed (30)
-      Tests  325 passed (325)
-   Duration  15.59s (transform 2.29s, setup 10ms, collect 7.02s, tests 51.71s, environment 13ms, prepare 12.85s)
-
-[orion: −35435 B (−99.4%) ≈ 8859 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
-| drift | PASS | matched 1 exported capabilities |
-| yagni | PASS | no snippets to check (repo median: 85 LOC, 3 imports) |
-| economy | PASS | cache 780 B of 100.0 MB (5 entries) — within budget; ≈ 128566 tok saved across 152 compress op(s) |
-| security | PASS | no obvious issues |
+| lint | SKIP | cached PASS since 2026-08-06T18:53:15.448Z (hash unchanged) |
+| type | SKIP | cached PASS since 2026-08-06T18:53:16.622Z (hash unchanged) |
+| test | SKIP | cached PASS since 2026-08-06T18:53:04.610Z (hash unchanged) |
+| drift | SKIP | cached PASS since 2026-08-06T18:53:04.613Z (hash unchanged) |
+| yagni | SKIP | cached PASS since 2026-08-06T18:53:04.621Z (hash unchanged) |
+| economy | PASS | cache 1.1 KB of 100.0 MB (10 entries) — within budget; ≈ 137426 tok saved across 157 compress op(s) |
+| security | SKIP | cached PASS since 2026-08-06T18:53:04.625Z (hash unchanged) |
 
 **Overall: PASS**

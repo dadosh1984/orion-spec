@@ -21,7 +21,8 @@
 | `orion forge <title> --parallel <n>` | Same, but in parallel waves: each wave's tasks run in forked workers; parent applies bookkeeping after each wave (v0.16) |
 | `orion tasks <title>`      | Shows the task checklist with check marks and progress (✓ = done)                      |
 | `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, yagni, economy, security scan (package-manager aware) |
-| `orion next`               | Decides the next step from context; appends the token-economy footer (v0.17)              |
+| `orion next`               | Decides the next step from context; appends the token-economy footer (v0.17); estimates calibrated by history + budget-zone WARN + open-debt count (v0.18) |
+| `orion shield <change-id>` | 7 gates incl. yagni; yagni WARNs feed the debt registry (v0.18)                                        |
 | `orion out <change-id>`    | Writes the final `result.md` (tasks + guard + artifacts + next steps)                  |
 | `orion next`               | Decides the next action from context across all changes (draft → forge → shield → out) |
 

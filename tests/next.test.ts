@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { nextStep } from "../src/skills/next/handler.js";
@@ -45,7 +45,7 @@ function guard(changeId: string, allPass: boolean, fail = 0) {
 
 beforeEach(() => {
   process.chdir(tmpdir());
-  const dir = `orion-next-${Date.now()}`;
+  const dir = `orion-next-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   mkdirSync(dir);
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(process.cwd(), "cache");
@@ -54,6 +54,8 @@ beforeEach(() => {
 afterEach(() => {
   process.env.ORION_CACHE_DIR = "";
   delete process.env.ORION_ECONOMY_FILE;
+  delete process.env.ORION_CALIBRATION_FILE;
+  delete process.env.ORION_DEBT_FILE;
   process.chdir(ORIGINAL_CWD);
 });
 
@@ -226,5 +228,69 @@ describe("next: economy footer (v0.17)", () => {
     makeChange("cli-tool", true);
     const r = await nextStep();
     expect(r.summary).toContain("no compress ops recorded yet");
+  });
+});
+
+describe("next: calibration + budget + debt (v0.18)", () => {
+  it("shows honest (uncalibrated) when there is no calibration history", async () => {
+    process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
+    makeChange("cli-tool", true);
+    const r = await nextStep();
+    expect(r.summary).toContain("uncalibrated");
+  });
+
+  it("shows the calibrated factor once history has 3+ entries", async () => {
+    process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
+    const rows = [
+      { changeId: "a", estimate: 100, actual: 80, ts: new Date().toISOString() },
+      { changeId: "b", estimate: 100, actual: 120, ts: new Date().toISOString() },
+      { changeId: "c", estimate: 100, actual: 100, ts: new Date().toISOString() },
+    ];
+    writeFileSync(process.env.ORION_CALIBRATION_FILE, JSON.stringify(rows), "utf8");
+    makeChange("cli-tool", true);
+    const r = await nextStep();
+    expect(r.summary).toContain("calibrated ×1");
+    expect(r.summary).toContain("over 3 change(s)");
+  });
+
+  it("warns when the estimate exceeds the proposal budget (advisory)", async () => {
+    process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
+    makeChange("cli-tool", true);
+    // tiny budget so any estimate exceeds it
+    const p = JSON.parse(readFileSync("changes/cli-tool/proposal.json", "utf8"));
+    p.budget = "1";
+    writeFileSync("changes/cli-tool/proposal.json", JSON.stringify(p), "utf8");
+    const r = await nextStep();
+    expect(r.summary).toContain("exceeds budget");
+    expect(r.summary).toContain("consider splitting");
+  });
+
+  it("does not warn when within budget or budget unset", async () => {
+    process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
+    makeChange("cli-tool", true);
+    const p = JSON.parse(readFileSync("changes/cli-tool/proposal.json", "utf8"));
+    p.budget = "999999999";
+    writeFileSync("changes/cli-tool/proposal.json", JSON.stringify(p), "utf8");
+    const r = await nextStep();
+    expect(r.summary).not.toContain("exceeds budget");
+  });
+
+  it("appends the open-debt count to the footer when debts exist", async () => {
+    process.env.ORION_DEBT_FILE = join(process.cwd(), "debt.json");
+    writeFileSync(
+      process.env.ORION_DEBT_FILE,
+      JSON.stringify([
+        {
+          snippet: "changes/cli-tool/snippets/big.ts",
+          loc: 212,
+          medianLoc: 12,
+          openedAt: new Date().toISOString(),
+        },
+      ]),
+      "utf8",
+    );
+    makeChange("cli-tool", true);
+    const r = await nextStep();
+    expect(r.summary).toContain("Open debt: 1 item(s)");
   });
 });

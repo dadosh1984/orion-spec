@@ -275,6 +275,7 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - ✅ **v0.15** – YAGNI signal in shield + session metrics — _done_: `shield` measures each new snippet against the repo's own code norms (median LOC/imports) and reports outliers as **WARN** (a signal, never a gate — `allPass` stays green); `orion metrics --session <file.jsonl>` shows a per-role token breakdown (user/assistant/toolCall/toolResult/thinking) with the honest `≈ bytes/4` estimate
 - ✅ **v0.16** – Parallel forge waves — _done_: `orion forge <title> --parallel <n>` runs tasks in sequential waves, each task in its own forked worker (RED-GREEN only); all shared-file bookkeeping (tasks.md, lessons, forge cache) stays in the parent, applied after each wave — one writer per file; refactor runs once per wave
 - ✅ **v0.17** – Economy in the daily loop — _done_: shield runs a fresh read-only `economy` step (cache vs its 60% budget → WARN, never a gate); `orion next` appends the honest token-economy footer (≈ N tok saved across M compress ops)
+- ✅ **v0.18** – Calibration, debt & activity — _done_: `next` estimates calibrate against measured reality (median actual/estimate, honest `(uncalibrated)` otherwise); shield `yagni` WARNs feed an automatic debt registry (closed when the snippet is fixed); `next` warns when a candidate exceeds its proposal budget; every CLI run announces itself on stderr (`⚙ orion:<cmd> …` / `✅` / `❌` — same vocabulary as the MCP indicator)
 
 ## 📜 License
 

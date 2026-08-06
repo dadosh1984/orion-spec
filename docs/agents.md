@@ -126,6 +126,13 @@ terminal via stderr (stdout stays protocol-clean):
 ❌ orion:draft failed — no proposal found …
 ```
 
+The same vocabulary marks **direct CLI invocations** (v0.18): run
+`orion forge …` yourself or via an agent's shell tool and stderr announces
+`⚙ orion:forge …` / `✅ orion:forge done` / `❌ orion:forge failed — …`,
+so you always see when Orion is the one working. Protocol- and
+machine-mode streams stay clean (`mcp`, `help`, and any `--json` run emit
+no marker).
+
 Set `ORION_MCP_VERBOSE=0` to silence it.
 
 ## What the agent gets

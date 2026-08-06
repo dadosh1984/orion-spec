@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { writeFileSafe } from "../utils/file.js";
 import { OrionTrack } from "../core/track.js";
 import { lessonsStats, listLessons } from "../core/lessons.js";
+import { listDebt } from "../core/debt.js";
 import {
   learnFromSessions,
   sessionFiles,
@@ -570,10 +571,20 @@ async function trackCommand(
     case "status": {
       const stats = track.getStats();
       const lessons = lessonsStats();
+      const open = listDebt();
+      const debtText = open.length
+        ? ` | open debt: ${open.length} item(s):\n` +
+          open
+            .map(
+              (d) =>
+                `    ${d.snippet} — ${d.loc} LOC vs median ${d.medianLoc} (${d.openedAt.slice(0, 10)})`,
+            )
+            .join("\n")
+        : "";
       printOut(
         opts,
-        { ...stats, lessons: lessons.count },
-        `cache: ${stats.count} entries, ${formatBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"} | lessons: ${lessons.count}${lessons.lastTs ? ` (last ${new Date(lessons.lastTs).toISOString()})` : ""}`,
+        { ...stats, lessons: lessons.count, openDebt: open.length },
+        `cache: ${stats.count} entries, ${formatBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"} | lessons: ${lessons.count}${lessons.lastTs ? ` (last ${new Date(lessons.lastTs).toISOString()})` : ""}${debtText}`,
       );
       return 0;
     }
