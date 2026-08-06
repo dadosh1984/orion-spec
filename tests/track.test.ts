@@ -100,4 +100,11 @@ describe("OrionTrack", () => {
     expect(stats.count).toBe(1);
     expect(stats.size).toBeGreaterThan(0);
   });
+
+  it("keys() lists stored keys and survives Windows-illegal chars", () => {
+    track.store("forge:demo:1", "DONE");
+    track.store("scale:yagni:ab12cd", "result");
+    expect(track.keys().sort()).toEqual(["forge:demo:1", "scale:yagni:ab12cd"]);
+    expect(track.keys().every((k) => !k.includes("%"))).toBe(true);
+  });
 });

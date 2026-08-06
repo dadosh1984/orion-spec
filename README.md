@@ -102,6 +102,7 @@ orion tdd refactor calcSum
 - **`forge <title>`** – walks every open `- [ ]` task in `tasks.md` and drives it through TDD. Snippets are read from `changes/<title>/snippets/<slug>.ts`; completed tasks are marked `- [x]` and cached as `forge:<slug>=DONE` (skipped on re‑runs).
 - **`shield <change-id>`** – runs 5 guard‑rails: lint, type‑check (`tsc --noEmit`), unit tests, drift‑check (specs vs `src/tasks`), security scan (`eval`, `new Function`, `process.env.*`, `child_process`). Each step caches its result as `shield:<step>=PASS`; reports go to `reports/<change-id>/guard-report.{md,json}`.
 - **`out <change-id>`** – writes the final `changes/<change-id>/result.md` summary.
+- **`serve [--port N] [--ui]`** – starts the zero‑dependency web dashboard (v0.2): cache stats, key/value explorer, change list. Open `http://localhost:4780`.
 
 ```bash
 orion think "Build a CSV-to-JSON tool"
@@ -109,6 +110,7 @@ orion draft csv-tool
 orion forge csv-tool
 orion shield csv-tool
 orion out csv-tool
+orion serve           # dashboard at http://localhost:4780
 ```
 
 ## 🧪 Development
@@ -132,7 +134,7 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 
 ## 🗺️ Roadmap
 
-- **v0.2** – Web UI (`orion serve --ui`)
+- ✅ **v0.2** – Web UI (`orion serve --ui`) — *done*: dashboard with cache stats, key explorer and change list
 - **v0.3** – Plugin marketplace (`orion-plugin-*`)
 - **v0.4** – Docker image for sandboxed CI
 - **v0.5** – Benchmark module (per‑step timings, token‑budget graphs)

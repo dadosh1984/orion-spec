@@ -36,6 +36,8 @@ describe("parseArgs", () => {
       dry: true,
       watch: false,
       json: true,
+      port: 0,
+      ui: true,
     });
   });
 });

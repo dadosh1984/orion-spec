@@ -54,6 +54,7 @@
 | --------------- | ------------------------------------------------ |
 | `orion help`    | Show the help text                               |
 | `orion metrics` | Reserved for the benchmark module (planned v0.5) |
+| `orion serve [--port N] [--ui]` | Start the web dashboard (v0.2) |
 
 ## Examples
 
@@ -65,4 +66,5 @@ orion shield my-csv-tool --json
 orion track status
 orion scale src/foo.ts --dry
 orion tdd start calcSum
+orion serve --port 4780   # open http://localhost:4780
 ```

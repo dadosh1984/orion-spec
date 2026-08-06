@@ -9,6 +9,7 @@ import { draft } from "../skills/draft/handler.js";
 import { forge } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
+import { startServer } from "./serve.js";
 
 /** Global CLI flags shared by every command. */
 export interface CliOptions {
@@ -16,6 +17,10 @@ export interface CliOptions {
   dry: boolean;
   watch: boolean;
   json: boolean;
+  /** Port for `serve` (default 4780). */
+  port: number;
+  /** Serve the HTML dashboard at `/` (`serve --ui`). */
+  ui: boolean;
 }
 
 const HELP = `orion — self-contained AI-agent toolkit
@@ -39,6 +44,7 @@ Commands:
   tdd implement <task> <path>  Apply an implementation snippet
   tdd refactor <task>     Run lint --fix + format
   metrics                 (reserved) benchmark module
+  serve [--port N] [--ui] Start the web dashboard (v0.2)
   help                    Show this help
 
 Flags:
@@ -46,6 +52,8 @@ Flags:
   --dry        Preview instead of executing
   --watch      Re-run on file changes (tdd)
   --json       Machine-readable output
+  --port N     Listen port for serve (default 4780)
+  --ui         Serve the HTML dashboard at / (default for serve)
 `;
 
 /** Parse argv into a command plus options. */
@@ -59,10 +67,13 @@ export function parseArgs(argv: string[]): {
     dry: false,
     watch: false,
     json: false,
+    port: 0,
+    ui: true,
   };
   const args: string[] = [];
   let cmd = "";
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
     if (cmd === "" && !arg.startsWith("-")) {
       cmd = arg;
     } else if (arg === "--no-cache") {
@@ -73,6 +84,15 @@ export function parseArgs(argv: string[]): {
       opts.watch = true;
     } else if (arg === "--json") {
       opts.json = true;
+    } else if (arg === "--port") {
+      const value = Number(argv[i + 1]);
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new Error("--port requires a positive integer");
+      }
+      opts.port = value;
+      i++;
+    } else if (arg === "--ui") {
+      opts.ui = true;
     } else {
       args.push(arg);
     }
@@ -213,6 +233,25 @@ export async function main(argv: string[]): Promise<number> {
         "metrics: reserved for the benchmark module (planned v0.5)",
       );
       return 0;
+
+    case "serve": {
+      const server = await startServer(track, {
+        port: opts.port || 4780,
+        ui: opts.ui,
+      });
+      const addr = server.address();
+      const port =
+        typeof addr === "object" && addr ? addr.port : opts.port || 4780;
+      console.log(
+        `orion: dashboard at http://localhost:${port} (Ctrl+C to stop)`,
+      );
+      await new Promise<void>((resolve) => {
+        const stop = () => server.close(() => resolve());
+        process.once("SIGINT", stop);
+        process.once("SIGTERM", stop);
+      });
+      return 0;
+    }
 
     default:
       console.log(`orion: unknown command "${cmd}"\n\n${HELP}`);

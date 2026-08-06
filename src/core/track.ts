@@ -183,6 +183,20 @@ export class OrionTrack {
     return removed;
   }
 
+  /** List all cache keys currently on disk (decoded). */
+  keys(): string[] {
+    return readdirSync(this.cacheDir)
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => f.slice(0, -".json".length))
+      .map((k) => {
+        try {
+          return decodeURIComponent(k);
+        } catch {
+          return k;
+        }
+      });
+  }
+
   /** Remove the entire cache directory contents. */
   clear(): void {
     for (const f of readdirSync(this.cacheDir)) {
