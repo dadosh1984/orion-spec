@@ -5,7 +5,7 @@
 **Guard:** lint:PASS, type:PASS, test:PASS, drift:PASS, security:PASS
 - **Budget:** одна сессия; точечные vitest; демо: learn на реальной сессии + кастомный шаблон
 - **Constraints:** ноль зависимостей; все существующие тесты зелёные; без новых CLI-команд, КРОМЕ согласуемой гидом `orion learn <session>` (исключение); честность: no fake learning, метка tweaked; никакого упоминания чужих проектов
-- **Generated:** 2026-08-06T17:53:17.288Z
+- **Generated:** 2026-08-06T17:57:23.691Z
 
 ## Checklist
 
@@ -30,9 +30,9 @@
 | test | PASS | [orion] no failures detected — summary:
  Test Files  29 passed (29)
       Tests  282 passed (282)
-   Duration  7.94s (transform 2.96s, setup 3ms, collect 6.49s, tests 17.11s, environment 7ms, prepare 7.99s)
+   Duration  7.91s (transform 1.43s, setup 2ms, collect 4.30s, tests 23.30s, environment 8ms, prepare 7.90s)
 
-[orion: −34407 B (−99.4%) ≈ 8602 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
+[orion: −34667 B (−99.4%) ≈ 8667 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
 | drift | PASS | matched 3 exported capabilities |
 | security | PASS | no obvious issues |
 

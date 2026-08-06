@@ -14,7 +14,7 @@
     {
       "step": "test",
       "status": "PASS",
-      "detail": "[orion] no failures detected — summary:\n Test Files  29 passed (29)\n      Tests  282 passed (282)\n   Duration  7.94s (transform 2.96s, setup 3ms, collect 6.49s, tests 17.11s, environment 7ms, prepare 7.99s)\n\n[orion: −34407 B (−99.4%) ≈ 8602 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+      "detail": "[orion] no failures detected — summary:\n Test Files  29 passed (29)\n      Tests  282 passed (282)\n   Duration  7.91s (transform 1.43s, setup 2ms, collect 4.30s, tests 23.30s, environment 8ms, prepare 7.90s)\n\n[orion: −34667 B (−99.4%) ≈ 8667 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
     },
     {
       "step": "drift",
@@ -28,6 +28,6 @@
     }
   ],
   "allPass": true,
-  "generatedAt": "2026-08-06T17:53:17.288Z",
-  "contextHash": "7bf73c1f974a"
+  "generatedAt": "2026-08-06T17:57:23.691Z",
+  "contextHash": "2903264932ca"
 }
