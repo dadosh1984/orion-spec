@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -204,6 +204,50 @@ describe("mcp: tool calls", () => {
     await call(server, "initialize");
     const res = await call(server, "tools/call", 1, { name: "version" });
     expect(textOf(res)).toContain('"version"');
+  });
+
+  it("logs tool activity to stderr when ORION_MCP_VERBOSE=1", async () => {
+    const writes: string[] = [];
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk: unknown) => {
+        writes.push(String(chunk));
+        return true;
+      });
+    process.env.ORION_MCP_VERBOSE = "1";
+    try {
+      const server = makeServer();
+      const res = await call(server, "tools/call", 42, { name: "version" });
+      expect(res).toMatchObject({ jsonrpc: "2.0", id: 42 });
+      const log = writes.join("");
+      expect(log).toContain("⚙ orion:version");
+      expect(log).toContain("✅ orion:version done");
+    } finally {
+      spy.mockRestore();
+      delete process.env.ORION_MCP_VERBOSE;
+    }
+  });
+
+  it("announces the main argument for workflow tools", async () => {
+    const writes: string[] = [];
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk: unknown) => {
+        writes.push(String(chunk));
+        return true;
+      });
+    process.env.ORION_MCP_VERBOSE = "1";
+    try {
+      const server = makeServer();
+      await call(server, "tools/call", 43, {
+        name: "think",
+        arguments: { prompt: "build a calculator" },
+      });
+      expect(writes.join("")).toContain('⚙ orion:think "build a calculator"');
+    } finally {
+      spy.mockRestore();
+      delete process.env.ORION_MCP_VERBOSE;
+    }
   });
 });
 

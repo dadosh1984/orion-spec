@@ -114,6 +114,20 @@ Any tool speaking MCP over stdio connects the same way:
 { "command": "orion", "args": ["mcp"], "transport": "stdio" }
 ```
 
+## Terminal activity indicator
+
+When an agent calls Orion tools over MCP, you see what is running in your
+terminal via stderr (stdout stays protocol-clean):
+
+```
+⚙ orion:think "build a calculator"
+✅ orion:think done
+⚙ orion:draft build-a-calculator
+❌ orion:draft failed — no proposal found …
+```
+
+Set `ORION_MCP_VERBOSE=0` to silence it.
+
 ## What the agent gets
 
 | Tool                           | Purpose                                                                                                            |

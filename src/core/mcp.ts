@@ -1,6 +1,10 @@
 import { createInterface } from "node:readline";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { stdin as processStdin, stdout as processStdout } from "node:process";
+import {
+  stdin as processStdin,
+  stdout as processStdout,
+  stderr as processStderr,
+} from "node:process";
 import { think } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
 import { forge } from "../skills/forge/handler.js";
@@ -64,6 +68,38 @@ const ERRORS = {
   INTERNAL: -32603,
   NOT_INITIALIZED: -32002,
 } as const;
+
+/**
+ * Activity indicator: when an agent calls Orion tools over MCP, the user
+ * sees what is running in the terminal. Logs go to stderr — stdout stays
+ * protocol-clean. Disable with ORION_MCP_VERBOSE=0.
+ */
+function verboseEnabled(): boolean {
+  return process.env.ORION_MCP_VERBOSE !== "0";
+}
+
+/** Short human-readable hint for the tool's main argument. */
+function toolArgsHint(name: string, args: Record<string, unknown>): string {
+  const main =
+    args.prompt ?? args.title ?? args.changeId ?? args.file ?? args.slug;
+  if (typeof main === "string" && main.trim().length > 0) {
+    return `"${main.trim().slice(0, 60)}"`;
+  }
+  const s = JSON.stringify(args);
+  return s.length > 80 ? `${s.slice(0, 77)}…` : s;
+}
+
+function announceTool(name: string, args: Record<string, unknown>): void {
+  processStderr.write(`⚙ orion:${name} ${toolArgsHint(name, args)}\n`);
+}
+
+function logToolDone(name: string): void {
+  processStderr.write(`✅ orion:${name} done\n`);
+}
+
+function logToolFail(name: string, msg: string): void {
+  processStderr.write(`❌ orion:${name} failed — ${msg.slice(0, 140)}\n`);
+}
 
 function error(
   code: number,
@@ -365,11 +401,14 @@ export class McpServer {
           return error(ERRORS.METHOD_NOT_FOUND, `Unknown tool: ${name}`, id);
         }
         const args = req.params?.arguments ?? {};
+        if (verboseEnabled()) announceTool(name, args);
         try {
           const text = await this.tools.get(name)!.handler(args);
+          if (verboseEnabled()) logToolDone(name);
           return result(id, { content: [{ type: "text", text }] });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
+          if (verboseEnabled()) logToolFail(name, msg);
           return result(id, {
             content: [{ type: "text", text: `Error: ${msg}` }],
             isError: true,
