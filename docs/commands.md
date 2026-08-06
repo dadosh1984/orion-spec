@@ -50,15 +50,15 @@
 
 ## Other
 
-| Command                         | Description                                      |
-| ------------------------------- | ------------------------------------------------ |
-| `orion help`                    | Show the help text                               |
-| `orion metrics`                 | Benchmark + token-budget report (v0.5) |
-| `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2) |
-| `orion plugin new <name>`       | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
-| `orion plugin install <dir>`    | Copy a plugin into `~/.orion/plugins`            |
-| `orion plugin list`             | List installed plugins (global + local)          |
-| `orion plugin remove <name>`    | Uninstall a plugin                               |
+| Command                                    | Description                                                            |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| `orion help`                               | Show the help text                                                     |
+| `orion metrics`                            | Benchmark + token-budget report (v0.5)                                 |
+| `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2)             |
+| `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
+| `orion plugin install <dir>`               | Copy a plugin into `~/.orion/plugins`                                  |
+| `orion plugin list`                        | List installed plugins (global + local)                                |
+| `orion plugin remove <name>`               | Uninstall a plugin                                                     |
 
 ## Examples
 

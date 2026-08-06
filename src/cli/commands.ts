@@ -12,6 +12,7 @@ import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { startServer, readVersion } from "./serve.js";
 import { metricsReport, asciiBar } from "../core/metrics.js";
+import { McpServer, toolManifest } from "../core/mcp.js";
 import {
   listPlugins,
   installPlugin,
@@ -56,6 +57,7 @@ Commands:
   tdd implement <task> <path>  Apply an implementation snippet
   tdd refactor <task>     Run lint --fix + format
   metrics                 Benchmark + token-budget report (v0.5)
+  mcp                     MCP server for AI agents (v0.7) — any MCP client
   serve [--port N] [--host H] [--ui] Start the web dashboard (v0.2)
   plugin new <name>       Scaffold a plugin skeleton (v0.3)
   plugin install <dir>    Copy a plugin into ~/.orion/plugins
@@ -301,6 +303,28 @@ export async function main(argv: string[]): Promise<number> {
         process.once("SIGINT", stop);
         process.once("SIGTERM", stop);
       });
+      return 0;
+    }
+
+    case "mcp": {
+      if (args.includes("--list")) {
+        console.log(JSON.stringify(toolManifest(), null, 2));
+        return 0;
+      }
+      if (args.includes("--help")) {
+        console.log(
+          "orion mcp — Model Context Protocol server for AI agents\n\n" +
+            "  Runs JSON-RPC 2.0 over stdio. Attach from any MCP client:\n" +
+            "    claude mcp add orion -- orion mcp\n" +
+            "    codex mcp add orion -- orion mcp\n" +
+            "    opencode: add to opencode.json mcp section\n\n" +
+            "  orion mcp --list   print the tool manifest (JSON)\n" +
+            "  orion mcp --help   this help",
+        );
+        return 0;
+      }
+      const server = new McpServer();
+      await server.runStdio();
       return 0;
     }
 

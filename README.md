@@ -10,7 +10,7 @@
 1. **Deterministic Process, Not Guesswork** – the whole pipeline is a state machine: `think → draft → forge → shield → out`. Every non‑trivial step is verified locally.
 2. **Token‑Economy First** – all external command outputs (lint, type‑check, test, drift, security) are cached by **orion‑track**. A cached result is reused for the lifetime of the cache (default 30 days).
 3. **Minimalism by Design** – the **YAGNI ladder** (`orion‑scale`) automatically strips any code that isn't strictly required.
-4. **Test‑First, Always** – **orion‑tdd‑core** enforces the classic RED‑GREEN‑REFACTOR loop for *every* task.
+4. **Test‑First, Always** – **orion‑tdd‑core** enforces the classic RED‑GREEN‑REFACTOR loop for _every_ task.
 5. **Transparency & Auditable Artifacts** – `proposal.md`, `specs/*.md`, `design.md`, `tasks.md`, `guard‑report.md`, `result.md` live in the repository, version‑controlled and human‑readable.
 6. **Open for Extension** – plugin API and benchmark module are planned (v0.3–v0.5).
 
@@ -59,15 +59,15 @@ Cache keys are namespaced: `scale:<stage>:<hash>`, `tdd:<task>`, `shield:<step>`
 
 `orion scale <file> [--dry]` applies the ladder in order. Each stage result is cached under `scale:<stage>:<hash>`.
 
-| Stage | What it does |
-|---|---|
-| `yagni` | no‑op – never transform code without a reason |
-| `reuse` | finds duplicate functions and replaces them with imports |
-| `stdlib` | adds the `node:` prefix to bare built‑in imports |
-| `native` | rewrites `fs.readFileSync(...)` to `await fs.promises.readFile(...)` |
-| `dep`   | records missing external imports in `package.json` |
-| `oneLiner` | collapses long arrow functions into expression bodies |
-| `minimum` | strips `console.*`, `debugger`, comments and blank lines |
+| Stage      | What it does                                                         |
+| ---------- | -------------------------------------------------------------------- |
+| `yagni`    | no‑op – never transform code without a reason                        |
+| `reuse`    | finds duplicate functions and replaces them with imports             |
+| `stdlib`   | adds the `node:` prefix to bare built‑in imports                     |
+| `native`   | rewrites `fs.readFileSync(...)` to `await fs.promises.readFile(...)` |
+| `dep`      | records missing external imports in `package.json`                   |
+| `oneLiner` | collapses long arrow functions into expression bodies                |
+| `minimum`  | strips `console.*`, `debugger`, comments and blank lines             |
 
 ```bash
 orion scale src/foo.ts        # writes src/foo.scaled.ts
@@ -135,10 +135,12 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 
 ## 🗺️ Roadmap
 
-- ✅ **v0.2** – Web UI (`orion serve --ui`) — *done*: dashboard with cache stats, key explorer and change list
-- ✅ **v0.3** – Plugin marketplace (`orion-plugin-*`) — *done*: `plugin new/install/list/remove`, unknown commands dispatch to installed plugins
-- ✅ **v0.4** – Docker image for sandboxed CI — *done*: multi‑stage `Dockerfile`, `docker compose` sandbox with `--network none` + persistent cache volume
-- ✅ **v0.5** – Benchmark module — *done*: `orion metrics` reports cold/hot ladder timings and per‑namespace token‑budget with ASCII graphs
+- ✅ **v0.2** – Web UI (`orion serve --ui`) — _done_: dashboard with cache stats, key explorer and change list
+- ✅ **v0.3** – Plugin marketplace (`orion-plugin-*`) — _done_: `plugin new/install/list/remove`, unknown commands dispatch to installed plugins
+- ✅ **v0.4** – Docker image for sandboxed CI — _done_: multi‑stage `Dockerfile`, `docker compose` sandbox with `--network none` + persistent cache volume
+- ✅ **v0.5** – Benchmark module — _done_: `orion metrics` reports cold/hot ladder timings and per‑namespace token‑budget with ASCII graphs
+- ✅ **v0.6** – Security hardening — _done_: audit fixes (RCE guard, path traversal, stored XSS, configs resolve from the package, TDD RED rollback, string-safe YAGNI stages)
+- ✅ **v0.7** – Universal MCP server — _done_: `orion mcp` (JSON‑RPC 2.0 over stdio) exposes 13 tools; any MCP‑capable agent (Claude Code, Codex, opencode, Cursor, Cline, …) attaches via `orion mcp` — see `docs/agents.md`
 
 ## 📜 License
 

@@ -11,10 +11,10 @@ docker build -t orion:0.4 .
 
 The build is multi‑stage:
 
-| Stage | Contents |
-|---|---|
+| Stage     | Contents                                                                     |
+| --------- | ---------------------------------------------------------------------------- |
 | `builder` | full dev toolchain (typescript, vitest, eslint…) — compiles `src/` → `dist/` |
-| `runtime` | only `dist/`, `src/config/` and `package.json` — no devDependencies |
+| `runtime` | only `dist/`, `src/config/` and `package.json` — no devDependencies          |
 
 The runtime image is `node:22-alpine` and the CLI is the container entrypoint,
 so every `docker run orion …` is equivalent to `orion …`.
