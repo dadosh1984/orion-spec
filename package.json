@@ -5,7 +5,7 @@
   "description": "Self-contained AI-agent toolkit: deterministic think → draft → forge → shield workflow with zero dependencies at runtime.",
   "type": "module",
   "bin": {
-    "orion": "./dist/cli/index.js"
+    "orion": "dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dadosh1984/orion-spec.git"
+    "url": "git+https://github.com/dadosh1984/orion-spec.git"
   },
   "keywords": [
     "ai",
