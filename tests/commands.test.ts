@@ -52,6 +52,13 @@ describe("main dispatcher", () => {
     expect(await main(["bogus"])).toBe(1);
   });
 
+  it("routes multi-word unknown input to think (natural-language fallback)", async () => {
+    expect(await main(["build", "a", "calculator"])).toBe(0);
+    expect(
+      existsSync(join(dir, "changes", "build-a-calculator", "proposal.json")),
+    ).toBe(true);
+  });
+
   it("returns 1 for think without a prompt", async () => {
     expect(await main(["think"])).toBe(1);
   });

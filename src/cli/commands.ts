@@ -59,6 +59,7 @@ Commands:
   metrics                 Benchmark + token-budget report (v0.5)
   mcp                     MCP server for AI agents (v0.7) — any MCP client
   serve [--port N] [--host H] [--ui] Start the web dashboard (v0.2)
+  <multi-word prompt>      Shorthand for think — capture an idea (v0.7)
   plugin new <name>       Scaffold a plugin skeleton (v0.3)
   plugin install <dir>    Copy a plugin into ~/.orion/plugins
   plugin list             List installed plugins
@@ -351,6 +352,23 @@ export async function main(argv: string[]): Promise<number> {
           );
           return 1;
         }
+      }
+      // v0.7: natural-language fallback — `orion <multi-word prompt>`
+      // captures the idea as a proposal (shorthand for `orion think`).
+      // Single-word input stays an error so command typos are visible.
+      if (args.length > 0) {
+        const prompt = [cmd, ...args].join(" ");
+        const proposal = await think(
+          prompt,
+          { noCache: opts.noCache },
+          async () => "",
+        );
+        printOut(
+          opts,
+          proposal,
+          `Proposal "${proposal.title}" saved. Next: orion draft ${proposal.title}`,
+        );
+        return 0;
       }
       console.log(`orion: unknown command "${cmd}"\n\n${HELP}`);
       return 1;

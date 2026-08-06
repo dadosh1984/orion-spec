@@ -54,6 +54,7 @@
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
 | `orion metrics`                            | Benchmark + token-budget report (v0.5)                                 |
+| `orion <multi-word prompt>`                | Shorthand for `think` — captures an idea as a proposal (v0.7)          |
 | `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2)             |
 | `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
 | `orion plugin install <dir>`               | Copy a plugin into `~/.orion/plugins`                                  |
