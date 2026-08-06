@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { writeFileSafe } from "../../utils/file.js";
+import { formatBytes } from "../../utils/format.js";
 import { OrionTrack } from "../../core/track.js";
 import { compress } from "../../core/compress.js";
 import { economyStats } from "../../core/compress.js";
@@ -553,13 +554,6 @@ export function economyCheck(): GuardCheckResult {
     status: "PASS",
     detail: `${base} — within budget; ${ledger}`,
   };
-}
-
-/** Human-readable byte size (B/KB/MB). */
-export function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
 }
 
 /**

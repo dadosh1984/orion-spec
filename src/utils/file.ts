@@ -3,11 +3,6 @@ import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-/** Read a text file; throws if the file does not exist. */
-export async function readFileSafe(path: string): Promise<string> {
-  return readFile(path, "utf8");
-}
-
 /** Write a text file, creating parent directories on demand. */
 export async function writeFileSafe(path: string, data: string): Promise<void> {
   await ensureDir(dirname(path));

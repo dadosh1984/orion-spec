@@ -6,6 +6,7 @@ import {
   economyStats,
   type ProjectEconomy,
 } from "./compress.js";
+import type { SessionBreakdown } from "./sessions.js";
 import type { OrionTrack } from "./track.js";
 
 export { estimateTokens } from "./compress.js";
@@ -150,4 +151,68 @@ export async function metricsReport(
     cached: { count: stats.count, bytes: stats.size },
     economy: economyStats(),
   };
+}
+
+/** Render the human-readable benchmark + token-budget report. */
+export function formatMetricsReport(report: MetricsReport): string {
+  const maxBar = Math.max(...report.budget.map((b) => b.bytes), 1);
+  const budgetLines = report.budget.length
+    ? report.budget
+        .map(
+          (b) =>
+            `  ${b.namespace.padEnd(14)} ${asciiBar(b.bytes, maxBar)} ${b.bytes} B (~${b.tokens} tok, ${(b.share * 100).toFixed(1)}%)`,
+        )
+        .join("\n")
+    : "  (cache empty — run orion track status)";
+  const timingLines = report.timings
+    .map((t) => `  ${t.pass.padEnd(4)} ${String(t.durationMs).padStart(8)} ms`)
+    .join("\n");
+  return [
+    `orion metrics v${report.version}`,
+    "",
+    "Benchmark (YAGNI ladder on reference snippet):",
+    timingLines,
+    "",
+    "Token budget by cache namespace (~4 B/token):",
+    budgetLines,
+    `  total ~${report.totalTokens} tok in ${report.cached.count} entries (${report.cached.bytes} B)`,
+    "",
+    "Token economy (ledger ~/.orion/economy.json):",
+    report.economy.entries > 0
+      ? `  ≈ ${report.economy.savedTokens} tok saved across ${report.economy.entries} compress op(s) (${report.economy.savedBytes} B) — bytes/4 estimate, no tokenizer`
+      : "  no compress ops recorded yet — call the compress tool (or run shield) and check again",
+    ...(report.economy.byProject.length > 0
+      ? [
+          "  by project:",
+          ...report.economy.byProject
+            .slice(0, 6)
+            .map(
+              (p) =>
+                `    ${p.project.padEnd(18)} ≈ ${p.savedTokens} tok (${p.savedBytes} B) / ${p.entries} op(s)`,
+            ),
+        ]
+      : []),
+  ].join("\n");
+}
+
+/** Render the per-role token breakdown of one agent session. */
+export function formatSessionReport(path: string, b: SessionBreakdown): string {
+  const maxBytes = Math.max(...b.roles.map((r) => r.bytes), 1);
+  const header = `  ${"role".padEnd(10)} ${asciiBar(maxBytes, maxBytes)} ${"bytes".padStart(8)} ${"≈tokens".padStart(8)} share`;
+  return [
+    `orion metrics --session ${path}`,
+    `records: ${b.records} | invalid lines: ${b.skipped} | ≈ total ${b.totalTokens} tok (${b.totalBytes} B)`,
+    "",
+    b.roles.length === 0
+      ? "(no recognizable message roles in this session)"
+      : [
+          header,
+          ...b.roles.map(
+            (r) =>
+              `  ${r.role.padEnd(10)} ${asciiBar(r.bytes, maxBytes)} ${String(r.bytes).padStart(8)} ${String(r.tokens).padStart(8)} ${(r.share * 100).toFixed(1)}%`,
+          ),
+        ].join("\n"),
+    "",
+    "≈ tokens: bytes/4 estimate (no tokenizer)",
+  ].join("\n");
 }
