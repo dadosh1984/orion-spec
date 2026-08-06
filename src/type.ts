@@ -58,6 +58,10 @@ export interface ArtifactSet {
   specs: string[];
   design: string;
   tasks: string;
+  /** Snippets directory created for `forge` (v0.8). */
+  snippets?: string;
+  /** Existing files left untouched (idempotent re-draft). */
+  skipped?: string[];
 }
 
 /** Result of one guard-rail check in `shield`. */
