@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { performance } from "node:perf_hooks";
 import { sha256 } from "../utils/hash.js";
 import { resolveConfig } from "../utils/file.js";
 import { OrionTrack } from "./track.js";
@@ -54,6 +55,8 @@ export interface ScaleStagePreview {
   name: ScaleStageName;
   changed: boolean;
   result: string;
+  /** Real wall-clock time of this stage's handler in ms (v0.20). */
+  durationMs: number;
 }
 
 /** Full preview of the ladder without persisting anything. */
@@ -76,9 +79,18 @@ export async function previewScale(
   for (const stage of loadStages()) {
     const handlerFn = STAGE_HANDLERS[stage];
     if (!handlerFn) continue;
+    // Real per-stage timing (v0.20): each handler is measured individually
+    // instead of dividing one total span evenly across stages.
+    const stageStart = performance.now();
     const next = await handlerFn(current, file);
+    const durationMs = performance.now() - stageStart;
     const result = toCode(next);
-    stages.push({ name: stage, changed: result !== current, result });
+    stages.push({
+      name: stage,
+      changed: result !== current,
+      result,
+      durationMs,
+    });
     current = result;
   }
   return { stages, final: current };

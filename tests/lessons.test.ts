@@ -116,6 +116,22 @@ describe("lessons store (v0.12)", () => {
     expect(readLessons()).toEqual([]);
     expect(lessonsStats()).toEqual({ count: 0, lastTs: null });
   });
+
+  it("skips malformed rows instead of passing them through (v0.20)", () => {
+    writeFileSync(
+      process.env.ORION_LESSONS_FILE,
+      JSON.stringify([
+        { id: "1", ts: "t", changeId: "a", step: "shield", error: "e" },
+        { id: "2", changeId: "b", step: "out" }, // missing ts + error
+        "not-an-object",
+        null,
+      ]),
+      "utf8",
+    );
+    const rows = readLessons();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe("1");
+  });
 });
 
 describe("honest auto-capture", () => {

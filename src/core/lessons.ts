@@ -44,13 +44,25 @@ export function lessonsPath(): string {
   );
 }
 
+/** Rows that look like a real lesson (defensive shape check, v0.20). */
+function isLessonRow(row: unknown): row is Lesson {
+  if (typeof row !== "object" || row === null) return false;
+  const r = row as Record<string, unknown>;
+  return ["id", "ts", "changeId", "step", "error"].every(
+    (k) => typeof r[k] === "string",
+  );
+}
+
 /** Read all lessons; empty on missing/corrupt file (fail-safe). */
 export function readLessons(): Lesson[] {
   try {
     const path = lessonsPath();
     if (!existsSync(path)) return [];
     const raw = JSON.parse(readFileSync(path, "utf8"));
-    return Array.isArray(raw) ? (raw as Lesson[]) : [];
+    if (!Array.isArray(raw)) return [];
+    // A well-formed array can still contain malformed rows — skip them
+    // instead of passing garbage into findLessons/recordLesson.
+    return raw.filter(isLessonRow);
   } catch {
     return [];
   }

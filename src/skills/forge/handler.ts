@@ -72,8 +72,8 @@ export interface TaskOutcome {
   ok: boolean;
   /** Honest reason when the task could not be completed. */
   lastFailure?: string;
-  /** Why it's pending: "no-snippet" or "red" (test failed). */
-  reason: "no-snippet" | "red";
+  /** Why it's pending: "no-snippet", "red" (test failed), or "timeout". */
+  reason: "no-snippet" | "red" | "timeout";
 }
 
 /**
@@ -259,7 +259,7 @@ export interface WaveWorkerReply {
   slug: string;
   status: "done" | "pending";
   lastFailure?: string;
-  reason?: "no-snippet" | "red";
+  reason?: "no-snippet" | "red" | "timeout";
 }
 
 /**
@@ -416,6 +416,10 @@ export async function forkRunner(
   opts: { noCache?: boolean },
   workerPath: string = fileURLToPath(new URL("./worker.js", import.meta.url)),
 ): Promise<WaveWorkerReply[]> {
+  // A hung worker (no reply, no exit) must not block the wave forever.
+  // Generous default — TDD cycles run real test suites — overridable via env.
+  const timeoutMs =
+    Number(process.env.ORION_FORGE_TASK_TIMEOUT_MS) || 10 * 60 * 1000;
   const results = await Promise.all(
     slugs.map(
       (slug) =>
@@ -435,16 +439,31 @@ export async function forkRunner(
             }
             resolve(reply);
           };
-          child.on("message", (m) => resolveOnce(m as WaveWorkerReply));
-          child.on("error", () =>
+          // All callbacks below run asynchronously (after `timer` is set),
+          // so referencing `timer` inside them is never a TDZ issue.
+          const timer = setTimeout(() => {
+            resolveOnce({
+              slug,
+              status: "pending",
+              reason: "timeout",
+              lastFailure: `worker for ${slug} hung — killed after ${Math.round(timeoutMs / 1000)}s`,
+            });
+          }, timeoutMs);
+          child.on("message", (m) => {
+            clearTimeout(timer);
+            resolveOnce(m as WaveWorkerReply);
+          });
+          child.on("error", () => {
+            clearTimeout(timer);
             resolveOnce({
               slug,
               status: "pending",
               reason: "red",
               lastFailure: `worker crashed for ${slug}`,
-            }),
-          );
+            });
+          });
           child.on("exit", (code) => {
+            clearTimeout(timer);
             if (code !== 0) {
               resolveOnce({
                 slug,

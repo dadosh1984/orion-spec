@@ -182,11 +182,19 @@ export function extractTerms(text: string): string[] {
   return terms;
 }
 
-/** Whether a term appears as a word-boundary match in a source string. */
-function termInSource(term: string, source: string): boolean {
+/**
+ * Compile the word-boundary regex for a term once (terms are reused across
+ * every source file; compiling per call was N×M RegExp constructions).
+ */
+function compileTermRegex(term: string): RegExp {
   // Escape regex metachars inside term (terms may contain '-').
   const esc = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`\\b${esc}\\b`, "i").test(source);
+  return new RegExp(`\\b${esc}\\b`, "i");
+}
+
+/** Whether a compiled term regex matches a source string. */
+function termInSource(re: RegExp, source: string): boolean {
+  return re.test(source);
 }
 
 function readCapped(file: string, maxBytes = 128 * 1024): string {
@@ -266,12 +274,18 @@ export function verifyChange(
         });
         continue;
       }
-      // A term is matched if ANY source file contains it.
+      // A term is matched if ANY source file contains it. Regexes are
+      // compiled once per criterion, not once per term × file.
+      const termRegexes = new Map(
+        terms.map((t) => [t, compileTermRegex(t)] as const),
+      );
       const matchedTerms = terms.filter((t) =>
-        sources.some((s) => termInSource(t, s.source)),
+        sources.some((s) => termInSource(termRegexes.get(t)!, s.source)),
       );
       const evidence = sources
-        .filter((s) => matchedTerms.some((t) => termInSource(t, s.source)))
+        .filter((s) =>
+          matchedTerms.some((t) => termInSource(termRegexes.get(t)!, s.source)),
+        )
         .map((s) => s.file)
         .slice(0, 8);
       const status: VerifyStatus =

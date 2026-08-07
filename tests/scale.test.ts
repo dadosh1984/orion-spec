@@ -96,12 +96,14 @@ describe("scale core", () => {
     const changed = preview.stages.filter((s) => s.changed);
     expect(changed.map((s) => s.name)).toContain("stdlib");
     expect(changed.map((s) => s.name)).toContain("minimum");
-    // yagni must never change anything
-    expect(preview.stages[0]).toEqual({
+    // yagni must never change anything (durationMs is real timing, so
+    // compare the shape with toMatchObject, not toEqual)
+    expect(preview.stages[0]).toMatchObject({
       name: "yagni",
       changed: false,
       result: code,
     });
+    expect(preview.stages[0].durationMs).toBeGreaterThanOrEqual(0);
     // no-op input → only minimum may trim the trailing newline
     const clean = await previewScale("export const a = 1;\n");
     const cleanChanged = clean.stages.filter((s) => s.changed);

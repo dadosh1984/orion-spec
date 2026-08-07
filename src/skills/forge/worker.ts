@@ -65,7 +65,9 @@ process.on("message", async (msg: WorkerTask) => {
   return reply({
     slug,
     status: outcome.ok ? "done" : "pending",
-    reason: outcome.reason,
+    // The worker has no timeout path — a timeout is decided only by the
+    // parent's forkRunner. Narrow the union back to the worker's domain.
+    reason: outcome.reason === "timeout" ? "red" : outcome.reason,
     lastFailure: outcome.lastFailure,
   });
 });

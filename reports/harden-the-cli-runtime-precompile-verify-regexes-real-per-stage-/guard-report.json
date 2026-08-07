@@ -1,0 +1,48 @@
+{
+  "changeId": "harden-the-cli-runtime-precompile-verify-regexes-real-per-stage-",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  36 passed (36)\n      Tests  395 passed (395)\n   Duration  10.65s (transform 2.36s, setup 0ms, import 4.91s, tests 39.63s, environment 6ms)\n\n[orion: −2930 B (−93.8%) ≈ 733 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 60 LOC, 1 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 2.3 KB of 100.0 MB (12 entries) — within budget; ≈ 446581 tok saved across 296 compress op(s)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    },
+    {
+      "step": "verifiability",
+      "status": "PASS",
+      "detail": "oracles: ci, lint, test-runner, type-check · verifiability level 3 — strong checks present"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-07T10:15:43.125Z",
+  "contextHash": "3a7fdf7f4e83"
+}

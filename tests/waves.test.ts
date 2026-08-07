@@ -242,6 +242,23 @@ describe("forkRunner (v0.16)", () => {
     expect(replies[0].lastFailure).toContain("without replying");
   });
 
+  it("kills a hung worker after the timeout and reports pending (v0.20)", async () => {
+    const worker = join(dir, "hung-worker.cjs");
+    // Keeps the event loop alive, never replies, never exits.
+    writeFileSync(worker, `setInterval(() => {}, 1000);`, "utf8");
+    const prev = process.env.ORION_FORGE_TASK_TIMEOUT_MS;
+    process.env.ORION_FORGE_TASK_TIMEOUT_MS = "300";
+    try {
+      const replies = await forkRunner("demo", ["a"], {}, worker);
+      expect(replies[0].status).toBe("pending");
+      expect(replies[0].reason).toBe("timeout");
+      expect(replies[0].lastFailure).toContain("hung");
+    } finally {
+      if (prev === undefined) delete process.env.ORION_FORGE_TASK_TIMEOUT_MS;
+      else process.env.ORION_FORGE_TASK_TIMEOUT_MS = prev;
+    }
+  });
+
   it("refactorAll runs the real eslint/prettier pass (best effort)", async () => {
     // refactorAll operates on the repo's own src/tasks; run it from the
     // real repo cwd, then restore the isolated fixture cwd.

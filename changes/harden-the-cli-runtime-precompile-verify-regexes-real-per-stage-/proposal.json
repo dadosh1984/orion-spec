@@ -1,0 +1,16 @@
+{
+  "title": "harden-the-cli-runtime-precompile-verify-regexes-real-per-stage-",
+  "goal": "Harden the CLI runtime: precompile verify regexes, real per-stage metrics timing, forge worker timeout, defensive lessons validation, add core:coverage to the local ci gate",
+  "platform": "node",
+  "constraints": "Runtime stays zero-dependency and fast: no new deps, no async refactor of one-shot CLI paths; all existing tests keep passing; coverage 80/80/80/70; pool stays forks; per-stage timing must not change the existing ScalePreview shape beyond adding a durationMs field",
+  "budget": "moderate",
+  "clarity": "clear",
+  "language": "en",
+  "appliesLessons": [
+    "fix-the-broken-test-coverage-gate-in-orion-spec-v8-coverage-repo:shield:81b9a592ab5a",
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:ba70e22c8595",
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:8d1ea76ccecb",
+    "add-a-schema-version-field-to-the-oriontrack-on-disk-cache-forma-2:shield:47a5558a6a5f",
+    "fix-the-regressions-and-tooling-pollution-discovered-during-the-:shield:de78db3154fa"
+  ]
+}

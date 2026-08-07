@@ -46,7 +46,7 @@
     "prepublishOnly": "pnpm run build",
     "tdd": "node dist/cli/index.js tdd",
     "metrics": "node dist/cli/index.js metrics",
-    "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run build && pnpm run test:coverage"
+    "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run build && pnpm run test:coverage && pnpm run core:coverage"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

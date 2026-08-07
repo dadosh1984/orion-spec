@@ -82,14 +82,13 @@ export async function runBenchmark(track: OrionTrack): Promise<{
   await applyScale(BENCHMARK_SNIPPET, { track });
   const hotMs = performance.now() - hotStart;
 
-  // Per-stage breakdown from one cold pass.
-  const stageStart = performance.now();
+  // Per-stage breakdown from one cold pass — real per-stage timings now
+  // measured inside previewScale (v0.20), not one span divided evenly.
   const preview = await previewScale(BENCHMARK_SNIPPET);
-  const span = Math.max(0.0001, performance.now() - stageStart);
   const stages: StageTiming[] = preview.stages.map((s) => ({
     stage: s.name,
     changed: s.changed,
-    durationMs: span / preview.stages.length,
+    durationMs: Math.max(0.0001, s.durationMs),
   }));
 
   return {

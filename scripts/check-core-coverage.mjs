@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 /**
- * Core-pipeline coverage gate (v0.19).
+ * Core-pipeline coverage gate (v0.19, hardened v0.20).
  *
  * The global vitest threshold is 80% lines. The modules below are the ones
  * every other part of the pipeline depends on, so they get a stricter,
- * per-file floor on top of the global gate. Absolute path prefixes in
- * coverage/coverage-summary.json are ignored when matching (they differ on
- * Windows/macOS/Linux).
+ * per-file floor on top of the global gate. Absolute path prefixes in the
+ * coverage JSON are ignored when matching (they differ on Windows/macOS/Linux).
  *
- * Usage: node scripts/check-core-coverage.mjs [coverage-summary.json]
+ * Input: `coverage/coverage-final.json` by default (what the v8 provider
+ * reliably writes). vitest 4.1.10's "json-summary" reporter creates no
+ * output file at all, so the gate derives the same per-file line
+ * percentages itself: a line is covered when at least one statement on it
+ * has a hit count > 0 (this mirrors istanbul's own line accounting). A
+ * summary-format file (`lines: {total, covered, pct}`) is also accepted,
+ * so an explicit arg keeps working either way.
+ *
+ * Usage: node scripts/check-core-coverage.mjs [coverage-final.json|coverage-summary.json]
  * Exit 1 (honestly) when a core module drops below its floor.
  */
 import { readFileSync } from "node:fs";
@@ -16,8 +23,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const summaryPath =
-  process.argv[2] ?? join(root, "coverage", "coverage-summary.json");
+const coveragePath =
+  process.argv[2] ?? join(root, "coverage", "coverage-final.json");
 
 /** module basename → minimum lines-coverage percent. */
 const FLOORS = {
@@ -26,30 +33,58 @@ const FLOORS = {
   "src/core/tddCore.ts": 85,
 };
 
-let summary;
+let coverage;
 try {
-  summary = JSON.parse(readFileSync(summaryPath, "utf8"));
+  coverage = JSON.parse(readFileSync(coveragePath, "utf8"));
 } catch (err) {
   console.error(
-    `core-coverage: cannot read ${summaryPath} — run \`pnpm run test:coverage\` first (${err.message})`,
+    `core-coverage: cannot read ${coveragePath} — run \`pnpm run test:coverage\` first (${err.message})`,
   );
   process.exit(1);
 }
 
+/**
+ * Line coverage from an istanbul coverage entry. `coverage-final.json`
+ * entries carry `statementMap` + `s` (hit counts) instead of a precomputed
+ * `lines` summary — derive it the same way istanbul does.
+ */
+function linePct(entry) {
+  // A summary-format entry already has the figure.
+  const summary = entry?.lines;
+  if (typeof summary?.pct === "number") return summary.pct;
+  if (typeof summary?.covered === "number" && typeof summary?.total === "number") {
+    return summary.total === 0
+      ? 100
+      : Math.round((summary.covered / summary.total) * 10000) / 100;
+  }
+  const sm = entry?.statementMap ?? {};
+  const hits = entry?.s ?? {};
+  const lines = new Set();
+  const coveredLines = new Set();
+  for (const id of Object.keys(sm)) {
+    const line = sm[id]?.start?.line;
+    if (typeof line !== "number") continue;
+    lines.add(line);
+    if ((hits[id] ?? 0) > 0) coveredLines.add(line);
+  }
+  if (lines.size === 0) return null;
+  return Math.round((coveredLines.size / lines.size) * 10000) / 100;
+}
+
 const failures = [];
 for (const [module, floor] of Object.entries(FLOORS)) {
-  // coverage-summary keys are absolute paths (backslashes on Windows);
-  // match by the relative suffix after normalising separators.
-  const entry = Object.entries(summary).find(([key]) =>
+  // Keys are absolute paths (backslashes on Windows); match by the
+  // relative suffix after normalising separators.
+  const entry = Object.entries(coverage).find(([key]) =>
     key.replaceAll("\\", "/").endsWith(module),
   );
   if (!entry) {
-    failures.push(`  ${module}: NOT COVERED (missing from summary)`);
+    failures.push(`  ${module}: NOT COVERED (missing from coverage)`);
     continue;
   }
-  const pct = entry[1]?.lines?.pct;
+  const pct = linePct(entry[1]);
   if (typeof pct !== "number") {
-    failures.push(`  ${module}: no lines figure in summary`);
+    failures.push(`  ${module}: no line figures in coverage`);
     continue;
   }
   if (pct < floor) {
