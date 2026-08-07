@@ -42,20 +42,104 @@ export interface VerifyResult {
 
 /** Short noise words never treated as distinctive evidence terms. */
 const STOPWORDS = new Set([
-  "when", "then", "that", "with", "this", "from", "have", "must", "should",
-  "shall", "will", "would", "could", "there", "their", "these", "those",
-  "each", "into", "only", "also", "already", "after", "before", "about",
-  "between", "through", "within", "during", "because", "against", "being",
-  "been", "were", "been", "does", "doesn", "done", "over", "under", "more",
-  "most", "less", "fewer", "same", "such", "other", "first", "second",
-  "third", "not", "are", "was", "its", "has", "had", "and", "for", "all",
-  "any", "may", "can", "new", "the", "and", "subject", "in", "of", "to",
-  "is", "it", "as", "on", "by", "be", "or", "at", "an", "per", "zero",
-  "one", "two", "three", "four", "five", "shouldn", "won't", "wouldn",
+  "when",
+  "then",
+  "that",
+  "with",
+  "this",
+  "from",
+  "have",
+  "must",
+  "should",
+  "shall",
+  "will",
+  "would",
+  "could",
+  "there",
+  "their",
+  "these",
+  "those",
+  "each",
+  "into",
+  "only",
+  "also",
+  "already",
+  "after",
+  "before",
+  "about",
+  "between",
+  "through",
+  "within",
+  "during",
+  "because",
+  "against",
+  "being",
+  "been",
+  "were",
+  "been",
+  "does",
+  "doesn",
+  "done",
+  "over",
+  "under",
+  "more",
+  "most",
+  "less",
+  "fewer",
+  "same",
+  "such",
+  "other",
+  "first",
+  "second",
+  "third",
+  "not",
+  "are",
+  "was",
+  "its",
+  "has",
+  "had",
+  "and",
+  "for",
+  "all",
+  "any",
+  "may",
+  "can",
+  "new",
+  "the",
+  "and",
+  "subject",
+  "in",
+  "of",
+  "to",
+  "is",
+  "it",
+  "as",
+  "on",
+  "by",
+  "be",
+  "or",
+  "at",
+  "an",
+  "per",
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "shouldn",
+  "won't",
+  "wouldn",
 ]);
 
 /** Directories never scanned as source (they are not implementation). */
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "coverage", ".orion"]);
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "coverage",
+  ".orion",
+]);
 const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
 
 /** Deterministically list source files under a root (defensive). */
@@ -148,7 +232,10 @@ export function extractCriteria(specContent: string): string[] {
 }
 
 /** Run the whole-change evidence pass for a change against the project root. */
-export function verifyChange(changeId: string, projectRoot = process.cwd()): VerifyResult {
+export function verifyChange(
+  changeId: string,
+  projectRoot = process.cwd(),
+): VerifyResult {
   const base = join(projectRoot, "changes", changeId);
   if (!existsSync(base)) {
     throw new Error(
@@ -241,7 +328,9 @@ export function formatVerifyReport(res: VerifyResult): string {
   if (res.missingCount > 0) {
     lines.push(
       "",
-      "⚠️ " + res.missingCount + " criterion (not met) has no code evidence — spec may be unfulfilled despite passing checks.",
+      "⚠️ " +
+        res.missingCount +
+        " criterion (not met) has no code evidence — spec may be unfulfilled despite passing checks.",
     );
   }
   return lines.join("\n");
