@@ -1,0 +1,48 @@
+{
+  "changeId": "close-phantom-debt-entries-when-the-snippet-file-no-longer-exist",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  36 passed (36)\n      Tests  393 passed (393)\n   Duration  15.16s (transform 2.09s, setup 0ms, import 4.74s, tests 44.03s, environment 6ms)\n\n[orion: −2930 B (−93.8%) ≈ 733 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 60 LOC, 1 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 2.6 KB of 100.0 MB (16 entries) — within budget; ≈ 445849 tok saved across 293 compress op(s)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    },
+    {
+      "step": "verifiability",
+      "status": "PASS",
+      "detail": "oracles: ci, lint, test-runner, type-check · verifiability level 3 — strong checks present"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-07T09:08:08.708Z",
+  "contextHash": "f278e5d0fe0e"
+}
