@@ -101,6 +101,43 @@ describe("shield skill", () => {
     expect(security?.status).toBe("PASS");
   });
 
+  it("security scan ignores eval/process.env mentioned only in comments or strings", async () => {
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      "src/tasks/comment.ts",
+      [
+        "// never call eval( in production",
+        "/* new Function( is banned here */",
+        "// process.env.KEY is read at boot",
+        "export const ok = () => 1;",
+      ].join("\n"),
+      "utf8",
+    );
+    writeFileSync(
+      "src/tasks/string.ts",
+      'export const msg = "eval( is dangerous and new Function( too";',
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const security = report.checks.find((c) => c.step === "security");
+    expect(security?.status).toBe("PASS");
+  });
+
+  it("security scan still catches real eval after a preceding comment mention", async () => {
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      "src/tasks/mixed.ts",
+      [
+        "// do not eval( user input",
+        "export const run = (code: string) => eval(code);",
+      ].join("\n"),
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const security = report.checks.find((c) => c.step === "security");
+    expect(security?.status).toBe("FAIL");
+  });
+
   it("drift check flags capabilities missing from src/tasks", async () => {
     mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
     writeFileSync(

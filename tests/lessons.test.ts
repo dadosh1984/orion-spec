@@ -100,6 +100,23 @@ describe("lessons store (v0.12)", () => {
     expect(findLessons("")).toHaveLength(0);
   });
 
+  it("findLessons ranks denser matches first, newest as tie-break", () => {
+    // Older lesson that shares MORE vocabulary must rank above a newer
+    // lesson that only shares one word.
+    recordLesson({
+      changeId: "old",
+      step: "forge",
+      error: "cache prune failed on expired entries",
+    });
+    recordLesson({
+      changeId: "new",
+      step: "forge",
+      error: "cache write is slow",
+    });
+    const hits = findLessons("cache prune expired entries");
+    expect(hits.map((l) => l.changeId)).toEqual(["old", "new"]);
+  });
+
   it("caps the ledger at 500 entries, evicting oldest", () => {
     for (let i = 0; i < 510; i++) {
       recordLesson({ changeId: "cap", step: "forge", error: `err-${i}` });

@@ -51,3 +51,50 @@ docker run --rm --network none \
 
 `.github/workflows/ci.yml` builds the image on every push (step `Build Docker
 image`) — this catches Dockerfile regressions without pushing to a registry.
+
+## Trust model (honest scope)
+
+Orion is a **local deterministic toolkit, not a sandbox** — this is stated
+plainly so nobody mistakes the guard-rails for isolation:
+
+- **forge / tdd execute AI-generated code** — the implementation snippets are
+  written into `src/tasks/` and executed by the *project's own* test runner
+  (vitest, …). Orion applies a per-command timeout (default 120 s per test
+  run, `ORION_FORGE_TASK_TIMEOUT_MS` for parallel waves) but does **not**
+  isolate the process: a hallucinated destructive snippet would run with the
+  same privileges as the developer's shell. Treat anything the agent
+  generates as untrusted input: run it in a disposable container (`docker run
+  --rm --network none`), a throwaway VM, or a scratch git branch — never in a
+  directory you are not willing to lose. A Wasm/node:vm execution sandbox is
+  deliberately out of scope: snippets are executed by the project's own test
+  runner, not by Orion, so an in-process sandbox would give false confidence
+  without containing the runner.
+- **plugins run in-process** — `orion plugin install` copies a directory with
+  `manifest.json` into `~/.orion/plugins` and its handler is imported and
+  called in the CLI's own process with the same filesystem access as the
+  developer. Trust model is the same as installing an npm package: only
+  install plugins you trust. Orion does validate names (path-traversal
+  guards, `[a-zA-Z0-9_-]` only) and manifests, but that is hygiene, not a
+  capability boundary.
+- **shield's security scan is a heuristic** — regex-based detection with
+  comment/string-literal filtering; it flags *obvious* issues and is honest
+  about it ("no obvious issues" on PASS). It is a lint-like barrier, never a
+  claim of safety.
+
+## Sharing the token-economy cache in CI
+
+The cache is deliberately **local** (`~/.orion/cache`); there is no
+remote/HTTP/S3 backend. CI runners can still share one cache across a matrix
+without any new moving parts — point `ORION_CACHE_DIR` at a directory backed
+by the runner's cache mechanism (GitHub Actions cache, GitLab CI cache, a
+mounted volume):
+
+```bash
+# GitHub Actions: actions/cache@v4 on $ORION_CACHE_DIR, then:
+ORION_CACHE_DIR="$RUNNER_TEMP/orion-cache" orion shield my-change
+```
+
+Each key is a self-contained file, so a mounted/restored directory works as-is.
+A remote backend (S3/HTTP) is deliberately out of scope: it would add a
+network trust boundary and credentials handling for a benefit the
+mount-a-volume pattern already provides.

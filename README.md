@@ -5,7 +5,7 @@
 
 > **Orion** is a zero‑dependency framework that turns a high‑level idea into production‑ready code **while guaranteeing minimal token usage, full test coverage, and deterministic quality gates**. Everything – the cache, the YAGNI ladder, the RED‑GREEN‑REFACTOR engine and the CLI – is written from scratch.
 
-> **Status.** Honest about its age: the entire version history (v0.1 → v0.19) is
+> **Status.** Honest about its age: the entire version history (v0.1 → v0.20) is
 > compressed into a short span (first release 2026‑08‑06), so treat it as a young,
 > fast‑moving project rather than a battle‑tested one. Releases are cut manually;
 > the CHANGELOG tracks every change since v0.1.

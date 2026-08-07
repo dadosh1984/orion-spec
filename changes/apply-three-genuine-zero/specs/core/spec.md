@@ -1,0 +1,7 @@
+# Spec: core
+
+## Purpose
+Apply the three genuine zero-dependency kernels from the 10 reviewed proposals plus honest docs. (A) src/core/verify.ts: change verifyChange to scan per criterion — stream source files one at a time, keep only matched terms + evidence (O(1) memory) instead of loading every src file into memory. (B) src/skills/shield/handler.ts securityScan: strip comments and string literals from scanned code before regex matching, so comments/strings cannot cause false positives (kernel of the AST proposal, no parser dependency). (C) src/core/lessons.ts findLessons: rank matching lessons by match density (number of matched signature words), tie-break newest first, instead of newest-only — light relevance improvement, not full BM25 (ledger is capped at 500). (D) docs: add an honest "trust model & CI" note to docs/sandbox.md (or architecture.md) covering: forge executes AI-generated snippets via the project's own test runner (timeouts already applied, no sandbox — run untrusted input in a disposable environment), plugins run in-process (trust model like npm packages, path-traversal guards already in place), and ORION_CACHE_DIR/ORION_CACHE_BACKEND-free CI cache sharing via a mounted volume. Do not add Wasm, OTel, distributed cache backends, fix-debt auto-rewrite, context_budget, AST parser or CI annotations — explicitly out of scope with reasons.
+
+## Acceptance criteria
+- [ ] Placeholder — refine during implementation

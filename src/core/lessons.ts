@@ -114,7 +114,13 @@ export function listLessons(changeId?: string): Lesson[] {
 /**
  * Find lessons relevant to a free-form text (goal, corrective prompt, …).
  * Word-based (signature words of length >= 4): a lesson matches when any of
- * its fields mentions any signature word. Returns up to 5, newest first.
+ * its fields mentions any signature word. Matches are ranked by relevance —
+ * the number of distinct signature words found in the lesson (more shared
+ * vocabulary = more relevant) — with newest first as the tie-break, instead
+ * of the old newest-only selection. Returns up to 5. The ledger is capped at
+ * 500 entries, so a full statistical ranker (BM25/TF-IDF) would add
+ * complexity without a measurable win; match density is the honest, cheap
+ * signal.
  */
 export function findLessons(text: string): Lesson[] {
   const words = [
@@ -127,14 +133,21 @@ export function findLessons(text: string): Lesson[] {
   ];
   if (words.length === 0) return [];
   return readLessons()
-    .filter((l) => {
+    .map((l) => {
       const hay = [l.changeId, l.step, l.error, l.cause, l.fix]
         .join(" ")
         .toLowerCase();
-      return words.some((w) => hay.includes(w));
+      const matched = words.filter((w) => hay.includes(w)).length;
+      return matched > 0 ? { lesson: l, matched } : null;
     })
-    .slice(-5)
-    .reverse();
+    .filter((x): x is { lesson: Lesson; matched: number } => x !== null)
+    .sort(
+      (a, b) =>
+        b.matched - a.matched ||
+        (a.lesson.ts < b.lesson.ts ? 1 : a.lesson.ts > b.lesson.ts ? -1 : 0),
+    )
+    .slice(0, 5)
+    .map((x) => x.lesson);
 }
 
 /**

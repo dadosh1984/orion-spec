@@ -4,6 +4,30 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.21.0] — 2026-08-07
+
+- **Streaming whole-change verification** — `orion verify` no longer loads
+  every source file into memory: files are read one at a time per criterion,
+  keeping only matched terms + up to 8 evidence paths (O(1) memory relative
+  to repo size), with an early exit once every term is matched and evidence
+  is full. Same verdicts, same API — just bounded memory on large repos.
+- **Security scan ignores literals** — `orion shield`'s security step now
+  tokenizes the scanned code (dependency-free) and ignores matches that
+  begin inside a comment or string literal: `// eval(` or `const s =
+  "eval("` no longer raise false findings, while real code and string
+  payloads that matter (node:vm imports, credential values) are still
+  detected.
+- **Relevant lessons first** — `findLessons` ranks matches by how many
+  distinct signature words a lesson shares with the query (newest first as
+  the tie-break) instead of newest-only, so `think`/`next` pull the most
+  relevant precedents, not just the most recent.
+- **Docs: trust model & CI cache sharing** — `docs/sandbox.md` now states
+  the honest scope (forge/tdd executes AI-generated code via the project's
+  own test runner — no sandbox, timeouts only; plugins run in-process with
+  an npm-like trust model; shield's security scan is a heuristic) and shows
+  how to share one token-economy cache across a CI matrix via
+  `ORION_CACHE_DIR` on a mounted/restored volume — no remote backend.
+
 ## [0.20.0] — 2026-08-07
 
 - **Runtime hardening** — `orion verify` compiles each criterion's term

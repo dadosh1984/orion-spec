@@ -607,10 +607,85 @@ export function economyCheck(): GuardCheckResult {
   };
 }
 
+/** A [start, end) byte range of a comment or string/template literal. */
+export interface LiteralRange {
+  start: number;
+  end: number;
+  /** "comment" or "string"; the scanner filters by kind per pattern. */
+  kind: "comment" | "string";
+}
+
+/**
+ * Hand-rolled, dependency-free tokenizer returning the byte range of every
+ * comment and string/template literal in a source file. The security scanner
+ * uses it to ignore matches that BEGIN inside a literal: a comment is never
+ * executed and a string is data, not code, so `// eval(` or `const s =
+ * "eval("` cannot trigger a finding (kernel of the AST proposal — no parser
+ * dependency). String payloads that ARE the signal (node:vm imports,
+ * credential values, child_process usage via its import path) are still
+ * seen: those matches start on code tokens (`require`, `from`, the key name)
+ * or are exempted per pattern.
+ */
+export function literalRanges(code: string): LiteralRange[] {
+  const ranges: LiteralRange[] = [];
+  let i = 0;
+  const n = code.length;
+  while (i < n) {
+    const c = code[i];
+    if (c === "/" && code[i + 1] === "/") {
+      const start = i;
+      while (i < n && code[i] !== "\n") i++;
+      ranges.push({ start, end: i, kind: "comment" });
+      continue;
+    }
+    if (c === "/" && code[i + 1] === "*") {
+      const start = i;
+      i += 2;
+      while (i < n && !(code[i] === "*" && code[i + 1] === "/")) i++;
+      i = Math.min(n, i + 2);
+      ranges.push({ start, end: i, kind: "comment" });
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      const start = i;
+      i++;
+      while (i < n) {
+        if (code[i] === "\\") {
+          i += 2;
+          continue;
+        }
+        if (code[i] === quote) {
+          i++;
+          break;
+        }
+        i++;
+      }
+      ranges.push({ start, end: i, kind: "string" });
+      continue;
+    }
+    i++;
+  }
+  return ranges;
+}
+
+/** True when a match at `index` starts inside a literal of the given kinds. */
+function startsInLiteral(
+  ranges: LiteralRange[],
+  index: number,
+  kinds: ReadonlyArray<LiteralRange["kind"]>,
+): boolean {
+  return ranges.some(
+    (r) => index >= r.start && index < r.end && kinds.includes(r.kind),
+  );
+}
+
 /**
  * Security scan: reject eval, new Function and raw process.env access in
  * the user's task code (`src/tasks`) and the change's own snippets. The
- * scanner deliberately does NOT scan the toolkit's own source.
+ * scanner deliberately does NOT scan the toolkit's own source. Matches that
+ * begin inside a comment or string literal are ignored (see literalRanges)
+ * — a heuristic barrier, honestly labeled, never a sandbox.
  */
 function securityScan(changeId: string): GuardCheckResult {
   const roots = ["src/tasks", `changes/${changeId}/snippets`].filter((p) =>
@@ -662,8 +737,26 @@ function securityScan(changeId: string): GuardCheckResult {
     for (const file of walk(root)) {
       if (!file.endsWith(".ts")) continue;
       const code = readFileSync(file, "utf8");
+      const literals = literalRanges(code);
       for (const [re, label] of patterns) {
-        if (re.test(code)) findings.push(`${file}: ${label}`);
+        // `child_process` is only ever seen via its import string, so that
+        // pattern must still see string payloads (comments are filtered for
+        // every pattern). Pure code tokens (eval, new Function,
+        // process.env) also ignore strings — a string is data, not code.
+        const kinds: LiteralRange["kind"][] =
+          label === "child_process usage" ? ["comment"] : ["comment", "string"];
+        // Fresh global copy per (file × pattern): a shared non-global regex
+        // cannot iterate all matches (lastIndex would be shared/mutated).
+        const rx = new RegExp(
+          re.source,
+          re.flags.includes("g") ? re.flags : `${re.flags}g`,
+        );
+        let m: RegExpExecArray | null;
+        while ((m = rx.exec(code)) !== null) {
+          if (startsInLiteral(literals, m.index, kinds)) continue;
+          findings.push(`${file}: ${label}`);
+          break; // one finding per pattern per file, as before
+        }
       }
     }
   }

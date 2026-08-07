@@ -251,10 +251,7 @@ export function verifyChange(
     );
   }
   const specFiles = discoverySpecFiles(base);
-  const sources = listSourceFiles(join(projectRoot, "src")).map((f) => ({
-    file: relative(projectRoot, f),
-    source: readCapped(f),
-  }));
+  const sources = listSourceFiles(join(projectRoot, "src"));
 
   const findings: CriterionFinding[] = [];
   for (const specFile of specFiles) {
@@ -275,19 +272,38 @@ export function verifyChange(
         continue;
       }
       // A term is matched if ANY source file contains it. Regexes are
-      // compiled once per criterion, not once per term × file.
+      // compiled once per criterion, not once per term × file. Source files
+      // are streamed ONE AT A TIME and dropped after each read — per
+      // criterion the only retained state is the matched terms + up to 8
+      // evidence paths, so memory stays O(1) relative to repo size (a
+      // whole-change pass never loads every file into memory).
       const termRegexes = new Map(
         terms.map((t) => [t, compileTermRegex(t)] as const),
       );
-      const matchedTerms = terms.filter((t) =>
-        sources.some((s) => termInSource(termRegexes.get(t)!, s.source)),
-      );
-      const evidence = sources
-        .filter((s) =>
-          matchedTerms.some((t) => termInSource(termRegexes.get(t)!, s.source)),
-        )
-        .map((s) => s.file)
-        .slice(0, 8);
+      const matched = new Set<string>();
+      const matchedTerms: string[] = [];
+      const evidence: string[] = [];
+      for (const file of sources) {
+        const source = readCapped(file);
+        for (const term of terms) {
+          if (
+            !matched.has(term) &&
+            termInSource(termRegexes.get(term)!, source)
+          ) {
+            matched.add(term);
+            matchedTerms.push(term);
+          }
+        }
+        if (
+          evidence.length < 8 &&
+          matchedTerms.some((t) => termInSource(termRegexes.get(t)!, source))
+        ) {
+          evidence.push(relative(projectRoot, file));
+        }
+        // Early exit: every term matched and evidence is full — scanning the
+        // rest of the repo cannot change the verdict.
+        if (matched.size === terms.length && evidence.length >= 8) break;
+      }
       const status: VerifyStatus =
         matchedTerms.length === 0
           ? "missing"

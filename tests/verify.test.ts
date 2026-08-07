@@ -132,6 +132,25 @@ describe("verify: verifyChange (whole-change evidence pass)", () => {
     expect(res.total).toBe(0);
   });
 
+  it("streams per criterion: the verdict holds across many files", () => {
+    write(
+      "changes/demo/specs/cap/spec.md",
+      "# Spec: cap\n## Acceptance criteria\n- distributed consensus quorum reaches agreement\n",
+    );
+    for (let i = 0; i < 200; i++) {
+      write(`src/core/mod${i}.ts`, `export const n${i} = ${i};`);
+    }
+    write(
+      "src/core/quorum.ts",
+      "export const quorum = () => { /* distributed consensus quorum reaches agreement */ };",
+    );
+    const res = verifyChange("demo");
+    expect(res.total).toBe(1);
+    expect(res.findings[0].status).toBe("compliant");
+    expect(res.findings[0].matched).toBe(5);
+    expect(res.findings[0].evidence[0]).toContain("quorum.ts");
+  });
+
   it("formats a readable report, including the missing warning", () => {
     write(
       "changes/demo/specs/cap/spec.md",
