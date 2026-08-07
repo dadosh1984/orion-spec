@@ -290,6 +290,13 @@ describe("next: calibration + budget + debt (v0.18)", () => {
       "utf8",
     );
     makeChange("cli-tool", true);
+    // The snippet must actually exist for the debt to count as open.
+    mkdirSync(join("changes", "cli-tool", "snippets"), { recursive: true });
+    writeFileSync(
+      join("changes", "cli-tool", "snippets", "big.ts"),
+      "export const big = 1;\n",
+      "utf8",
+    );
     const r = await nextStep();
     expect(r.summary).toContain("Open debt: 1 item(s)");
   });

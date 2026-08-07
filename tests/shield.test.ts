@@ -22,6 +22,7 @@ beforeEach(() => {
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
   process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
+  process.env.ORION_DEBT_FILE = join(dir, "debt.json");
   // shield() fails honestly when the change does not exist (v0.10), so the
   // fixture change must exist for every test.
   mkdirSync(join("changes", "demo"), { recursive: true });
@@ -32,6 +33,7 @@ afterEach(() => {
   delete process.env.ORION_LESSONS_FILE;
   delete process.env.ORION_ECONOMY_FILE;
   delete process.env.ORION_SHIELD_SKIP_SHELL;
+  delete process.env.ORION_DEBT_FILE;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });

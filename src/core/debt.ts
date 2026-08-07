@@ -84,9 +84,36 @@ export function closeDebt(snippet: string): void {
   }
 }
 
+/**
+ * Close open debts whose snippet file no longer exists on disk (archived
+ * or deleted changes). Lazy self-heal at the read choke point: every
+ * consumer of open debts (countOpenDebt, track, next, dashboard) goes
+ * through listDebt, so the ledger heals on the next read. The row is kept
+ * with closedAt for the audit trail; the ledger is written only when
+ * something actually changed.
+ */
+function prunePhantomDebt(): DebtEntry[] {
+  const rows = readDebt();
+  let changed = false;
+  for (const row of rows) {
+    if (!row.closedAt && !existsSync(row.snippet)) {
+      row.closedAt = new Date().toISOString();
+      changed = true;
+    }
+  }
+  if (changed) {
+    try {
+      writeFileSync(debtLogPath(), JSON.stringify(rows, null, 2), "utf8");
+    } catch {
+      /* ledger must never break the workflow */
+    }
+  }
+  return rows;
+}
+
 /** Open (unclosed) debt entries. */
 export function listDebt(): DebtEntry[] {
-  return readDebt().filter((r) => !r.closedAt);
+  return prunePhantomDebt().filter((r) => !r.closedAt);
 }
 
 /** Number of open debts. */

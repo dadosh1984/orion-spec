@@ -42,6 +42,12 @@ afterEach(() => {
 
 describe("debt registry (v0.18)", () => {
   it("records and closes entries idempotently", () => {
+    mkdirSync(join("changes", "demo", "snippets"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "snippets", "big.ts"),
+      "export const big = 1;\n",
+      "utf8",
+    );
     recordDebt("changes/demo/snippets/big.ts", 212, 12);
     recordDebt("changes/demo/snippets/big.ts", 220, 12); // refresh, no dup
     expect(listDebt()).toHaveLength(1);
@@ -52,11 +58,26 @@ describe("debt registry (v0.18)", () => {
   });
 
   it("reopens a closed entry when warned again", () => {
+    writeFileSync("a.ts", "export const a = 1;\n", "utf8");
     recordDebt("a.ts", 200, 10);
     closeDebt("a.ts");
     recordDebt("a.ts", 210, 10);
     expect(countOpenDebt()).toBe(1);
     expect(readDebt()).toHaveLength(1);
+  });
+
+  it("closes an open debt whose snippet file no longer exists (v0.20)", () => {
+    writeFileSync("ghost.ts", "export const g = 1;\n", "utf8");
+    recordDebt("ghost.ts", 150, 10);
+    expect(countOpenDebt()).toBe(1);
+
+    // The snippet disappears (deleted / change archived) — the next read
+    // must self-heal: the entry closes itself, keeping the audit trail.
+    rmSync("ghost.ts");
+    expect(countOpenDebt()).toBe(0);
+    const rows = readDebt();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].closedAt).toBeDefined();
   });
 
   it("shield WARN records the debt, shield PASS closes it", async () => {
