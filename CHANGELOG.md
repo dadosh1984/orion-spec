@@ -4,6 +4,35 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.20.0] — 2026-08-07
+
+- **Runtime hardening** — `orion verify` compiles each criterion's term
+  regexes once per run instead of once per term × file; `orion scale`
+  measures real per-stage timings (`previewScale` times each stage handler,
+  `ScaleStagePreview.durationMs`) and `orion metrics` reports them instead
+  of dividing one total span evenly; `forge --parallel`'s fork workers are
+  killed after `ORION_FORGE_TASK_TIMEOUT_MS` (default 10 min) and reported
+  honestly as `pending`/`reason: timeout` instead of hanging the wave;
+  `lessons` skips malformed ledger rows instead of passing them through.
+- **Working core-coverage gate** — `pnpm run ci` now runs `core:coverage`
+  locally (it only ran in CI before). Adding it exposed a real breakage:
+  vitest 4.1.10's `json-summary` reporter writes no output file at all, so
+  the gate failed with ENOENT (in CI since the vitest 4 upgrade). The gate
+  now derives the same per-file line percentages from
+  `coverage/coverage-final.json` (istanbul-style accounting; track.ts 96.7,
+  scale.ts 97.3, tddCore.ts 92.3 vs floors 90/95/85).
+- **Docs honesty** — README no longer claims an unverifiable "35+ models/
+  agents" (it says any MCP-capable agent); `orion verify` and
+  `serve --token`/`ORION_DASHBOARD_TOKEN` are documented (loopback binds
+  run unauthenticated by design; non-loopback auto-generates a token); a
+  maturity note states plainly that the version history is young; the
+  verifiability 0–3 heuristic is documented in `docs/architecture.md`.
+- **Security posture** — new `SECURITY.md` (honest scope, dashboard token
+  handling, no telemetry, reporting path); the Dockerfile runtime stage
+  runs as the non-root `node` user with the cache volume at
+  `/home/node/.orion` and a `--user "$(id -u):$(id -g)"` note for
+  host-owned workspace mounts.
+
 ## [0.19.0] — 2026-08-07
 
 - **Cache schema versioning** — each on-disk cache entry now carries a schema
