@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { OrionTrack } from "./track.js";
 
 /**
  * Whole-change spec→source evidence pass (idea from a sibling spec-driven
@@ -38,6 +40,19 @@ export interface VerifyResult {
   missingCount: number;
   driftedCount: number;
   total: number;
+  /** True when served from the OrionTrack cache (v0.22, unchanged tree). */
+  cached?: boolean;
+}
+
+/** Options for verifyChange (v0.22). */
+export interface VerifyOptions {
+  /**
+   * Reuse the OrionTrack cache: keyed on spec CONTENT + source-tree
+   * fingerprint (path + mtimeMs + size, stat-only — no file reads). When
+   * both are unchanged the verdict cannot differ, so the stored result is
+   * returned instead of rescanning the repo.
+   */
+  cache?: boolean;
 }
 
 /** Short noise words never treated as distinctive evidence terms. */
@@ -243,6 +258,7 @@ export function extractCriteria(specContent: string): string[] {
 export function verifyChange(
   changeId: string,
   projectRoot = process.cwd(),
+  opts?: VerifyOptions,
 ): VerifyResult {
   const base = join(projectRoot, "changes", changeId);
   if (!existsSync(base)) {
@@ -251,6 +267,25 @@ export function verifyChange(
     );
   }
   const specFiles = discoverySpecFiles(base);
+
+  // Git-aware cache (v0.22): keyed on the spec CONTENT plus a stat-only
+  // fingerprint of the source tree. Same spec + same tree ⇒ same verdict,
+  // so a stored result is honest to reuse — no full repo rescan per commit.
+  let track: OrionTrack | null = null;
+  let cacheKey: string | null = null;
+  if (opts?.cache) {
+    track = OrionTrack.init();
+    const specDigest = specFiles
+      .map((f) => `${f.replace(/\\/g, "/")}:${hashText(readCapped(f))}`)
+      .sort()
+      .join("|");
+    cacheKey = `verify:${hashText(specDigest)}:${treeFingerprint(join(projectRoot, "src"))}`;
+    const hit = track.loadWithDate(cacheKey);
+    if (hit && typeof hit.value === "object" && hit.value !== null) {
+      return { ...(hit.value as VerifyResult), cached: true };
+    }
+  }
+
   const sources = listSourceFiles(join(projectRoot, "src"));
 
   const findings: CriterionFinding[] = [];
@@ -321,13 +356,44 @@ export function verifyChange(
     }
   }
 
-  return {
+  const result: VerifyResult = {
     changeId,
     findings,
     missingCount: findings.filter((f) => f.status === "missing").length,
     driftedCount: findings.filter((f) => f.status === "drifted").length,
     total: findings.length,
   };
+  if (track && cacheKey) track.store(cacheKey, result);
+  return result;
+}
+
+/** sha1 hex (12 chars) — the cache-key digest. */
+function hashText(text: string): string {
+  return createHash("sha1").update(text).digest("hex").slice(0, 12);
+}
+
+/**
+ * Stat-only fingerprint of a tree (path + mtimeMs + size). Never reads file
+ * bodies — content reads are exactly what verify costs, so the fingerprint
+ * is the cheap gate that makes the cache honest. A stale hit would require
+ * a same-millisecond, same-byte-size edit, which is negligible in practice;
+ * verify stays a signal (never a gate), and shield still content-checks.
+ */
+function treeFingerprint(root: string): string {
+  const h = createHash("sha1");
+  const files: string[] = [];
+  listSourceFiles(root, files);
+  for (const f of files.sort()) {
+    try {
+      const st = statSync(f);
+      h.update(f.replace(/\\/g, "/"));
+      h.update(String(st.mtimeMs));
+      h.update(String(st.size));
+    } catch {
+      /* unreadable — skip */
+    }
+  }
+  return h.digest("hex").slice(0, 12);
 }
 
 /** Human-readable verify report. */

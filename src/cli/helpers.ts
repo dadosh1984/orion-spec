@@ -6,6 +6,8 @@ export interface CliOptions {
   dry: boolean;
   watch: boolean;
   json: boolean;
+  /** Probe the npm registry for guard-prompt candidates (v0.22). */
+  npm: boolean;
   /** Port for `serve` (default 4780). */
   port: number;
   /** Serve the HTML dashboard at `/` (`serve --ui`). */

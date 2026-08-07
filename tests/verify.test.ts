@@ -15,11 +15,13 @@ let dir: string;
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-verify-"));
   process.chdir(dir);
+  process.env.ORION_CACHE_DIR = join(dir, "cache");
   mkdirSync(join("changes", "demo", "specs", "cap"), { recursive: true });
   mkdirSync(join("src", "core"), { recursive: true });
 });
 
 afterEach(() => {
+  delete process.env.ORION_CACHE_DIR;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });
@@ -65,6 +67,67 @@ describe("verify: extractCriteria", () => {
     expect(criteria).toContain("Criterion A is handled");
     expect(criteria).toContain("Criterion B works");
     expect(criteria).not.toContain("not a criterion");
+  });
+});
+
+describe("verify: git-aware cache (v0.22)", () => {
+  it("serves the stored verdict when spec and source tree are unchanged", () => {
+    write(
+      "changes/demo/specs/cap/spec.md",
+      "# Spec: cap\n## Acceptance criteria\n- the cache prunes expired entries\n",
+    );
+    write(
+      "src/core/cache.ts",
+      "export function prune() { /* prunes expired cache entries */ }\n",
+    );
+    const first = verifyChange("demo", dir, { cache: true });
+    expect(first.cached).toBeUndefined();
+    const second = verifyChange("demo", dir, { cache: true });
+    expect(second.cached).toBe(true);
+    expect(second).toMatchObject({
+      total: first.total,
+      missingCount: first.missingCount,
+    });
+    // Without the flag the cache is never consulted (tests stay hermetic).
+    const third = verifyChange("demo", dir);
+    expect(third.cached).toBeUndefined();
+  });
+
+  it("recomputes when the source tree changes (fingerprint differs)", () => {
+    write(
+      "changes/demo/specs/cap/spec.md",
+      "# Spec: cap\n## Acceptance criteria\n- the cache prunes expired entries\n",
+    );
+    write(
+      "src/core/cache.ts",
+      "export function prune() { /* prunes expired cache entries */ }\n",
+    );
+    verifyChange("demo", dir, { cache: true });
+    // Different content, different byte size → fingerprint must differ.
+    write(
+      "src/core/cache.ts",
+      "export function prune(entries) { return entries.length; }\n",
+    );
+    const res = verifyChange("demo", dir, { cache: true });
+    expect(res.cached).toBeUndefined();
+  });
+
+  it("recomputes when the spec changes", () => {
+    write(
+      "changes/demo/specs/cap/spec.md",
+      "# Spec: cap\n## Acceptance criteria\n- the cache prunes expired entries\n",
+    );
+    write(
+      "src/core/cache.ts",
+      "export function prune() { /* prunes expired cache entries */ }\n",
+    );
+    verifyChange("demo", dir, { cache: true });
+    write(
+      "changes/demo/specs/cap/spec.md",
+      "# Spec: cap\n## Acceptance criteria\n- the cache prunes expired entries immediately\n",
+    );
+    const res = verifyChange("demo", dir, { cache: true });
+    expect(res.cached).toBeUndefined();
   });
 });
 

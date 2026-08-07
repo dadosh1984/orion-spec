@@ -146,11 +146,14 @@ export function findLessons(text: string): Lesson[] {
         .toLowerCase();
       const matched = words.filter((w) => hay.includes(w)).length;
       const { sim, shared } = ngramSim(queryGrams, trigrams(hay));
-      return matched > 0 || (shared >= NGRAM_MIN_SHARED && sim >= NGRAM_THRESHOLD)
+      return matched > 0 ||
+        (shared >= NGRAM_MIN_SHARED && sim >= NGRAM_THRESHOLD)
         ? { lesson: l, matched, sim }
         : null;
     })
-    .filter((x): x is { lesson: Lesson; matched: number; sim: number } => x !== null)
+    .filter(
+      (x): x is { lesson: Lesson; matched: number; sim: number } => x !== null,
+    )
     .sort(
       (a, b) =>
         b.matched - a.matched ||

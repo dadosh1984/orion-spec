@@ -41,6 +41,8 @@ export interface ForgeOptions {
     desc: string;
     status: "done" | "skipped" | "pending";
   }) => void;
+  /** MCP progress (v0.22): (done, total, message) as tasks resolve. */
+  onProgress?: (done: number, total: number, message: string) => void;
 }
 
 /** One task entry parsed from tasks.md. */
@@ -209,6 +211,7 @@ export async function forge(
       skipped++;
       rows.push({ desc, status: "skipped" });
       opts?.onTask?.({ desc, status: "skipped" });
+      opts?.onProgress?.(done + skipped, open.length, `skipped ${desc}`);
       markTaskDone(tasksPath, desc);
       continue;
     }
@@ -222,6 +225,7 @@ export async function forge(
       track,
     );
     await finishTask(title, outcome, track, { noCache: opts?.noCache });
+    opts?.onProgress?.(done + skipped + 1, open.length, desc);
 
     if (!outcome.ok) {
       pending.push(slug);
@@ -366,6 +370,11 @@ export async function forgeParallel(
     if (doneInWave.length > 0) {
       await (opts?.refactor ?? refactorAll)();
     }
+    opts?.onProgress?.(
+      done + skipped,
+      open.length,
+      `wave ${waveIndex}/${waves.length} complete`,
+    );
   }
 
   const summary: ForgeSummary = {

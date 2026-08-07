@@ -59,6 +59,7 @@ export function parseArgs(argv: string[]): {
     dry: false,
     watch: false,
     json: false,
+    npm: false,
     port: 0,
     ui: true,
   };
@@ -76,6 +77,8 @@ export function parseArgs(argv: string[]): {
       opts.watch = true;
     } else if (arg === "--json") {
       opts.json = true;
+    } else if (arg === "--npm") {
+      opts.npm = true;
     } else if (arg === "--port") {
       const value = Number(argv[i + 1]);
       if (!Number.isInteger(value) || value <= 0) {

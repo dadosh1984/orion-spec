@@ -40,7 +40,20 @@ export interface McpTool {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  handler: (args: Record<string, unknown>) => Promise<string>;
+  handler: (
+    args: Record<string, unknown>,
+    ctx?: ToolContext,
+  ) => Promise<string>;
+}
+
+/**
+ * Per-call context passed to tool handlers (v0.22). Lets long-running
+ * tools emit MCP `notifications/progress` so the agent sees progress
+ * instead of assuming the tool hung.
+ */
+export interface ToolContext {
+  /** Emit a progress notification (absent when the client sent no token). */
+  notify?: (p: { progress?: number; total?: number; message?: string }) => void;
 }
 
 /** JSON-RPC request received from the agent. */
@@ -52,6 +65,8 @@ interface RpcRequest {
     name?: string;
     arguments?: Record<string, unknown>;
     protocolVersion?: string;
+    /** Client-supplied progress token (MCP spec: params._meta.progressToken). */
+    _meta?: { progressToken?: number | string };
   };
 }
 
@@ -205,9 +220,11 @@ export function getMcpTools(): McpTool[] {
         },
         required: ["title"],
       },
-      handler: async (args) => {
+      handler: async (args, ctx) => {
         const summary = await forge(String(args.title), {
           noCache: Boolean(args.noCache),
+          onProgress: (done, total, message) =>
+            ctx?.notify?.({ progress: done, total, message }),
         });
         return JSON.stringify(summary, null, 2);
       },
@@ -224,9 +241,11 @@ export function getMcpTools(): McpTool[] {
         },
         required: ["changeId"],
       },
-      handler: async (args) => {
+      handler: async (args, ctx) => {
         const report = await shield(String(args.changeId), {
           noCache: Boolean(args.noCache),
+          onProgress: (step, index, total) =>
+            ctx?.notify?.({ progress: index, total, message: step }),
         });
         return JSON.stringify(report, null, 2);
       },
@@ -508,8 +527,25 @@ export class McpServer {
         }
         const args = req.params?.arguments ?? {};
         if (verboseEnabled()) announceTool(name, args);
+        // Progress notifications (v0.22): when the client passes a progress
+        // token in _meta, long tools stream notifications/progress lines
+        // before the final result — the agent sees work happening instead
+        // of blocking on silence.
+        const progressToken = req.params?._meta?.progressToken;
+        const ctx: ToolContext = {};
+        if (progressToken !== undefined) {
+          ctx.notify = (p) => {
+            processStdout.write(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                method: "notifications/progress",
+                params: { progressToken, ...p },
+              }) + "\n",
+            );
+          };
+        }
         try {
-          const text = await this.tools.get(name)!.handler(args);
+          const text = await this.tools.get(name)!.handler(args, ctx);
           if (verboseEnabled()) {
             logToolDone(name);
             // Live checklist in the terminal: draft creates the plan,

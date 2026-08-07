@@ -95,7 +95,11 @@ describe("lessons store (v0.12)", () => {
   });
 
   it("findLessons matches substrings across error/cause/fix", () => {
-    recordLesson({ changeId: "x", step: "shield", error: "security scan found eval()" });
+    recordLesson({
+      changeId: "x",
+      step: "shield",
+      error: "security scan found eval()",
+    });
     const hits = findLessons("security scan");
     expect(hits).toHaveLength(1);
     expect(findLessons("totally-unrelated")).toHaveLength(0);
@@ -145,7 +149,9 @@ describe("lessons store (v0.12)", () => {
 
   it("is fail-safe: a broken ledger never throws", () => {
     process.env.ORION_LESSONS_FILE = join(dir, "no", "such", "dir", "x.json");
-    expect(() => recordLesson({ changeId: "a", step: "shield", error: "e" })).not.toThrow();
+    expect(() =>
+      recordLesson({ changeId: "a", step: "shield", error: "e" }),
+    ).not.toThrow();
     expect(readLessons()).toEqual([]);
     expect(lessonsStats()).toEqual({ count: 0, lastTs: null });
   });
@@ -216,10 +222,7 @@ describe("honest auto-capture", () => {
 
   it("forge records a lesson when a task stays RED", async () => {
     seedChange("demo", ["Implement add"]);
-    const failing = (
-      slug: string,
-      track: OrionTrack,
-    ): TddEngine => {
+    const failing = (slug: string, track: OrionTrack): TddEngine => {
       const engine = forgeDefaultEngine(slug, track);
       engine.runTest = async () => false;
       return engine;
@@ -388,7 +391,11 @@ describe("think — self-learning across projects", () => {
   });
 
   it("does not attach lessons when none match (idempotent)", async () => {
-    const proposal = await think("brand new idea", { noCache: true }, async () => "");
+    const proposal = await think(
+      "brand new idea",
+      { noCache: true },
+      async () => "",
+    );
     expect(proposal.appliesLessons).toBeUndefined();
   });
 });
@@ -419,7 +426,11 @@ describe("mcp lessons_list", () => {
   }
 
   it("lists lessons for agents (35+ models) and is honest on empty", async () => {
-    recordLesson({ changeId: "demo", step: "out", error: "tasks incomplete (1/2)" });
+    recordLesson({
+      changeId: "demo",
+      step: "out",
+      error: "tasks incomplete (1/2)",
+    });
     const manifest = toolManifest() as {
       tools: Array<{ name: string }>;
     };

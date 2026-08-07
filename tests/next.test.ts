@@ -219,12 +219,23 @@ describe("next: economy footer (v0.17)", () => {
   it("appends honest savings when a fixture ledger exists", async () => {
     process.env.ORION_ECONOMY_FILE = join(process.cwd(), "economy.json");
     const rows = [
-      { project: "demo", tool: "docker", inBytes: 8000, outBytes: 2000, cached: false, savedBytes: 6000, savedTokens: 1500, ts: new Date().toISOString() },
+      {
+        project: "demo",
+        tool: "docker",
+        inBytes: 8000,
+        outBytes: 2000,
+        cached: false,
+        savedBytes: 6000,
+        savedTokens: 1500,
+        ts: new Date().toISOString(),
+      },
     ];
     writeFileSync(process.env.ORION_ECONOMY_FILE, JSON.stringify(rows), "utf8");
     makeChange("cli-tool", true);
     const r = await nextStep();
-    expect(r.summary).toContain("Token economy: ≈ 1500 tok saved across 1 compress op(s)");
+    expect(r.summary).toContain(
+      "Token economy: ≈ 1500 tok saved across 1 compress op(s)",
+    );
   });
 
   it("says the honest nothing-yet line when the ledger is empty", async () => {
@@ -278,11 +289,30 @@ describe("next: calibration + budget + debt (v0.18)", () => {
   it("shows the calibrated factor once history has 3+ entries", async () => {
     process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
     const rows = [
-      { changeId: "a", estimate: 100, actual: 80, ts: new Date().toISOString() },
-      { changeId: "b", estimate: 100, actual: 120, ts: new Date().toISOString() },
-      { changeId: "c", estimate: 100, actual: 100, ts: new Date().toISOString() },
+      {
+        changeId: "a",
+        estimate: 100,
+        actual: 80,
+        ts: new Date().toISOString(),
+      },
+      {
+        changeId: "b",
+        estimate: 100,
+        actual: 120,
+        ts: new Date().toISOString(),
+      },
+      {
+        changeId: "c",
+        estimate: 100,
+        actual: 100,
+        ts: new Date().toISOString(),
+      },
     ];
-    writeFileSync(process.env.ORION_CALIBRATION_FILE, JSON.stringify(rows), "utf8");
+    writeFileSync(
+      process.env.ORION_CALIBRATION_FILE,
+      JSON.stringify(rows),
+      "utf8",
+    );
     makeChange("cli-tool", true);
     const r = await nextStep();
     expect(r.summary).toContain("calibrated ×1");
@@ -293,7 +323,9 @@ describe("next: calibration + budget + debt (v0.18)", () => {
     process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
     makeChange("cli-tool", true);
     // tiny budget so any estimate exceeds it
-    const p = JSON.parse(readFileSync("changes/cli-tool/proposal.json", "utf8"));
+    const p = JSON.parse(
+      readFileSync("changes/cli-tool/proposal.json", "utf8"),
+    );
     p.budget = "1";
     writeFileSync("changes/cli-tool/proposal.json", JSON.stringify(p), "utf8");
     const r = await nextStep();
@@ -304,7 +336,9 @@ describe("next: calibration + budget + debt (v0.18)", () => {
   it("does not warn when within budget or budget unset", async () => {
     process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
     makeChange("cli-tool", true);
-    const p = JSON.parse(readFileSync("changes/cli-tool/proposal.json", "utf8"));
+    const p = JSON.parse(
+      readFileSync("changes/cli-tool/proposal.json", "utf8"),
+    );
     p.budget = "999999999";
     writeFileSync("changes/cli-tool/proposal.json", JSON.stringify(p), "utf8");
     const r = await nextStep();

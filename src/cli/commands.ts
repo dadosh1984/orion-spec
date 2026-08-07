@@ -22,6 +22,7 @@ import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { nextStep } from "../skills/next/handler.js";
 import { verifyChange, formatVerifyReport } from "../core/verify.js";
+import { guardPrompt, checkNpmPackages } from "../skills/think/guard.js";
 import { startServer, readVersion } from "./serve.js";
 import {
   metricsReport,
@@ -43,6 +44,42 @@ export async function main(argv: string[]): Promise<number> {
     case "-h":
       console.log(HELP);
       return 0;
+
+    case "guard-prompt": {
+      const prompt = args.join(" ").trim();
+      if (!prompt) return fail("guard-prompt requires a prompt");
+      const guard = guardPrompt(prompt);
+      const lines = [`Guard verdict: ${guard.ok ? "clean" : "suspicious"}`];
+      if (guard.packages.length > 0) {
+        if (opts.npm) {
+          const verdict = await checkNpmPackages(
+            guard.packages.map((p) => p.name),
+          );
+          for (const p of guard.packages) {
+            const v = verdict[p.name] ?? "unknown";
+            lines.push(
+              `  ${v === "missing" ? "❌" : v === "exists" ? "✓" : "?"} ${p.name} — ${v} (${p.context})`,
+            );
+          }
+        } else {
+          lines.push(
+            "  package-like references: " +
+              guard.packages.map((p) => p.name).join(", "),
+          );
+          lines.push(
+            "  (run with --npm to probe the npm registry — fail-open, offline-safe)",
+          );
+        }
+      }
+      for (const i of guard.issues) lines.push(`  ⚠ ${i}`);
+      if (!guard.ok) {
+        lines.push(
+          "Proposal creation is blocked until you confirm with `orion think --force`.",
+        );
+      }
+      console.log(lines.join("\n"));
+      return guard.ok ? 0 : 2;
+    }
 
     case "think": {
       const prompt = args.join(" ");
@@ -156,10 +193,13 @@ export async function main(argv: string[]): Promise<number> {
     case "verify": {
       const changeId = args[0];
       if (!changeId) return fail("verify requires a change id");
-      const result = verifyChange(changeId);
+      const result = verifyChange(changeId, process.cwd(), { cache: true });
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
       } else {
+        if (result.cached) {
+          console.log("(cached — spec and source tree unchanged)");
+        }
         console.log(formatVerifyReport(result));
       }
       // A signal, never a gate: exit 0 even when something is missing.

@@ -37,7 +37,9 @@ const MAX_ENTRIES = 500;
 
 /** Ledger path (~/.orion/spend.json; tests override via ORION_SPEND_FILE). */
 export function spendLedgerPath(): string {
-  return process.env.ORION_SPEND_FILE ?? join(homedir(), ".orion", "spend.json");
+  return (
+    process.env.ORION_SPEND_FILE ?? join(homedir(), ".orion", "spend.json")
+  );
 }
 
 /** Global cap from ORION_MAX_BUDGET_TOKENS, or null when unset/invalid. */

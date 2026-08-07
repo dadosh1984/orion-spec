@@ -42,7 +42,11 @@ const STEPS: StepName[] = [
  */
 export async function shield(
   changeId: string,
-  opts?: { noCache?: boolean },
+  opts?: {
+    noCache?: boolean;
+    /** MCP progress (v0.22): (step, index, total) after each guard-rail. */
+    onProgress?: (step: string, index: number, total: number) => void;
+  },
 ): Promise<GuardReport> {
   // Honesty first: a change that does not exist cannot be verified.
   // Fabricating a PASS for a missing id would be a lie — fail loudly.
@@ -59,6 +63,7 @@ export async function shield(
   const hash = projectHash(changeId);
 
   for (const step of STEPS) {
+    opts?.onProgress?.(step, STEPS.indexOf(step) + 1, STEPS.length);
     if (skipShell && (step === "lint" || step === "type" || step === "test")) {
       checks.push({
         step,

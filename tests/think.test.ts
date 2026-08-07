@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { think, slugify, shortTitle, QUESTIONS } from "../src/skills/think/handler.js";
+import {
+  think,
+  slugify,
+  shortTitle,
+  QUESTIONS,
+} from "../src/skills/think/handler.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -20,6 +25,32 @@ afterEach(() => {
 });
 
 describe("think skill", () => {
+  it("blocks a hallucinated-dependency prompt unless forced (v0.22)", async () => {
+    await expect(
+      think(
+        "build a parser using super-xml-parser-2026",
+        { noCache: true },
+        async () => "",
+      ),
+    ).rejects.toThrow(/Prompt drift guard/);
+    // Explicit confirmation (--force) records the user's choice and proceeds.
+    const proposal = await think(
+      "build a parser using super-xml-parser-2026",
+      { noCache: true, force: true },
+      async () => "",
+    );
+    expect(proposal.title).toBeDefined();
+  });
+
+  it("passes a clean prompt without a guard gate", async () => {
+    const proposal = await think(
+      "add a retry helper that re-runs failed fetches",
+      { noCache: true },
+      async () => "",
+    );
+    expect(proposal.goal).toContain("retry");
+  });
+
   it("asks the guided questions and builds a Proposal", async () => {
     const asked: string[] = [];
     const answers = ["node", "small", "10min"];

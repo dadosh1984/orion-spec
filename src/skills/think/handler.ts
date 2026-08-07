@@ -13,6 +13,7 @@ import {
   normalizePrompt,
   type PromptAssessment,
 } from "./refine.js";
+import { guardPrompt } from "./guard.js";
 
 /** One guided question in the `think` flow. */
 export interface Question {
@@ -53,14 +54,27 @@ export async function askQuestion(msg: string): Promise<string> {
  * - same idea already captured → returns the existing proposal unchanged;
  * - title collision with a *different* idea → asks in an interactive
  *   terminal, otherwise auto-suffixes (`title`, `title-2`, `title-3`, …)
- *   so agents/pipe feeds never clobber an existing proposal.
+ *   so agents/pipe feeds never clobber an existing proposal;
+ * - prompt drift guard (v0.22): year-dated package tells and placeholder
+ *   markers block proposal creation until the caller confirms with
+ *   `--force` — a hallucinated dependency must not be chased into RED.
  */
 export async function think(
   prompt: string,
-  opts?: { noCache?: boolean },
+  opts?: { noCache?: boolean; force?: boolean },
   ask: (msg: string) => Promise<string> = askQuestion,
 ): Promise<Proposal> {
   const base = normalizePrompt(prompt);
+  // Prompt drift guard (v0.22): stop before the proposal exists, not after
+  // a RED cycle. The agent confirms explicitly by passing force: true.
+  const guard = guardPrompt(base);
+  if (!guard.ok && !opts?.force) {
+    throw new Error(
+      "Prompt drift guard:" +
+        guard.issues.map((i) => `\n  - ${i}`).join("") +
+        "\nIf you really mean it, re-run with --force (explicit confirmation).",
+    );
+  }
   const assessment: PromptAssessment = assessPrompt(base);
   const track = OrionTrack.init();
   const { title, existing } = await resolveTitle(base, ask, track);

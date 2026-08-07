@@ -6,7 +6,11 @@ import { estimateTokens, economyStats } from "../../core/compress.js";
 import { listLessons, type Lesson } from "../../core/lessons.js";
 import { calibrationFactor, readCalibration } from "../../core/calibration.js";
 import { countOpenDebt } from "../../core/debt.js";
-import { maxBudgetTokens, readSpendLedger, recordSpend } from "../../core/budget.js";
+import {
+  maxBudgetTokens,
+  readSpendLedger,
+  recordSpend,
+} from "../../core/budget.js";
 import { trace } from "../../core/telemetry.js";
 import type { GuardReport, Proposal } from "../../type.js";
 

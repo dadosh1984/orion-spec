@@ -47,6 +47,7 @@ describe("parseArgs", () => {
       dry: true,
       watch: false,
       json: true,
+      npm: false,
       port: 0,
       ui: true,
     });
@@ -72,7 +73,12 @@ describe("main dispatcher", () => {
           message: {
             role: "assistant",
             content: [
-              { type: "toolCall", id: "a", name: "bash", arguments: { command: "pnpm lint" } },
+              {
+                type: "toolCall",
+                id: "a",
+                name: "bash",
+                arguments: { command: "pnpm lint" },
+              },
             ],
           },
         }),
@@ -90,7 +96,12 @@ describe("main dispatcher", () => {
           message: {
             role: "assistant",
             content: [
-              { type: "toolCall", id: "b", name: "bash", arguments: { command: "pnpm lint --fix" } },
+              {
+                type: "toolCall",
+                id: "b",
+                name: "bash",
+                arguments: { command: "pnpm lint --fix" },
+              },
             ],
           },
         }),
@@ -111,7 +122,11 @@ describe("main dispatcher", () => {
     const lessons = JSON.parse(
       readFileSync(join(dir, "lessons.json"), "utf8"),
     ) as Array<{ step: string; fix: string }>;
-    expect(lessons.some((l) => l.step === "session" && l.fix.includes("pnpm lint --fix"))).toBe(true);
+    expect(
+      lessons.some(
+        (l) => l.step === "session" && l.fix.includes("pnpm lint --fix"),
+      ),
+    ).toBe(true);
   });
 
   it("learn fails honestly on missing sessions", async () => {
@@ -224,14 +239,40 @@ describe("metrics --session (v0.15)", () => {
     writeFileSync(
       join(dir, "s.jsonl"),
       [
-        JSON.stringify({ type: "message", message: { role: "user", content: "hello" } }),
-        JSON.stringify({ type: "message", message: { role: "assistant", content: [{ type: "toolCall", id: "a", name: "bash", arguments: { command: "ls" } }] } }),
-        JSON.stringify({ type: "message", message: { role: "toolResult", toolCallId: "a", toolName: "bash", content: "src" } }),
+        JSON.stringify({
+          type: "message",
+          message: { role: "user", content: "hello" },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            content: [
+              {
+                type: "toolCall",
+                id: "a",
+                name: "bash",
+                arguments: { command: "ls" },
+              },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "toolResult",
+            toolCallId: "a",
+            toolName: "bash",
+            content: "src",
+          },
+        }),
       ].join("\n"),
       "utf8",
     );
     const out: string[] = [];
-    const spy = vi.spyOn(console, "log").mockImplementation((m) => out.push(String(m)));
+    const spy = vi
+      .spyOn(console, "log")
+      .mockImplementation((m) => out.push(String(m)));
     const exit = await main(["metrics", "--session", join(dir, "s.jsonl")]);
     spy.mockRestore();
     expect(exit).toBe(0);
@@ -244,12 +285,19 @@ describe("metrics --session (v0.15)", () => {
   });
 
   it("fails honestly on a missing or non-jsonl path", async () => {
-    expect(await main(["metrics", "--session", join(dir, "nope.jsonl")])).toBe(1);
+    expect(await main(["metrics", "--session", join(dir, "nope.jsonl")])).toBe(
+      1,
+    );
     expect(await main(["metrics", "--session", join(dir, "dir")])).toBe(1);
   });
 
   it("parseArgs consumes --session value (not a positional arg)", () => {
-    const { opts, args } = parseArgs(["metrics", "--session", "sess.jsonl", "extra"]);
+    const { opts, args } = parseArgs([
+      "metrics",
+      "--session",
+      "sess.jsonl",
+      "extra",
+    ]);
     expect(opts.session).toBe("sess.jsonl");
     expect(args).toEqual(["extra"]);
   });

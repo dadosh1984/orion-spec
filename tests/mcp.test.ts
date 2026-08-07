@@ -9,6 +9,7 @@ import {
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../src/core/mcp.js";
 import { listLessons } from "../src/core/lessons.js";
+import { shield } from "../src/skills/shield/handler.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -19,12 +20,14 @@ beforeEach(() => {
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
   process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
+  process.env.ORION_SHIELD_SKIP_SHELL = "1";
 });
 
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
   delete process.env.ORION_LESSONS_FILE;
   delete process.env.ORION_ECONOMY_FILE;
+  delete process.env.ORION_SHIELD_SKIP_SHELL;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });
@@ -302,6 +305,65 @@ describe("mcp: tool calls", () => {
   });
 });
 
+describe("mcp: progress notifications (v0.22)", () => {
+  it("streams notifications/progress when the client sends a progress token", async () => {
+    mkdirSync(join("changes", "demo"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "proposal.json"),
+      JSON.stringify({ title: "demo", goal: "build demo" }),
+      "utf8",
+    );
+    const writes: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      writes.push(String(chunk));
+      return true;
+    });
+    const server = new McpServer();
+    const res = await call(server, "tools/call", 7, {
+      name: "shield",
+      arguments: { changeId: "demo" },
+      _meta: { progressToken: 42 },
+    });
+    const progress = writes.filter((w) => w.includes("notifications/progress"));
+    // Every guard-rail step produced a progress line before the result.
+    expect(progress.length).toBeGreaterThanOrEqual(3);
+    const first = JSON.parse(progress[0]) as {
+      jsonrpc: string;
+      method: string;
+      params: { progressToken: number; progress: number; total: number };
+    };
+    expect(first.jsonrpc).toBe("2.0");
+    expect(first.method).toBe("notifications/progress");
+    expect(first.params.progressToken).toBe(42);
+    expect(first.params.progress).toBe(1);
+    expect(first.params.total).toBeGreaterThanOrEqual(8);
+    // The final result line is a response, not a notification.
+    expect(textOf(res)).toContain('"changeId": "demo"');
+  });
+
+  it("emits no notifications without a progress token (backward compatible)", async () => {
+    mkdirSync(join("changes", "demo2"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo2", "proposal.json"),
+      JSON.stringify({ title: "demo2", goal: "build demo2" }),
+      "utf8",
+    );
+    const writes: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      writes.push(String(chunk));
+      return true;
+    });
+    const server = new McpServer();
+    await call(server, "tools/call", 8, {
+      name: "shield",
+      arguments: { changeId: "demo2" },
+    });
+    expect(writes.filter((w) => w.includes("notifications/progress"))).toEqual(
+      [],
+    );
+  });
+});
+
 describe("mcp: CLI wiring", () => {
   it("orion mcp --list prints the manifest", async () => {
     const { main } = await import("../src/cli/commands.js");
@@ -317,7 +379,8 @@ describe("mcp: compress tool (token economy)", () => {
       name: "compress",
       arguments: {
         command: "vitest run",
-        output: " RUN  v1.6.1\n ✓ a.test.ts (1 test) 2ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n",
+        output:
+          " RUN  v1.6.1\n ✓ a.test.ts (1 test) 2ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n",
       },
     });
     const parsed = JSON.parse(textOf(res));
@@ -372,7 +435,12 @@ describe("mcp: lessons_learn tool (session learning, v0.13)", () => {
           message: {
             role: "assistant",
             content: [
-              { type: "toolCall", id: "a", name: "bash", arguments: { command: "pnpm test" } },
+              {
+                type: "toolCall",
+                id: "a",
+                name: "bash",
+                arguments: { command: "pnpm test" },
+              },
             ],
           },
         }),
@@ -390,7 +458,12 @@ describe("mcp: lessons_learn tool (session learning, v0.13)", () => {
           message: {
             role: "assistant",
             content: [
-              { type: "toolCall", id: "b", name: "bash", arguments: { command: "pnpm test --runInBand" } },
+              {
+                type: "toolCall",
+                id: "b",
+                name: "bash",
+                arguments: { command: "pnpm test --runInBand" },
+              },
             ],
           },
         }),
@@ -425,7 +498,10 @@ describe("mcp: lessons_learn tool (session learning, v0.13)", () => {
       name: "lessons_learn",
       arguments: { path: "nope.jsonl" },
     });
-    const result = res.result as { isError: boolean; content: Array<{ text: string }> };
+    const result = res.result as {
+      isError: boolean;
+      content: Array<{ text: string }>;
+    };
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/no \*\.jsonl session files/);
   });
