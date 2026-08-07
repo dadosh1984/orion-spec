@@ -1,0 +1,43 @@
+{
+  "changeId": "add-a-first-class-orion-verify-change-command-implementing-a-who",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  36 passed (36)\n      Tests  385 passed (385)\n   Duration  18.80s (transform 2.16s, setup 5ms, collect 7.04s, tests 65.45s, environment 14ms, prepare 18.37s)\n\n[orion: −39034 B (−99.5%) ≈ 9759 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 67 LOC, 2 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 2.2 KB of 100.0 MB (12 entries) — within budget; ≈ 439989 tok saved across 269 compress op(s)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-07T07:45:30.161Z",
+  "contextHash": "2c9a06b809e7"
+}

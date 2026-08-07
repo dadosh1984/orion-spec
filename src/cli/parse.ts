@@ -12,6 +12,7 @@ Commands:
   forge <title> --parallel <n>   Parallel forge waves via fork workers (v0.16)
   tasks <title>           Show the task checklist (✓ = done) (v0.8)
   shield <change-id>      Run lint, type-check, tests, drift and security gates
+  verify <change-id>      Whole-change spec→source evidence pass (signal, not a gate)
   out <change-id>         Produce the final result.md summary
   next                    Decide the next action from context (draft → forge → shield → out)
   track status            Show cache statistics

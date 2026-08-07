@@ -22,6 +22,13 @@ Dates are from git history.
   marked `weak` and a low-verifiability PASS is honestly labelled
   lower-confidence / human-review (WARN, never a gate) — idea adapted from
   a sibling toolkit, implemented in orion's own style.
+- **`orion verify <change>`** — first-class whole-change spec→source evidence
+  pass: each acceptance-criterion bullet is tokenized and scanned against the
+  project source, then classified `compliant` / `drifted` / `missing`. A
+  requirement with zero code evidence is surfaced even when every individual
+  check passes — a deterministic signal (list + summary, exit 0), never a
+  gate. Idea adapted from a sibling toolkit, reimplemented in orion's own
+  zero-dependency style.
 
 ## [0.18.1] — 2026-08-07
 
