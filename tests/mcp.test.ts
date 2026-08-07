@@ -162,7 +162,7 @@ describe("mcp: tool calls", () => {
       },
     });
     expect(textOf(res)).toContain('"title"');
-    expect(textOf(res)).toContain("build-a-small-parser");
+    expect(textOf(res)).toContain("small-parser");
     expect(textOf(res)).toContain('"platform": "node"');
   });
 

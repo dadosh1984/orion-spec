@@ -23,6 +23,38 @@ const EN_ACTIONS =
 const RU_ACTIONS =
   /(сделать|создать|написать|построить|добавить|исправить|починить|реализовать|разработать|улучшить|проверить|проанализировать|перевести|конвертировать|собрать|настроить|интегрировать|перенести|сгенерировать)\b/i;
 
+/**
+ * Leading action verbs / filler phrases stripped from the goal. Shared by
+ * `think` (short titles) and `draft` (task derivation) — lives here so the
+ * two skills reuse the same stripping without an import cycle.
+ */
+export const LEADING_ACTION =
+  /^\s*(?:please\s+)?(?:make|build|create|implement|write|add|develop|design|need|needed|want|i want|i need|improve|improving|enhance|enhancing|refactor|refactoring|update|upgrade|fix|fixing|сделай|создай|построй|разработай|реализуй|напиши|добавь|нужен|нужно|улучш|сделать|создать|построить|разработать|реализовать|написать|добавить|требуется|почини|исправь|починить|исправить)(?:\s+|$)/i;
+
+/** Filler articles right after the stripped action verb. */
+export const LEADING_FILLER = /^(?:an?|the)\s+/i;
+
+/**
+ * The goal minus the leading action verb and filler words
+ * ("fix the broken test coverage gate" → "broken test coverage gate").
+ */
+export function extractCore(goal: string): string {
+  return goal.replace(LEADING_ACTION, "").replace(LEADING_FILLER, "").trim();
+}
+
+/**
+ * First clause of the goal's core (up to `,` `.` `:` `;`), capped at
+ * 90 chars — a single readable task line instead of the whole goal.
+ */
+export function extractCoreClause(goal: string): string {
+  const clause =
+    extractCore(goal)
+      .split(/[,.:;(]/)[0]
+      ?.trim() ?? "";
+  if (!clause) return "";
+  return clause.length <= 90 ? clause : `${clause.slice(0, 87).trimEnd()}...`;
+}
+
 /** Collapse whitespace, trim, drop surrounding punctuation noise. */
 export function normalizePrompt(raw: string): string {
   return raw.replace(/\s+/g, " ").trim();

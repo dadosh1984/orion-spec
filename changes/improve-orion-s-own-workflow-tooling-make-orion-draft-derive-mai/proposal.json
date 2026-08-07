@@ -1,0 +1,16 @@
+{
+  "title": "improve-orion-s-own-workflow-tooling-make-orion-draft-derive-mai",
+  "goal": "Improve Orion's own workflow tooling: make orion draft derive maintenance-aware tasks (reproduce the failure, implement the fix, verify gates) for bug-fix/upgrade/refactor goals instead of generic build templates, and shorten change folder names to 3-4 significant words by stripping leading action verbs and stopwords from the prompt. No new user-facing features; all existing tests must keep passing.",
+  "platform": "node",
+  "constraints": "Runtime stays zero-dependency; coverage thresholds 80/80/80/70 must keep passing; vitest pool stays forks; no new external API/behavior changes; existing tests must pass unchanged where they assert feature behavior",
+  "budget": "moderate",
+  "clarity": "clear",
+  "language": "en",
+  "appliesLessons": [
+    "fix-the-broken-test-coverage-gate-in-orion-spec-v8-coverage-repo:shield:81b9a592ab5a",
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:ba70e22c8595",
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:8d1ea76ccecb",
+    "add-a-schema-version-field-to-the-oriontrack-on-disk-cache-forma-2:shield:47a5558a6a5f",
+    "fix-the-regressions-and-tooling-pollution-discovered-during-the-:shield:de78db3154fa"
+  ]
+}

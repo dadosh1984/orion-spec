@@ -75,18 +75,18 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    await draft("a-cli-tool-to-scan-git-history", { noCache: true });
+    await draft("cli-tool-scan-git", { noCache: true });
     const tasks = readFileSync(
-      join("changes", "a-cli-tool-to-scan-git-history", "tasks.md"),
+      join("changes", "cli-tool-scan-git", "tasks.md"),
       "utf8",
     );
     expect(tasks).toContain("CLI entry point");
     expect(tasks).toContain("git history");
 
     await think("a web dashboard", { noCache: true }, async () => "");
-    await draft("a-web-dashboard", { noCache: true });
+    await draft("web-dashboard", { noCache: true });
     const webTasks = readFileSync(
-      join("changes", "a-web-dashboard", "tasks.md"),
+      join("changes", "web-dashboard", "tasks.md"),
       "utf8",
     );
     expect(webTasks).toContain("HTTP/API");
@@ -113,9 +113,9 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    await draft("build-a-csv-to-json-converter", { noCache: true });
+    await draft("csv-json-converter", { noCache: true });
     const enTasks = readFileSync(
-      join("changes", "build-a-csv-to-json-converter", "tasks.md"),
+      join("changes", "csv-json-converter", "tasks.md"),
       "utf8",
     );
     expect(enTasks).toContain("parsing/transformation pipeline");
@@ -129,9 +129,9 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    await draft("build-a-csv-to-json-converter", { noCache: true });
+    await draft("csv-json-converter", { noCache: true });
     const tasks = readFileSync(
-      join("changes", "build-a-csv-to-json-converter", "tasks.md"),
+      join("changes", "csv-json-converter", "tasks.md"),
       "utf8",
     );
     // Restated from the goal = fact; template/inference = assumption.
@@ -141,11 +141,46 @@ describe("draft skill", () => {
     );
     expect(tasks).toContain("- [ ] [assumption] Cover the core capability");
     const design = readFileSync(
-      join("changes", "build-a-csv-to-json-converter", "design.md"),
+      join("changes", "csv-json-converter", "design.md"),
       "utf8",
     );
     expect(design).toContain("## Assumptions");
     expect(design).toContain("- Scaffold project structure");
+  });
+
+  it("derives maintenance-aware tasks for fix/upgrade goals (v0.20)", async () => {
+    await think(
+      "Fix the broken test coverage gate in orion-spec: v8 coverage reports 0% for every src file on Node v24.18.0 with vitest 1.6.1, so pnpm run test:coverage fails the 80/80/80/70 thresholds",
+      { noCache: true },
+      async () => "",
+    );
+    await draft("broken-test-coverage-gate", { noCache: true });
+    const tasks = readFileSync(
+      join("changes", "broken-test-coverage-gate", "tasks.md"),
+      "utf8",
+    );
+    // A RED→fix→verify plan, not build templates.
+    expect(tasks).toContain("Reproduce the failure");
+    expect(tasks).toContain("[fact] Implement the fix: broken test coverage gate in orion-spec");
+    expect(tasks).toContain("without changing the external behavior/API");
+    expect(tasks).toContain("gates still pass");
+    // Generic build padding is skipped for maintenance goals.
+    expect(tasks).not.toContain("Scaffold project structure");
+    expect(tasks).not.toContain("Document usage in README");
+  });
+
+  it("strips the leading verb in maintenance tasks (RU + EN) (v0.20)", async () => {
+    await think(
+      "почини сломанный парсер CSV в модуле parse.ts",
+      { noCache: true },
+      async () => "",
+    );
+    await draft("csv-parse-ts", { noCache: true });
+    const ruTasks = readFileSync(join("changes", "csv-parse-ts", "tasks.md"), "utf8");
+    // "почини" is stripped; the fix target is restated as a fact.
+    expect(ruTasks).toContain("Implement the fix:");
+    expect(ruTasks).toContain("parser csv");
+    expect(ruTasks).not.toContain("Implement the fix: почини");
   });
 
   it("does not false-positive on 'logical' or 'no new CLI commands' (v0.10)", async () => {
@@ -154,9 +189,9 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    await draft("improve-the-logical-sequence-of-decisions", { noCache: true });
+    await draft("logical-sequence-decisions", { noCache: true });
     const tasks = readFileSync(
-      join("changes", "improve-the-logical-sequence-of-decisions", "tasks.md"),
+      join("changes", "logical-sequence-decisions", "tasks.md"),
       "utf8",
     );
     // "logical" contains the substring "log" but is not operation history.
@@ -167,9 +202,9 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    await draft("add-a-feature-with-no-new-cli-commands", { noCache: true });
+    await draft("feature-no-new-cli", { noCache: true });
     const cliTasks = readFileSync(
-      join("changes", "add-a-feature-with-no-new-cli-commands", "tasks.md"),
+      join("changes", "feature-no-new-cli", "tasks.md"),
       "utf8",
     );
     // "no new CLI commands" is a constraint, not a request for a CLI.

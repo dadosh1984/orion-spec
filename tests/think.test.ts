@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { think, slugify, QUESTIONS } from "../src/skills/think/handler.js";
+import { think, slugify, shortTitle, QUESTIONS } from "../src/skills/think/handler.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -34,7 +34,7 @@ describe("think skill", () => {
     );
 
     expect(asked.length).toBe(QUESTIONS.length);
-    expect(proposal.title).toBe("build-a-csv-to-json-converter");
+    expect(proposal.title).toBe("csv-json-converter");
     expect(proposal.goal).toBe("Build a CSV to JSON converter");
     expect(proposal.platform).toBe("node");
     expect(proposal.constraints).toBe("small");
@@ -58,6 +58,36 @@ describe("think skill", () => {
     expect(slugify("Hello World!")).toBe("hello-world");
     expect(slugify("  A  B  ")).toBe("a-b");
     expect(slugify("!!!")).toBe("untitled");
+  });
+
+  it("shortTitle keeps 3-4 significant words and drops verbs/fillers", () => {
+    // Full 64-char slug truncated before; now the meaningful core only.
+    expect(
+      shortTitle(
+        "Fix the broken test coverage gate in orion-spec: v8 coverage reports 0% for every src file on Node v24.18.0",
+      ),
+    ).toBe("broken-test-coverage-gate");
+    expect(
+      shortTitle(
+        "Fix two real bugs in the reuse stage of Orion's own YAGNI scale tool",
+      ),
+    ).toBe("two-real-bugs-reuse");
+    expect(shortTitle("Build a CSV to JSON converter")).toBe(
+      "csv-json-converter",
+    );
+    expect(shortTitle("a web dashboard")).toBe("web-dashboard");
+    expect(shortTitle("improve the logical sequence of decisions")).toBe(
+      "logical-sequence-decisions",
+    );
+  });
+
+  it("shortTitle falls back to the full slug when too little remains", () => {
+    // One significant word → keep the historical slug (collision-safe).
+    expect(shortTitle("build a calculator")).toBe("build-a-calculator");
+    // Cyrillic-only prompt: slugify drops it to "cli" (historic title).
+    expect(shortTitle("сделай CLI калькулятор с историей операций")).toBe(
+      "cli",
+    );
   });
 
   it("returns the existing proposal unchanged for a repeated idea", async () => {

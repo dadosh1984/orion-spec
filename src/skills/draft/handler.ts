@@ -7,6 +7,7 @@ import {
 import { existsSync } from "node:fs";
 import { OrionTrack } from "../../core/track.js";
 import { renderTemplate } from "../../core/templates.js";
+import { extractCore, extractCoreClause } from "../think/refine.js";
 import type { ArtifactSet, Proposal } from "../../type.js";
 
 /**
@@ -42,12 +43,6 @@ export async function loadProposal(
   }
   return readJson<Proposal>(`changes/${title}/proposal.json`);
 }
-
-/** Leading action verbs / filler phrases stripped from the goal. */
-const LEADING_ACTION =
-  /^\s*(?:please\s+)?(?:make|build|create|implement|write|add|develop|design|need|needed|want|i want|i need|improve|improving|enhance|enhancing|refactor|refactoring|update|upgrade|сделай|создай|построй|разработай|реализуй|напиши|добавь|нужен|нужно|улучш|сделать|создать|построить|разработать|реализовать|написать|добавить|требуется)(?:\s+|$)/i;
-
-const LEADING_FILLER = /^(?:an?|the)\s+/i;
 
 /** Product category recognised from the goal (RU + EN). */
 const CATEGORIES: Array<[RegExp, string]> = [
@@ -116,10 +111,10 @@ const WORD_MAP: Array<[RegExp, string]> = [
   [/(?<![а-яёa-z0-9])и(?![а-яёa-z0-9])/g, "and"],
 ];
 
-/** Strip leading action verbs/filler words from the goal. */
-function extractCore(goal: string): string {
-  return goal.replace(LEADING_ACTION, "").replace(LEADING_FILLER, "").trim();
-}
+/**
+ * Strip leading action verbs/filler words from the goal.
+ * (Moved to src/skills/think/refine.ts — shared with `think` titles.)
+ */
 
 /** Best-effort transliteration of known Russian words. */
 function toEnglish(text: string): string {
@@ -149,6 +144,34 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
   const platform = proposal.platform.toLowerCase();
   const core = toEnglish(extractCore(goal));
   const tasks: DerivedTask[] = [];
+
+  // Maintenance goals (fix/upgrade/refactor) get a RED→fix→verify plan
+  // instead of build templates: "Scaffold project structure" and
+  // "Document usage in README" are noise for a bug fix. Fires before the
+  // feature categories so e.g. "fix the CLI parser" plans a fix, not a
+  // new CLI. English words get \b boundaries; Cyrillic is matched as a
+  // substring because JS \b is ASCII-only.
+  const maintenance =
+    /\b(fix(?:es|ed|ing)?|bug(?:s)?|broken|regression|upgrade(?:d|s)?|upgrading|update(?:d|s)?|refactor(?:ed|ing)?|polish|repair(?:s|ed)?|maintain(?:ing)?|maintenance)\b|ошибк|сломан|почин|исправ|обнов|регресс/i;
+  if (maintenance.test(goal)) {
+    tasks.push({
+      text: "Reproduce the failure: write a test that fails on the current code (RED)",
+      mark: "assumption",
+    });
+    const clause = toEnglish(extractCoreClause(goal));
+    if (clause) {
+      tasks.push({ text: `Implement the fix: ${clause}`, mark: "fact" });
+    }
+    tasks.push({
+      text: "Apply the fix without changing the external behavior/API",
+      mark: "assumption",
+    });
+    tasks.push({
+      text: "Verify the full test suite and gates still pass (GREEN)",
+      mark: "assumption",
+    });
+    return tasks;
+  }
 
   tasks.push({
     text: `Scaffold project structure for ${proposal.title}`,

@@ -9,6 +9,7 @@ import {
   assessPrompt,
   clarifyingQuestions,
   composeGoal,
+  extractCore,
   normalizePrompt,
   type PromptAssessment,
 } from "./refine.js";
@@ -157,7 +158,7 @@ async function resolveTitle(
   ask: (msg: string) => Promise<string>,
   track: OrionTrack,
 ): Promise<{ title: string; existing: Proposal | null }> {
-  const base = slugify(prompt);
+  const base = shortTitle(prompt);
   let suffix = 1;
   for (;;) {
     const title = suffix === 1 ? base : `${base}-${suffix}`;
@@ -186,4 +187,57 @@ export function slugify(input: string): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 64) || "untitled"
   );
+}
+
+/**
+ * Short, readable change title (3–4 words) derived from the prompt:
+ * strip the leading action verb and fillers, drop stopwords, keep the
+ * first few significant ASCII words. Falls back to `slugify(prompt)` when
+ * too little remains (keeps "build a calculator" → build-a-calculator and
+ * Cyrillic-only prompts → cli exactly as before). `slugify` itself is
+ * unchanged, so forge task slugs are unaffected.
+ */
+export function shortTitle(prompt: string): string {
+  const STOPWORDS = new Set([
+    "the",
+    "a",
+    "an",
+    "in",
+    "of",
+    "for",
+    "to",
+    "with",
+    "on",
+    "at",
+    "by",
+    "and",
+    "or",
+    "so",
+    "is",
+    "it",
+    "as",
+    "that",
+    "this",
+    "from",
+    "into",
+    "via",
+    "по",
+    "в",
+    "на",
+    "и",
+    "с",
+    "для",
+    "из",
+    "о",
+    "об",
+  ]);
+  const words: string[] = [];
+  for (const w of extractCore(prompt)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)) {
+    if (!w || !/^[a-z0-9]+$/.test(w) || STOPWORDS.has(w)) continue;
+    words.push(w);
+    if (words.length >= 4) break;
+  }
+  return words.length >= 2 ? words.join("-") : slugify(prompt);
 }
