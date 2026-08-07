@@ -41,6 +41,7 @@
     "test": "pnpm run build && vitest run",
     "test:watch": "vitest",
     "test:coverage": "pnpm run build && vitest run --coverage",
+    "core:coverage": "node scripts/check-core-coverage.mjs",
     "watch": "tsc -w -p tsconfig.json",
     "prepublishOnly": "pnpm run build",
     "tdd": "node dist/cli/index.js tdd",

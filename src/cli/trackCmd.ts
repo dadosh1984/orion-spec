@@ -28,7 +28,7 @@ export async function trackCommand(
       printOut(
         opts,
         { ...stats, lessons: lessons.count, openDebt: open.length },
-        `cache: ${stats.count} entries, ${formatBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"} | lessons: ${lessons.count}${lessons.lastTs ? ` (last ${new Date(lessons.lastTs).toISOString()})` : ""}${debtText}`,
+        `cache: ${stats.count} entries, ${formatBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"} (schema v${stats.schemaVersion}) | lessons: ${lessons.count}${lessons.lastTs ? ` (last ${new Date(lessons.lastTs).toISOString()})` : ""}${debtText}`,
       );
       return 0;
     }

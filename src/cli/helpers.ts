@@ -16,6 +16,8 @@ export interface CliOptions {
   session?: string;
   /** Parallel wave size for `forge --parallel <n>` (v0.16). */
   parallel?: number;
+  /** Bearer token for `serve` (v0.19); auto-generated on non-loopback bind. */
+  token?: string;
 }
 
 /** Print JSON or plain text depending on the --json flag. */

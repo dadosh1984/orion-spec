@@ -130,4 +130,35 @@ describe("TddEngine", () => {
     const detail = describeFailure("process exited with code 1");
     expect(detail).toContain("no details were invented");
   });
+
+  it("status() reports the live state before finalize", () => {
+    const engine = new TddEngine("prefinal", track);
+    expect(engine.status()).toBe(State.RED);
+    engine.transition(true);
+    expect(engine.status()).toBe(State.GREEN);
+  });
+
+  it("loads the packaged TDD config when none is supplied", () => {
+    const engine = new TddEngine("bares", track);
+    expect(engine.config.testDir).toBeTruthy();
+    expect(engine.config.minCoverage).toBeGreaterThanOrEqual(0);
+  });
+
+  it("refactor returns false honestly when eslint cannot run (isolated cwd)", async () => {
+    const prior = process.cwd();
+    const isolated = mkdtempSync(join(tmpdir(), "orion-tdd-refactor-"));
+    try {
+      // No src/tasks here, so eslint fails and refactor must report false.
+      process.chdir(isolated);
+      const engine = new TddEngine(
+        "refx",
+        new OrionTrack(join(isolated, "cache")),
+      );
+      const ok = await engine.refactor();
+      expect(ok).toBe(false);
+    } finally {
+      process.chdir(prior);
+      rmSync(isolated, { recursive: true, force: true });
+    }
+  });
 });

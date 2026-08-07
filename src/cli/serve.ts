@@ -17,6 +17,47 @@ export interface ServeOptions {
   ui: boolean;
   /** Host to bind (default 127.0.0.1 — loopback only). */
   host?: string;
+  /**
+   * Optional bearer token. When omitted on a non-loopback host one is
+   * auto-generated, so an exposed dashboard is never unauthenticated.
+   */
+  token?: string;
+}
+
+/** True when a host only listens on the local machine (no auth needed). */
+export function isLoopbackHost(host: string): boolean {
+  return host === "127.0.0.1" || host === "localhost" || host === "::1";
+}
+
+/** Constant-time string comparison (avoids timing side-channels). */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/** Pull a bearer token out of a request (header or ?token= query). */
+function extractToken(req: http.IncomingMessage, url: URL): string | null {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith("Bearer ")) return auth.slice("Bearer ".length);
+  const header = req.headers["x-orion-token"];
+  if (typeof header === "string" && header.length > 0) return header;
+  const query = url.searchParams.get("token");
+  return query && query.length > 0 ? query : null;
+}
+
+/** Generate a random 32-char bearer token (crypto-free, for the dashboard). */
+export function generateToken(): string {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = new Uint8Array(32);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Math.floor(Math.random() * chars.length);
+  }
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) out += chars[bytes[i]];
+  return out;
 }
 
 interface ApiChange {
@@ -184,11 +225,14 @@ function stat(label, value) {
   return '<div class="stat"><span>' + esc(label) + '</span><b>' + esc(value) + '</b></div>';
 }
 async function refresh() {
+  // Reuse the page's own ?token= (set by the operator when auth is on) on
+  // every API fetch, so the dashboard works behind bearer-token auth.
+  const q = location.search;
   try {
     const [status, metrics, changes] = await Promise.all([
-      fetch("/api/status").then(r => r.json()),
-      fetch("/api/metrics").then(r => r.json()),
-      fetch("/api/changes").then(r => r.json()),
+      fetch("/api/status" + q).then(r => r.json()),
+      fetch("/api/metrics" + q).then(r => r.json()),
+      fetch("/api/changes" + q).then(r => r.json()),
     ]);
     const cache = document.getElementById("cache");
     cache.innerHTML =
@@ -274,16 +318,32 @@ setInterval(refresh, 5000);
 /**
  * Start the web dashboard server. Resolves once the port is listening;
  * the caller is responsible for closing it (or waiting for SIGINT).
+ * When the effective auth token is set, every request is gated on it.
  */
 export function startServer(
   track: OrionTrack,
   opts: ServeOptions,
-): Promise<http.Server> {
+): Promise<http.Server & { authToken?: string }> {
+  const loopback = isLoopbackHost(opts.host ?? "127.0.0.1");
+  // Explicit token wins; otherwise a non-loopback bind must not be open.
+  const authToken = opts.token ?? (loopback ? undefined : generateToken());
+
   const server = http.createServer((req, res) => {
     const url = new URL(
       req.url ?? "/",
       `http://${req.headers.host ?? "localhost"}`,
     );
+    if (authToken !== undefined) {
+      const provided = extractToken(req, url);
+      if (provided === null || !safeEqual(provided, authToken)) {
+        res.writeHead(401, {
+          "Content-Type": "application/json; charset=utf-8",
+          "WWW-Authenticate": 'Bearer realm="orion"',
+        });
+        res.end(JSON.stringify({ error: "unauthorized" }, null, 2));
+        return;
+      }
+    }
     switch (url.pathname) {
       case "/": {
         if (opts.ui) {
@@ -360,6 +420,7 @@ export function startServer(
     // auth, so it must not be reachable from the network unless opted in.
     server.listen(opts.port, opts.host ?? "127.0.0.1", () => {
       server.removeListener("error", reject);
+      (server as http.Server & { authToken?: string }).authToken = authToken;
       resolve(server);
     });
   });

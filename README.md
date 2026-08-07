@@ -12,7 +12,7 @@
 3. **Minimalism by Design** – the **YAGNI ladder** (`orion‑scale`) automatically strips any code that isn't strictly required.
 4. **Test‑First, Always** – **orion‑tdd‑core** enforces the classic RED‑GREEN‑REFACTOR loop for _every_ task.
 5. **Transparency & Auditable Artifacts** – `proposal.md`, `specs/*.md`, `design.md`, `tasks.md`, `guard‑report.md`, `result.md` live in the repository, version‑controlled and human‑readable.
-6. **Open for Extension** – plugin API and benchmark module are planned (v0.3–v0.5).
+6. **Open for Extension** – a plugin API, an off‑line Docker image and a benchmark module shipped in v0.3–v0.5; unknown CLI commands dispatch to installed plugins.
 7. **Honesty by Default (v0.10)** – Orion never fabricates a result: it says "I don't know" when the context is insufficient, marks stale guard verdicts instead of presenting them as fresh, labels cache hits with their date, and distinguishes what is stated in the proposal (`[fact]`) from what it inferred (`[assumption]`).
 8. **Companion, not Oracle (v0.10)** – the user is the guide (they have the idea), Orion is the companion (it has the knowledge to realise it). When the user is stuck or has no ideas, Orion proactively proposes alternative options — it never silently decides on the user's behalf in an interactive terminal.
 
@@ -62,10 +62,10 @@ npm i -g orion-spec@latest      # update the global CLI (check: npm view orion-s
 git pull                        # fetch the latest source
 pnpm install && pnpm run build  # install + rebuild dist/
 pnpm update                     # dev deps within declared semver ranges (safe)
-pnpm update --latest            # allow major bumps — may be breaking, check the changelog
+pnpm update --latest            # allow major bumps — may be breaking, check CHANGELOG.md
 ```
 
-The installed version can be checked with `npm ls -g orion-spec`; the latest published one with `npm view orion-spec version`.
+The installed version can be checked with `npm ls -g orion-spec`; the latest published one with `npm view orion-spec version`. Every release is dated and described in [CHANGELOG.md](CHANGELOG.md).
 
 ## 🛠️ Components
 
@@ -254,6 +254,14 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - [Quick Start](docs/quick-start.md)
 - [Architecture](docs/architecture.md)
 - [Commands Reference](docs/commands.md)
+- [Changelog](CHANGELOG.md) — dated semver release notes
+- [Contributing](CONTRIBUTING.md) — dev setup, style, tests, releases
+
+> **Security scan is best‑effort.** The `shield` security step is a pattern
+> lint (eval/`new Function`/`process.env.*`/`child_process`/shell‑injection
+> chains/secrets), not a security gate — it flags *obvious* issues and can
+> both over‑ and under‑match. Treat a PASS as "no obvious issues", and review
+> security‑sensitive code by hand. See [CONTRIBUTING.md](CONTRIBUTING.md#security).
 
 ## 🗺️ Roadmap
 

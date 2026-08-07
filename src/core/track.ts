@@ -12,10 +12,52 @@ import {
 import { resolveConfig } from "../utils/file.js";
 import type { TrackConfig, TrackStats } from "../type.js";
 
-/** Cache entry persisted on disk: the stored value plus a timestamp. */
+/**
+ * Current on-disk cache format version (v0.19). Bump this whenever the
+ * internal shape of a cache entry (key/value/schema metadata) changes in a
+ * way that is not backward compatible. `load` drops any entry that carries a
+ * different schema version, so an Orion upgrade can never silently read data
+ * written by an incompatible format (see `readEntry`).
+ */
+export const SCHEMA_VERSION = 1;
+
+/**
+ * Cache entry persisted on disk: an optional schema version, the stored value
+ * plus a timestamp. Entries written before versioning existed still parse fine
+ * (their `schema` is undefined → accepted, same on-disk shape).
+ */
 interface CacheEntry {
+  /** Schema version this entry was written with (absent on legacy entries). */
+  schema?: number;
   value: unknown;
   storedAt: string;
+}
+
+/**
+ * Parse a cache entry from its JSON file, guarding the schema version.
+ * Returns null when the file is missing/corrupt OR when it carries a
+ * different (incompatible) schema version — in every case the caller just
+ * re-computes instead of trusting stale data. Stale files are removed
+ * (best-effort) so they don't linger.
+ */
+function readEntry(entryPath: string): CacheEntry | null {
+  if (!existsSync(entryPath)) return null;
+  try {
+    const entry = JSON.parse(readFileSync(entryPath, "utf8")) as CacheEntry;
+    // Legacy entries (no `schema`) share the current shape → accepted. An
+    // explicit, different version is incompatible → rejected.
+    if (entry.schema !== undefined && entry.schema !== SCHEMA_VERSION) {
+      try {
+        unlinkSync(entryPath);
+      } catch {
+        /* best effort */
+      }
+      return null;
+    }
+    return entry;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -55,22 +97,23 @@ export class OrionTrack {
     return join(this.cacheDir, `${encodeURIComponent(key)}.json`);
   }
 
+  /** Current on-disk schema version (readable for diagnostics/track status). */
+  readonly schemaVersion: number = SCHEMA_VERSION;
+
   /** Persist a value under a key with the current timestamp. */
   store(key: string, value: unknown): void {
-    const entry: CacheEntry = { value, storedAt: new Date().toISOString() };
+    const entry: CacheEntry = {
+      schema: SCHEMA_VERSION,
+      value,
+      storedAt: new Date().toISOString(),
+    };
     writeFileSync(this.entryPath(key), JSON.stringify(entry, null, 2), "utf8");
   }
 
-  /** Load a value; returns null when the key is missing or corrupt. */
+  /** Load a value; returns null when the key is missing, corrupt or stale. */
   load(key: string): unknown {
-    const file = this.entryPath(key);
-    if (!existsSync(file)) return null;
-    try {
-      const entry = JSON.parse(readFileSync(file, "utf8")) as CacheEntry;
-      return entry.value;
-    } catch {
-      return null;
-    }
+    const entry = readEntry(this.entryPath(key));
+    return entry ? entry.value : null;
   }
 
   /** Load a value as a string, or null. */
@@ -81,14 +124,8 @@ export class OrionTrack {
 
   /** Load a value together with its stored timestamp, or null. */
   loadWithDate(key: string): { value: unknown; storedAt: string } | null {
-    const file = this.entryPath(key);
-    if (!existsSync(file)) return null;
-    try {
-      const entry = JSON.parse(readFileSync(file, "utf8")) as CacheEntry;
-      return { value: entry.value, storedAt: entry.storedAt };
-    } catch {
-      return null;
-    }
+    const entry = readEntry(this.entryPath(key));
+    return entry ? { value: entry.value, storedAt: entry.storedAt } : null;
   }
 
   /** Check whether a key exists on disk. */
@@ -239,6 +276,7 @@ export class OrionTrack {
       count: files.length,
       size,
       lastPrune: newest ? new Date(newest).toISOString() : null,
+      schemaVersion: SCHEMA_VERSION,
     };
   }
 }

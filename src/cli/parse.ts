@@ -43,6 +43,7 @@ Flags:
   --json       Machine-readable output
   --port N     Listen port for serve (default 4780)
   --host H     Bind host for serve (default 127.0.0.1)
+  --token T    Bearer token for serve (auto-generated when host is not loopback)
   --ui         Serve the HTML dashboard at / (default for serve)
 `;
 
@@ -104,6 +105,13 @@ export function parseArgs(argv: string[]): {
         );
       }
       opts.parallel = n;
+      i++;
+    } else if (arg === "--token") {
+      const value = argv[i + 1];
+      if (!value || value.startsWith("-")) {
+        throw new Error("--token requires a non-empty token value");
+      }
+      opts.token = value;
       i++;
     } else if (arg === "--ui") {
       opts.ui = true;

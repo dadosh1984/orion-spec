@@ -1,0 +1,43 @@
+{
+  "changeId": "add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  34 passed (34)\n      Tests  359 passed (359)\n   Duration  24.75s (transform 2.57s, setup 10ms, collect 7.93s, tests 68.48s, environment 14ms, prepare 18.24s)\n\n[orion: −38475 B (−99.5%) ≈ 9619 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 67 LOC, 2 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 2.5 KB of 100.0 MB (15 entries) — within budget; ≈ 391429 tok saved across 252 compress op(s)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-07T06:11:38.446Z",
+  "contextHash": "adf688cd5e02"
+}

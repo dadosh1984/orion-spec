@@ -7,9 +7,11 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [22.x]
 
     steps:
@@ -42,16 +44,20 @@ jobs:
       - name: Test with coverage
         run: pnpm run test:coverage
 
+      - name: Core coverage gate (track.ts, scale.ts, tddCore.ts)
+        run: pnpm run core:coverage
+
       - name: Prune cache after build
         run: node dist/cli/index.js track prune
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: dist
+          name: dist-${{ matrix.os }}
           path: |
             dist/
             orion-report.json
 
-      - name: Build Docker image (sandboxed CI)
+      - name: Build Docker image (sandboxed CI, linux only)
+        if: matrix.os == 'ubuntu-latest'
         run: docker build -t orion:0.4 .

@@ -96,4 +96,6 @@ export interface TrackStats {
   count: number;
   size: number;
   lastPrune: string | null;
+  /** On-disk cache schema version (v0.19): diagnostic for track status. */
+  schemaVersion: number;
 }

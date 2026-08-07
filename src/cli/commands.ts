@@ -267,10 +267,12 @@ export async function main(argv: string[]): Promise<number> {
     }
 
     case "serve": {
+      const token = opts.token ?? process.env.ORION_DASHBOARD_TOKEN;
       const server = await startServer(track, {
         port: opts.port || 4780,
         ui: opts.ui,
         host: opts.host ?? "127.0.0.1",
+        token,
       });
       const addr = server.address();
       const port =
@@ -279,6 +281,12 @@ export async function main(argv: string[]): Promise<number> {
       console.log(
         `orion: dashboard at http://${host}:${port} (Ctrl+C to stop)`,
       );
+      if (server.authToken) {
+        console.log(`orion: auth token: ${server.authToken}`);
+        console.log(
+          `orion: open http://${host}:${port}/?token=${server.authToken} — every API call requires the token`,
+        );
+      }
       await new Promise<void>((resolve) => {
         const stop = () => server.close(() => resolve());
         process.once("SIGINT", stop);

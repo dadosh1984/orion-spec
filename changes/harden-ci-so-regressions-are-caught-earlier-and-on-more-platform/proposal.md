@@ -1,0 +1,8 @@
+# Proposal — harden-ci-so-regressions-are-caught-earlier-and-on-more-platform
+
+**Goal:** Harden CI so regressions are caught earlier and on more platforms: (1) add an OS matrix (ubuntu-latest, windows-latest, macos-latest) to the GitHub Actions workflow; (2) enforce a stricter per-file coverage gate for the core pipeline modules (track.ts, tddCore.ts, scale.ts) on top of the current global 80% threshold.
+
+- Platform: GitHub Actions + vitest (orion-spec)
+- Constraints: Keep global coverage threshold at 80%; add a higher per-file gate only for the core pipeline modules (track.ts, tddCore.ts, scale.ts); the gate must be enforced in CI on all OSes.
+- Budget: Tight
+- **Lessons applied (v0.12):** fix-the-regressions-and-tooling-pollution-discovered-during-the-:shield:de78db3154fa, dashboard-live-metrics:out:f299e139a426, dashboard-live-metrics:shield:7cef6af26c09, first-run-orion-draft-forge-shield-orion:shield:6de650a0dba7, first-run-orion-draft-forge-shield-orion:shield:e0d43c3dfae5
