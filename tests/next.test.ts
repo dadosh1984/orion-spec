@@ -49,10 +49,14 @@ beforeEach(() => {
   mkdirSync(dir);
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(process.cwd(), "cache");
+  process.env.ORION_SPEND_FILE = join(process.cwd(), "spend.json");
+  delete process.env.ORION_MAX_BUDGET_TOKENS;
 });
 
 afterEach(() => {
   process.env.ORION_CACHE_DIR = "";
+  delete process.env.ORION_SPEND_FILE;
+  delete process.env.ORION_MAX_BUDGET_TOKENS;
   delete process.env.ORION_ECONOMY_FILE;
   delete process.env.ORION_CALIBRATION_FILE;
   delete process.env.ORION_DEBT_FILE;
@@ -228,6 +232,38 @@ describe("next: economy footer (v0.17)", () => {
     makeChange("cli-tool", true);
     const r = await nextStep();
     expect(r.summary).toContain("no compress ops recorded yet");
+  });
+});
+
+describe("next: hard budget stop (v0.22)", () => {
+  it("returns budget_exceeded when the next action would cross the cap", async () => {
+    process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
+    process.env.ORION_MAX_BUDGET_TOKENS = "5"; // below any real action cost
+    makeChange("cli-tool", true); // draft ready → next is forge
+    const r = await nextStep();
+    expect(r.next).toBeNull();
+    expect(r.budgetExceeded).toBeDefined();
+    expect(r.budgetExceeded?.limit).toBe(5);
+    expect(r.summary).toContain("Budget exceeded");
+    expect(r.summary).toContain("ORION_MAX_BUDGET_TOKENS=5");
+  });
+
+  it("records estimated spend and stops only past the cap", async () => {
+    process.env.ORION_CALIBRATION_FILE = join(process.cwd(), "cal.json");
+    process.env.ORION_MAX_BUDGET_TOKENS = "999999999";
+    makeChange("cli-tool", true);
+    const r = await nextStep();
+    expect(r.next).not.toBeNull();
+    expect(r.budgetExceeded).toBeUndefined();
+    const ledger = JSON.parse(
+      readFileSync(process.env.ORION_SPEND_FILE!, "utf8"),
+    );
+    expect(ledger.total).toBeGreaterThan(0);
+    expect(ledger.entries[0].changeId).toBe("cli-tool");
+    // Same spend, cap now at the ledger total → the next recommendation stops.
+    process.env.ORION_MAX_BUDGET_TOKENS = String(ledger.total);
+    const r2 = await nextStep();
+    expect(r2.budgetExceeded).toBeDefined();
   });
 });
 

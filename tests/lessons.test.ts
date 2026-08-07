@@ -34,6 +34,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-lessons-"));
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
+  process.env.ORION_SPEND_FILE = join(dir, "spend.json");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
   process.env.ORION_DEBT_FILE = join(dir, "debt.json");
@@ -41,6 +42,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
+  delete process.env.ORION_SPEND_FILE;
   delete process.env.ORION_LESSONS_FILE;
   delete process.env.ORION_SHIELD_SKIP_SHELL;
   delete process.env.ORION_DEBT_FILE;
@@ -115,6 +117,20 @@ describe("lessons store (v0.12)", () => {
     });
     const hits = findLessons("cache prune expired entries");
     expect(hits.map((l) => l.changeId)).toEqual(["old", "new"]);
+  });
+
+  it("n-gram similarity surfaces typo'd terms that share no words (v0.22)", () => {
+    recordLesson({
+      changeId: "typo",
+      step: "forge",
+      error: "cache entries expired; retry after pruning",
+    });
+    // "kache entrie expierd" shares no 4+ letter word (or substring) with
+    // the lesson — only the trigram signal can surface it.
+    const hits = findLessons("kache entrie expierd");
+    expect(hits.map((l) => l.changeId)).toContain("typo");
+    // ...and genuinely unrelated text stays unmatched.
+    expect(findLessons("totally unrelated gibberish xyzzy")).toHaveLength(0);
   });
 
   it("caps the ledger at 500 entries, evicting oldest", () => {

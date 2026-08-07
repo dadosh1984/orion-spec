@@ -113,14 +113,20 @@ export function listLessons(changeId?: string): Lesson[] {
 
 /**
  * Find lessons relevant to a free-form text (goal, corrective prompt, …).
- * Word-based (signature words of length >= 4): a lesson matches when any of
- * its fields mentions any signature word. Matches are ranked by relevance —
- * the number of distinct signature words found in the lesson (more shared
- * vocabulary = more relevant) — with newest first as the tie-break, instead
- * of the old newest-only selection. Returns up to 5. The ledger is capped at
- * 500 entries, so a full statistical ranker (BM25/TF-IDF) would add
- * complexity without a measurable win; match density is the honest, cheap
- * signal.
+ *
+ * Two signals are blended, both zero-dependency:
+ * 1. Word-based (signature words of length >= 4): a lesson matches when any
+ *    of its fields mentions any signature word (substring containment).
+ * 2. Character-trigram Jaccard (v0.22): catches partial overlaps that share
+ *    no 4+ letter word — e.g. "unexpected end of input" vs "unexpected end
+ *    of file", or a typo'd term — without a vector DB.
+ *
+ * Ranked by relevance — distinct signature words first, then n-gram
+ * similarity, newest first as the final tie-break — instead of the old
+ * newest-only selection. Returns up to 5. The ledger is capped at 500
+ * entries, so a full statistical ranker (BM25/TF-IDF) would add complexity
+ * without a measurable win; word match density plus n-gram similarity is
+ * the honest, cheap signal.
  */
 export function findLessons(text: string): Lesson[] {
   const words = [
@@ -132,23 +138,58 @@ export function findLessons(text: string): Lesson[] {
     ),
   ];
   if (words.length === 0) return [];
+  const queryGrams = trigrams(text);
   return readLessons()
     .map((l) => {
       const hay = [l.changeId, l.step, l.error, l.cause, l.fix]
         .join(" ")
         .toLowerCase();
       const matched = words.filter((w) => hay.includes(w)).length;
-      return matched > 0 ? { lesson: l, matched } : null;
+      const { sim, shared } = ngramSim(queryGrams, trigrams(hay));
+      return matched > 0 || (shared >= NGRAM_MIN_SHARED && sim >= NGRAM_THRESHOLD)
+        ? { lesson: l, matched, sim }
+        : null;
     })
-    .filter((x): x is { lesson: Lesson; matched: number } => x !== null)
+    .filter((x): x is { lesson: Lesson; matched: number; sim: number } => x !== null)
     .sort(
       (a, b) =>
         b.matched - a.matched ||
+        b.sim - a.sim ||
         (a.lesson.ts < b.lesson.ts ? 1 : a.lesson.ts > b.lesson.ts ? -1 : 0),
     )
     .slice(0, 5)
     .map((x) => x.lesson);
 }
+
+/** Character trigram set (lowercased) — the n-gram similarity input. */
+function trigrams(s: string): Set<string> {
+  const out = new Set<string>();
+  const t = s.toLowerCase();
+  for (let i = 0; i + 3 <= t.length; i++) out.add(t.slice(i, i + 3));
+  return out;
+}
+
+/**
+ * N-gram similarity: shared trigrams over the smaller set (containment,
+ * not symmetric Jaccard — the query is short and the lesson hay is long, so
+ * containment is the honest signal). Returns the ratio plus the absolute
+ * shared count so short strings need a floor, not just a ratio.
+ */
+function ngramSim(
+  a: Set<string>,
+  b: Set<string>,
+): { sim: number; shared: number } {
+  if (a.size === 0 || b.size === 0) return { sim: 0, shared: 0 };
+  let shared = 0;
+  for (const x of a) if (b.has(x)) shared++;
+  return { sim: shared / Math.min(a.size, b.size), shared };
+}
+
+/** A fuzzy candidate needs at least this many shared trigrams… */
+const NGRAM_MIN_SHARED = 3;
+
+/** …and this ratio of the smaller set to count as similar. */
+const NGRAM_THRESHOLD = 0.25;
 
 /**
  * Lessons for an `out` summary (v0.14): the change's own recorded lessons,

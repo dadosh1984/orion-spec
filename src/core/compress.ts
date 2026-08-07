@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
+import { trace } from "./telemetry.js";
 import { OrionTrack } from "./track.js";
 
 /**
@@ -665,6 +666,12 @@ export function compress(
   if (cacheKey && cache) {
     const hit = cache.load(cacheKey) as StoredCompress | null;
     if (hit) {
+      trace({
+        type: "cache_hit",
+        namespace: "compress",
+        key: cacheKey,
+        savedBytes: hit.savedBytes,
+      });
       appendEconomy({
         ts: new Date().toISOString(),
         cmd: firstToken(cmd),

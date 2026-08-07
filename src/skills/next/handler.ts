@@ -6,6 +6,8 @@ import { estimateTokens, economyStats } from "../../core/compress.js";
 import { listLessons, type Lesson } from "../../core/lessons.js";
 import { calibrationFactor, readCalibration } from "../../core/calibration.js";
 import { countOpenDebt } from "../../core/debt.js";
+import { maxBudgetTokens, readSpendLedger, recordSpend } from "../../core/budget.js";
+import { trace } from "../../core/telemetry.js";
 import type { GuardReport, Proposal } from "../../type.js";
 
 /**
@@ -52,6 +54,12 @@ export interface NextResult {
     lesson: Lesson;
     correctivePrompt: string;
   };
+  /**
+   * Hard budget stop (v0.22): set when the recommended action would push
+   * the cumulative estimated spend past ORION_MAX_BUDGET_TOKENS. `next` is
+   * then null — the agent must stop, summarize and report.
+   */
+  budgetExceeded?: { limit: number; spent: number; estimated: number };
   /**
    * How sure Orion is about `next` (v0.10):
    * - "high"  — exactly one change at the earliest stage;
@@ -225,8 +233,42 @@ export async function nextStep(): Promise<NextResult> {
   }
 
   const first = candidates[0].state;
+  const action = `${first.nextCommand} — ${first.detail}`;
+  const actionCost = candidates[0].cost;
+  trace({ type: "transition", changeId: first.id, phase: first.phase, action });
+  // Hard budget stop (v0.22): ORION_MAX_BUDGET_TOKENS caps the cumulative
+  // estimated spend of recommended actions. Committing to an action that
+  // would push the ledger past the cap is exactly the loop we must not
+  // enter — stop, summarize, report. Advisory when unset.
+  const cap = maxBudgetTokens();
+  if (cap !== null) {
+    const ledger = readSpendLedger();
+    if (ledger.total + actionCost > cap) {
+      return {
+        next: null,
+        summary:
+          `Budget exceeded: recommending \`${first.nextCommand}\` (~${actionCost} tok) would push ` +
+          `estimated spend ${ledger.total} → ${ledger.total + actionCost} past ` +
+          `ORION_MAX_BUDGET_TOKENS=${cap}. Stop here: summarize progress and ` +
+          "produce the report — do not keep pushing tasks blindly.\n\n" +
+          `All changes:\n${sorted
+            .map((c) => `  ${c.id}  [${c.phase}]  ${c.detail}`)
+            .join("\n")}`,
+        changes: sorted,
+        alternatives: [],
+        alternativeCosts: [],
+        confidence: "none",
+        budgetExceeded: {
+          limit: cap,
+          spent: ledger.total,
+          estimated: actionCost,
+        },
+      };
+    }
+    recordSpend(actionCost, first.id);
+  }
   return {
-    next: `${first.nextCommand} — ${first.detail}`,
+    next: action,
     summary:
       `Next: ${candidateLine(candidates[0])}\n\nAll changes:\n${sorted
         .map((c) => `  ${c.id}  [${c.phase}]  ${c.detail}`)

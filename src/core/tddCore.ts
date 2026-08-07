@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
 import { writeFileSafe, ensureDir, resolveConfig } from "../utils/file.js";
+import { trace } from "./telemetry.js";
 import { OrionTrack } from "./track.js";
 import type { TaskStatus, TddConfig } from "../type.js";
 
@@ -140,9 +141,11 @@ export class TddEngine {
     // (e.g. `tdd implement --watch`) must be visible, not silently cached.
     if (!testPassed) {
       this.state = State.RED;
+      trace({ type: "tdd", state: "RED", task: this.task });
       return this.state;
     }
     this.state = State.GREEN;
+    trace({ type: "tdd", state: "GREEN", task: this.task });
     return this.state;
   }
 
