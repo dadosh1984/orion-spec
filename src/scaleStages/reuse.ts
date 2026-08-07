@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, resolve } from "node:path";
 
 /** A top-level function declaration found in source code. */
 interface FunctionDecl {
@@ -14,16 +14,22 @@ interface FunctionDecl {
  * Finds duplicate top-level function declarations in the project's `.ts`
  * files and replaces later occurrences with an import of the first one.
  * Best-effort, deterministic transform using brace-matching scans.
+ *
+ * `selfFile` is the absolute or repo-relative path of the file being
+ * scaled: it must never be a reuse source (its own functions would
+ * otherwise become "duplicates" and the stage would emit a self-import).
  */
-export function handler(code: string): string {
+export function handler(code: string, selfFile?: string): string {
   const funcs = collectFunctions(code);
   if (funcs.size === 0) return code;
 
+  const selfPath = selfFile ? resolve(selfFile) : null;
   const projectFiles = collectTsFiles(process.cwd(), 2);
   const library = new Map<string, { file: string; name: string }>();
 
   for (const file of projectFiles) {
     try {
+      if (selfPath && resolve(file) === selfPath) continue;
       const source = readFileSync(file, "utf8");
       for (const [, decl] of collectFunctions(source)) {
         const local = funcs.get(decl.name);
@@ -36,12 +42,25 @@ export function handler(code: string): string {
     }
   }
 
+  // Collect replacements first, then apply them right-to-left: offsets are
+  // measured against the original `code`, so editing from the highest start
+  // offset downwards keeps every later slice valid (multiple replacements
+  // must never truncate or splice tokens).
+  const replacements = [...library.keys()]
+    .map((name) => {
+      const decl = funcs.get(name);
+      if (!decl) return null;
+      const importLine = `import { ${name} } from './${stripExtension(basename(library.get(name)!.file))}';`;
+      return { start: decl.start, end: decl.end, text: importLine };
+    })
+    .filter(
+      (r): r is { start: number; end: number; text: string } => r !== null,
+    )
+    .sort((a, b) => b.start - a.start);
+
   let result = code;
-  for (const name of library.keys()) {
-    const decl = funcs.get(name);
-    if (!decl) continue;
-    const importLine = `import { ${name} } from './${stripExtension(basename(library.get(name)!.file))}';`;
-    result = result.slice(0, decl.start) + importLine + result.slice(decl.end);
+  for (const r of replacements) {
+    result = result.slice(0, r.start) + r.text + result.slice(r.end);
   }
   return result;
 }

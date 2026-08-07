@@ -13,7 +13,7 @@ import { handler as minimum } from "../scaleStages/minimum.js";
 
 const STAGE_HANDLERS: Record<
   ScaleStageName,
-  (code: string) => string | Promise<string>
+  (code: string, file?: string) => string | Promise<string>
 > = {
   yagni,
   reuse,
@@ -67,13 +67,16 @@ export interface ScalePreview {
  * diff-preview for `--dry` runs. Caching is disabled on purpose: a preview
  * must reflect what WOULD happen right now.
  */
-export async function previewScale(code: string): Promise<ScalePreview> {
+export async function previewScale(
+  code: string,
+  file?: string,
+): Promise<ScalePreview> {
   let current = code;
   const stages: ScaleStagePreview[] = [];
   for (const stage of loadStages()) {
     const handlerFn = STAGE_HANDLERS[stage];
     if (!handlerFn) continue;
-    const next = await handlerFn(current);
+    const next = await handlerFn(current, file);
     const result = toCode(next);
     stages.push({ name: stage, changed: result !== current, result });
     current = result;
@@ -91,7 +94,7 @@ export async function previewScale(code: string): Promise<ScalePreview> {
  */
 export async function applyScale(
   code: string,
-  opts?: { noCache?: boolean; track?: OrionTrack },
+  opts?: { noCache?: boolean; track?: OrionTrack; file?: string },
 ): Promise<string> {
   const track = opts?.track ?? OrionTrack.init();
   let current = code;
@@ -108,7 +111,7 @@ export async function applyScale(
     }
     const handlerFn = STAGE_HANDLERS[stage];
     if (!handlerFn) continue;
-    const next = await handlerFn(current);
+    const next = await handlerFn(current, opts?.file);
     current = toCode(next);
     if (!opts?.noCache) track.store(key, current);
   }

@@ -1,11 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { handler as yagni } from "../src/scaleStages/yagni.js";
 import { handler as stdlib } from "../src/scaleStages/stdlib.js";
 import { handler as native } from "../src/scaleStages/native.js";
 import { handler as dep } from "../src/scaleStages/dep.js";
 import { handler as oneLiner } from "../src/scaleStages/oneLiner.js";
 import { handler as minimum } from "../src/scaleStages/minimum.js";
+import { handler as reuse } from "../src/scaleStages/reuse.js";
 import { applyScale, hashCode, previewScale } from "../src/core/scale.js";
+
+const ORIG_CWD = process.cwd();
 
 describe("scale stages", () => {
   it("yagni is a no-op", () => {
@@ -102,5 +108,52 @@ describe("scale core", () => {
     expect(cleanChanged.every((s) => s.name === "minimum")).toBe(true);
     // yagni / reuse / stdlib must never touch clean code
     expect(clean.stages.find((s) => s.name === "stdlib")?.changed).toBe(false);
+  });
+});
+
+describe("reuse", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "orion-reuse-"));
+    process.chdir(dir);
+  });
+
+  afterEach(() => {
+    process.chdir(ORIG_CWD);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("never replaces the file's own functions with a self-import", () => {
+    const code =
+      "export function alpha() { return 1; }\nexport function beta() { return 2; }\n";
+    writeFileSync(join(dir, "a.ts"), code);
+    // a.ts is the file being scaled: its own functions must not become
+    // "reuse" candidates — the stage must return the code unchanged.
+    expect(reuse(code, join(dir, "a.ts"))).toBe(code);
+  });
+
+  it("imports a function duplicated in another file, leaving the rest intact", () => {
+    writeFileSync(join(dir, "shared.ts"), "export function shared() { return 1; }\n");
+    const code =
+      "export function shared() { return 1; }\n\nexport function unique() { return 2; }\n";
+    writeFileSync(join(dir, "a.ts"), code);
+    const out = reuse(code, join(dir, "a.ts"));
+    expect(out).toContain("from './shared'");
+    // the unique function must survive complete — no truncation/splicing
+    expect(out).toContain("export function unique() { return 2; }");
+  });
+
+  it("applies multiple replacements without corrupting the output", () => {
+    writeFileSync(join(dir, "s1.ts"), "export function one() { return 1; }\n");
+    writeFileSync(join(dir, "s2.ts"), "export function two() { return 2; }\n");
+    const code =
+      "export function one() { return 1; }\nexport function two() { return 2; }\nexport function three() { return 3; }\n";
+    writeFileSync(join(dir, "a.ts"), code);
+    const out = reuse(code, join(dir, "a.ts"));
+    expect(out).toContain("from './s1'");
+    expect(out).toContain("from './s2'");
+    // both imports present and the last function intact → offsets stayed valid
+    expect(out).toContain("export function three() { return 3; }");
   });
 });

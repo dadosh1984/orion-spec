@@ -221,7 +221,7 @@ export async function main(argv: string[]): Promise<number> {
         return fail("scale requires a file, e.g. orion scale src/foo.ts");
       const code = await readFile(file, "utf8");
       if (opts.dry) {
-        const preview = await previewScale(code);
+        const preview = await previewScale(code, file);
         const changed = preview.stages.filter((s) => s.changed);
         printOut(
           opts,
@@ -242,7 +242,7 @@ export async function main(argv: string[]): Promise<number> {
           ].join("\n"),
         );
       } else {
-        const result = await applyScale(code, { noCache: opts.noCache });
+        const result = await applyScale(code, { noCache: opts.noCache, file });
         await writeFileSafe(file.replace(/\.ts$/, ".scaled.ts"), result);
         printOut(
           opts,

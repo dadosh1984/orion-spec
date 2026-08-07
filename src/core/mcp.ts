@@ -354,10 +354,10 @@ export function getMcpTools(): McpTool[] {
         const code = readFileSync(file, "utf8");
         const track = OrionTrack.init();
         if (dry) {
-          const preview = await previewScale(code);
+          const preview = await previewScale(code, file);
           return JSON.stringify(preview, null, 2);
         }
-        const scaled = await applyScale(code, { track });
+        const scaled = await applyScale(code, { track, file });
         const outFile = file.replace(/\.ts$/, ".scaled.ts");
         writeFileSync(outFile, scaled, "utf8");
         return JSON.stringify({ file: outFile, result: scaled }, null, 2);
