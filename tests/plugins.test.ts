@@ -6,6 +6,7 @@ import {
   readFileSync,
   existsSync,
   mkdirSync,
+  realpathSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -169,7 +170,9 @@ describe("plugins: manager", () => {
 
   it("pluginDir/localPluginDir honor env and cwd", () => {
     expect(pluginDir()).toBe(join(dir, "global-plugins"));
-    expect(localPluginDir()).toBe(join(dir, ".orion", "plugins"));
+    // localPluginDir derives from process.cwd(), which on macOS resolves the
+    // /var → /private/var temp-dir symlink; realpath the expected side too.
+    expect(localPluginDir()).toBe(join(realpathSync(dir), ".orion", "plugins"));
   });
 
   it("readManifest tolerates missing/invalid manifests", async () => {

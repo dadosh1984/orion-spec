@@ -1,0 +1,11 @@
+# Normalize line endings: everything is LF in the repo and on checkout,
+# so prettier --check and git diffs behave identically on Windows CI.
+* text=auto eol=lf
+
+# Explicit for the formats prettier/eslint touch.
+*.ts  text eol=lf
+*.js  text eol=lf
+*.json text eol=lf
+*.md  text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

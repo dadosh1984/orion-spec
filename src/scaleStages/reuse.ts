@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, realpathSync } from "node:fs";
 import { join, basename, resolve } from "node:path";
 
 /** A top-level function declaration found in source code. */
@@ -23,13 +23,13 @@ export function handler(code: string, selfFile?: string): string {
   const funcs = collectFunctions(code);
   if (funcs.size === 0) return code;
 
-  const selfPath = selfFile ? resolve(selfFile) : null;
+  const selfPath = selfFile ? realPath(resolve(selfFile)) : null;
   const projectFiles = collectTsFiles(process.cwd(), 2);
   const library = new Map<string, { file: string; name: string }>();
 
   for (const file of projectFiles) {
     try {
-      if (selfPath && resolve(file) === selfPath) continue;
+      if (selfPath && realPath(resolve(file)) === selfPath) continue;
       const source = readFileSync(file, "utf8");
       for (const [, decl] of collectFunctions(source)) {
         const local = funcs.get(decl.name);
@@ -179,4 +179,20 @@ function collectTsFiles(dir: string, depth: number): string[] {
 
 function stripExtension(file: string): string {
   return file.replace(/\.ts$/, "");
+}
+
+/**
+ * Canonicalize a path for identity comparison. On macOS the temp dir is
+ * reached through the `/var` → `/private/var` symlink: `process.cwd()`
+ * reports the resolved physical path while `mkdtempSync(os.tmpdir())` keeps
+ * the symlinked form, so a plain `resolve()` comparison would fail to
+ * exclude the file being scaled and emit a self-import. `realpathSync`
+ * folds both forms to the same physical path.
+ */
+function realPath(p: string): string {
+  try {
+    return realpathSync(p);
+  } catch {
+    return resolve(p);
+  }
 }
