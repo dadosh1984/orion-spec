@@ -5,6 +5,11 @@
 
 > **Orion** is a zero‑dependency framework that turns a high‑level idea into production‑ready code **while guaranteeing minimal token usage, full test coverage, and deterministic quality gates**. Everything – the cache, the YAGNI ladder, the RED‑GREEN‑REFACTOR engine and the CLI – is written from scratch.
 
+> **Status.** Honest about its age: the entire version history (v0.1 → v0.19) is
+> compressed into a short span (first release 2026‑08‑06), so treat it as a young,
+> fast‑moving project rather than a battle‑tested one. Releases are cut manually;
+> the CHANGELOG tracks every change since v0.1.
+
 ## 🎯 Philosophy
 
 1. **Deterministic Process, Not Guesswork** – the whole pipeline is a state machine: `think → draft → forge → shield → out`. Every non‑trivial step is verified locally.
@@ -133,7 +138,7 @@ from-scratch take on the same idea as rtk, built into Orion's core:
 
 - **Agent-agnostic**: any MCP-capable agent calls the `compress` MCP tool with its
   own bash output (`{command, output}` → compressed text + honest byte/token savings);
-  Orion's own surfaces (`shield`, `forge`) use the same library, so 35+ models get
+  Orion's own surfaces (`shield`, `forge`) use the same library, so any MCP-capable agent gets
   the savings with zero extra setup.
 - **Deterministic rules**: `vitest`/jest collapse to failures + a count, `eslint`/`tsc`
   keep error lines only, `git status`/`diff`/`log` become compact, `ls`/`grep`/`pnpm install`
@@ -176,7 +181,7 @@ shield → out) honestly fails or doubts itself, it **records a lesson** and goe
   is not repeated in another change or another project.
 - **Readable by humans and agents**: `orion track lessons [changeId]` lists the ledger
   (`orion track status` shows the count); MCP tool `lessons_list {changeId?}` gives
-  all 35+ agents the same view.
+  any MCP-capable agent the same view.
 
 ```bash
 orion track status        # cache stats + lessons: N
@@ -224,16 +229,18 @@ presented as the standard one.
 - **`draft <title>`** – generates `proposal.md`, `specs/<capability>/spec.md`, `design.md`, `tasks.md`.
 - **`forge <title>`** – walks every open `- [ ]` task in `tasks.md` and drives it through TDD. Snippets are read from `changes/<title>/snippets/<slug>.ts`; completed tasks are marked `- [x]` and cached as `forge:<slug>=DONE` (skipped on re‑runs).
 - **`shield <change-id>`** – runs 5 guard‑rails: lint, type‑check (`tsc --noEmit`), unit tests, drift‑check (specs vs `src/tasks`), security scan (`eval`, `new Function`, `process.env.*`, `child_process`). Each step caches its result as `shield:<step>=PASS`; reports go to `reports/<change-id>/guard-report.{md,json}`.
+- **`verify <change-id> [--json]`** – evidence pass: for every spec criterion, extracts distinctive terms from the change's `specs/*/spec.md` and checks whether the codebase actually contains them. A **signal, never a gate** — it exits 0 even when a criterion is missing or drifted, so you can read the report without a failing exit code.
 - **`out <change-id>`** – writes the final `changes/<change-id>/result.md` summary.
-- **`serve [--port N] [--ui]`** – starts the zero‑dependency web dashboard (v0.2): cache stats, key/value explorer, change list. Open `http://localhost:4780`.
+- **`serve [--port N] [--host H] [--ui] [--token T]`** – starts the zero‑dependency web dashboard (v0.2): cache stats, key/value explorer, change list. Binds `127.0.0.1` by default. Auth: `--token T` (or `ORION_DASHBOARD_TOKEN`) turns auth on — every API call then requires `?token=…` (or `Authorization: Bearer` / `x-orion-token`). Without a token, loopback binds (`127.0.0.1`/`localhost`) run **without** auth (local machine, trusted); a non‑loopback bind auto‑generates a token and prints it to stdout, so an exposed dashboard is never unauthenticated.
 
 ```bash
 orion think "Build a CSV-to-JSON tool"
 orion draft csv-tool
 orion forge csv-tool
 orion shield csv-tool
+orion verify csv-tool   # evidence pass — signal, never a gate
 orion out csv-tool
-orion serve           # dashboard at http://localhost:4780
+orion serve           # dashboard at http://127.0.0.1:4780
 ```
 
 ## 🧪 Development
@@ -277,7 +284,7 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - ✅ **v0.9** – Context depth — _done_: `draft` decomposes goals into concrete tasks (RU+EN: strips action verbs, transliterates known entities, sub‑entity details like “operation history: persistence/replay/undo”), `shield` security scan catches shell injection (`${}` in exec), `$(…)`/`|;&` chaining, `node:vm` escapes and hardcoded credentials — while staying green on legitimate template literals
 - 🔄 **v0.10** – Honesty & companion — _done_: `out` detects a stale guard report (context hash) instead of using it as-is; `track` labels cache hits with their date; `next` says "insufficient context" with ranked alternatives instead of guessing, and suggests starting ideas when nothing exists; `draft` marks tasks `[fact]` vs `[assumption]` (with an Assumptions section in design.md) and no longer false-positivizes on `logical`→history or "no new CLI commands"→CLI; `tdd` names the exact failing test; `mcp` never returns fake success; `shield`/`out` fail honestly when the change does not exist; README documents the process‑over‑model thesis
 - ✅ **v0.11** – Token economy — _done_: own rtk-style output compressor in the core (`compress` MCP tool, agent-agnostic for all MCP clients; compact shield/forge test rendering; honest bytes/4 savings notes; RU/EN-safe truncation), `orion metrics` reports real savings from the `~/.orion/economy.json` ledger, `next` ranks alternatives cheapest-first by estimated token cost, repeated outputs are cached by input hash and labeled `cached=true`; `draft` no longer crashes on free-text `platform` answers (path-safe capability names)
-- ✅ **v0.12** – Self-correction & learning — _done_: Orion records a lesson (`~/.orion/lessons.json`) whenever a step honestly fails (`shield` FAIL check, `out` STALE/INCOMPLETE, `forge` RED task) and routes back to `think` with a corrected task (`next` returns a `selfCorrection` route built from the last lesson); `think` attaches matching past lessons to new ideas (`appliesLessons`) so the same mistake is not repeated across projects; `orion track lessons [id]` and MCP `lessons_list` give CLI users and all 35+ agents read access to the ledger
+- ✅ **v0.12** – Self-correction & learning — _done_: Orion records a lesson (`~/.orion/lessons.json`) whenever a step honestly fails (`shield` FAIL check, `out` STALE/INCOMPLETE, `forge` RED task) and routes back to `think` with a corrected task (`next` returns a `selfCorrection` route built from the last lesson); `think` attaches matching past lessons to new ideas (`appliesLessons`) so the same mistake is not repeated across projects; `orion track lessons [id]` and MCP `lessons_list` give CLI users and any MCP-capable agent read access to the ledger
 - 🚧 **v0.13** – Session learning & open templates — _in progress_: Orion reads real agent-session JSONL (any shape: pi-style, generic), detects "failed → succeeded" pairs for the same action and records them as lessons in the same ledger that feeds `next`/`think` (`orion learn <file|dir>`, MCP `lessons_learn`) — honest report, no fake learning; artifact skeletons (proposal/design/tasks/spec) and think questions became editable data (`~/.orion/templates/`, per-change `changes/<id>/templates/`, built-in fallback, honest `(custom)` marker in generated files)
 - ✅ **v0.14** – Lessons in results & more compress rules — _done_: `out` writes an honest «Уроки и решения» section into result.md on SUCCESS (the change's recorded lessons + relevant shared ones from the same ledger that powers `next`; explicit «нет уроков» when nothing happened); the token-economy compressor gained 9 high-value rules (docker ps/images/logs, pytest, cargo test, terraform plan, npm list, pip freeze, ps)
 - ✅ **v0.15** – YAGNI signal in shield + session metrics — _done_: `shield` measures each new snippet against the repo's own code norms (median LOC/imports) and reports outliers as **WARN** (a signal, never a gate — `allPass` stays green); `orion metrics --session <file.jsonl>` shows a per-role token breakdown (user/assistant/toolCall/toolResult/thinking) with the honest `≈ bytes/4` estimate

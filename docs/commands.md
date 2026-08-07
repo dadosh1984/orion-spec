@@ -58,6 +58,7 @@
 | Command                                    | Description                                                            |
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
+| `orion verify <change-id> [--json]`        | Evidence pass: checks every spec criterion's terms exist in the code. A **signal, never a gate** — exits 0 even when criteria are missing/drifted (v0.19)    |
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
 | `orion metrics --session <file.jsonl>`     | Per-role token breakdown of a session (v0.15)                          |
 | `orion mcp`                                | MCP server over stdio; exposes 17 tools incl. `compress`, `lessons_list`, `lessons_learn` (v0.7, v0.11–v0.13)    |
@@ -143,7 +144,7 @@ forge paused: 2 done, 0 skipped, 1 pending across 1 wave(s) of 4
 Every rule collapses only when it actually shrinks the output (no fake
 savings) and reports savings with the honest `≈ bytes/4` token label.
 | `orion <multi-word prompt>`                | Shorthand for `think` — captures an idea as a proposal (v0.7)          |
-| `orion serve [--port N] [--host H] [--ui]` | Start the web dashboard; binds 127.0.0.1 by default (v0.2)             |
+| `orion serve [--port N] [--host H] [--ui] [--token T]` | Start the web dashboard; binds 127.0.0.1 by default. `--token T` or `ORION_DASHBOARD_TOKEN` turns auth on (every API call needs `?token=…` / `Authorization: Bearer` / `x-orion-token`); without a token, loopback runs unauthenticated and a non-loopback bind auto-generates + prints a token so it is never unauthenticated (v0.2) |
 | `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |
 | `orion plugin install <dir>`               | Copy a plugin into `~/.orion/plugins`                                  |
 | `orion plugin list`                        | List installed plugins (global + local)                                |

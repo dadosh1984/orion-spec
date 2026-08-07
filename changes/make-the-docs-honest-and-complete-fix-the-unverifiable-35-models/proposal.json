@@ -1,0 +1,16 @@
+{
+  "title": "make-the-docs-honest-and-complete-fix-the-unverifiable-35-models",
+  "goal": "Make the docs honest and complete: fix the unverifiable 35+ models claim, add a maturity note for the young version history, document orion verify and serve --token, add SECURITY.md, run the Dockerfile as non-root, and document the verifiability level 0-3 in architecture.md",
+  "platform": "node",
+  "constraints": "Docs only: no code behavior changes, no new runtime features; README wording must stay accurate for the actual codebase; SECURITY.md must not overpromise; Dockerfile change is runtime-stage USER node only",
+  "budget": "moderate",
+  "clarity": "clear",
+  "language": "en",
+  "appliesLessons": [
+    "improve-orion-s-own-workflow-tooling-make-orion-draft-derive-mai:out:1dfadda6ba87",
+    "improve-orion-s-own-workflow-tooling-make-orion-draft-derive-mai:out:50f74a0c2da1",
+    "fix-the-broken-test-coverage-gate-in-orion-spec-v8-coverage-repo:shield:81b9a592ab5a",
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:ba70e22c8595",
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:8d1ea76ccecb"
+  ]
+}

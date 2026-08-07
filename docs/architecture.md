@@ -50,6 +50,26 @@ CLI (commands.ts)
 | `proposal:<title>`     | `proposal:csv-tool`   | —                              |
 | `forge:<slug>`         | `forge:implement_add` | `track clear`                  |
 
+## Verifiability levels (0–3)
+
+`src/core/verifiability.ts` probes a root for **oracles** (test runner
+config, type-check config, lint config, CI workflow) and decides how much
+an automated PASS is worth. Shown in every `shield` report
+(`verifiability level N`):
+
+- **3** — a test runner AND meaningful assertions exist (strongest
+  evidence: `test`/`it`/`expect`/`assert`/`describe`/`should` tokens in
+  test files).
+- **2** — a test runner without meaningful assertions, or a type-check /
+  lint oracle (some determinism).
+- **1** — only CI (indirect signal).
+- **0** — nothing verifiable; an automated PASS is weakest here and is
+  labelled as needing human review.
+
+The level is a **reporting heuristic, not a gate** — the same honesty rule
+as `orion verify`: it never blocks, it tells you how much to trust the
+result.
+
 ## Determinism & testability
 
 - Skills accept injectable dependencies (`ask` in think, `snippetProvider`/`engineFactory` in forge), so unit tests run without real I/O.

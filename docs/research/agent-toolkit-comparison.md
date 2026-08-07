@@ -175,7 +175,8 @@ OpenClaw skills, Hermes plugin, Qoder). Ядро не изменилось:
 ## 7. orion-spec 0.17.0 — сводка по фактам
 
 - **Ноль зависимостей**, пакет ~147 КБ; CLI + **MCP-сервер stdio (17 тулов)**
-  — агент-агностичен (35+ моделей; проверено живым JSON-RPC handshake в v0.17).
+  — агент-агностичен (любой MCP-клиент: Claude Code, Codex, opencode,
+  Cursor, Cline, …).
 - **Воркфлоу**: think → draft (proposal/specs/design/tasks) → forge
   (**настоящий TDD-движок** RED-GREEN-REFACTOR + параллельные волны через
   `fork`, v0.16) → shield (**7 детерминированных гейтов**: lint, type, test,
