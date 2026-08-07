@@ -1,6 +1,6 @@
 {
   "name": "orion-spec",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "packageManager": "pnpm@11.18.0",
   "description": "Self-contained AI-agent toolkit: deterministic think → draft → forge → shield workflow with zero dependencies at runtime.",
   "type": "module",
