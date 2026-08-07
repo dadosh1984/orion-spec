@@ -5,7 +5,7 @@
 **Guard:** lint:PASS, type:PASS, test:PASS, drift:PASS, yagni:PASS, economy:PASS, security:PASS
 - **Budget:** Tight
 - **Constraints:** Loopback default stays open/unauthenticated; token required only when host is non-loopback or --token is set; zero deps; keep serve tests green.
-- **Generated:** 2026-08-07T05:55:59.272Z
+- **Generated:** 2026-08-07T06:11:38.446Z
 
 ## Checklist
 
@@ -25,13 +25,13 @@
 | type | PASS | ok |
 | test | PASS | [orion] no failures detected — summary:
  Test Files  34 passed (34)
-      Tests  356 passed (356)
-   Duration  26.70s (transform 2.53s, setup 3ms, collect 8.06s, tests 67.00s, environment 14ms, prepare 18.10s)
+      Tests  359 passed (359)
+   Duration  24.75s (transform 2.57s, setup 10ms, collect 7.93s, tests 68.48s, environment 14ms, prepare 18.24s)
 
-[orion: −38467 B (−99.5%) ≈ 9617 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
+[orion: −38475 B (−99.5%) ≈ 9619 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
 | drift | PASS | matched 1 exported capabilities |
-| yagni | PASS | no snippets to check (repo median: 73 LOC, 3 imports) |
-| economy | PASS | cache 2.5 KB of 100.0 MB (15 entries) — within budget; ≈ 362576 tok saved across 243 compress op(s) |
+| yagni | PASS | no snippets to check (repo median: 67 LOC, 2 imports) |
+| economy | PASS | cache 2.5 KB of 100.0 MB (15 entries) — within budget; ≈ 391429 tok saved across 252 compress op(s) |
 | security | PASS | no obvious issues |
 
 ## Artifacts
@@ -39,6 +39,7 @@
 - `changes/add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-/proposal.md`
 - `changes/add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-/design.md`
 - `changes/add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-/tasks.md`
+- `changes/add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-/result.md`
 - `reports/add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-/guard-report.md`
 - `changes/add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-/specs/dashboard-auth/spec.md`
 - `changes/add-optional-token-auth-to-the-web-dashboard-so-that-binding-to-/snippets/`
