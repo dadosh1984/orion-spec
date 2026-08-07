@@ -26,10 +26,11 @@ jobs:
             echo "::notice::release ${TAG} already exists — skipping"
             exit 0
           fi
-          # Mark "latest" only when this tag is the newest semver; a
-          # backported tag pushed later must not steal the Latest badge.
+          # Mark "latest" only for a strict semver tag (vX.Y.Z) that is the
+          # newest; suffixed/backported tags must never steal the Latest badge.
           LATEST_TAG="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
-          if [ -z "${LATEST_TAG}" ] || [ "${TAG}" = "$(printf '%s\n%s' "${LATEST_TAG}" "${TAG}" | sort -V | tail -n 1)" ]; then
+          if [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && \
+             { [ -z "${LATEST_TAG}" ] || [ "${TAG}" = "$(printf '%s\n%s' "${LATEST_TAG}" "${TAG}" | sort -V | tail -n 1)" ]; }; then
             LATEST_FLAG="--latest"
           else
             LATEST_FLAG="--latest=false"
