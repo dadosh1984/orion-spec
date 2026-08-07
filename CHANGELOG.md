@@ -16,6 +16,12 @@ Dates are from git history.
   (ubuntu/windows/macos) and enforces a stricter per-file coverage floor for
   the core modules (track.ts ≥ 90, scale.ts ≥ 95, tddCore.ts ≥ 85) via
   `pnpm run core:coverage`.
+- **Verifiability-aware shield** — `shield` deterministically probes the
+  repo's verification oracles (test-runner / type-check / lint / CI) and
+  reports a verifiability level 0–3; weak/missing test assertions are
+  marked `weak` and a low-verifiability PASS is honestly labelled
+  lower-confidence / human-review (WARN, never a gate) — idea adapted from
+  a sibling toolkit, implemented in orion's own style.
 
 ## [0.18.1] — 2026-08-07
 

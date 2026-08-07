@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { shield } from "../src/skills/shield/handler.js";
+import { shield, verifiabilityCheck } from "../src/skills/shield/handler.js";
 import { OrionTrack } from "../src/core/track.js";
 
 const ORIGINAL_CWD = process.cwd();
@@ -226,10 +226,21 @@ describe("shield skill", () => {
 describe("shield: yagni signal (v0.15)", () => {
   it("WARNs on a snippet far above the repo median — and stays allPass", async () => {
     mkdirSync("src", { recursive: true });
-    writeFileSync("src/base.ts", "export const a = 1;\nexport const b = 2;\n", "utf8");
+    writeFileSync(
+      "src/base.ts",
+      "export const a = 1;\nexport const b = 2;\n",
+      "utf8",
+    );
     mkdirSync("changes/demo/snippets", { recursive: true });
-    const big = Array.from({ length: 220 }, (_, i) => `const v${i} = ${i};`).join("\n");
-    writeFileSync("changes/demo/snippets/big.ts", big + "\nexport const big = 1;\n", "utf8");
+    const big = Array.from(
+      { length: 220 },
+      (_, i) => `const v${i} = ${i};`,
+    ).join("\n");
+    writeFileSync(
+      "changes/demo/snippets/big.ts",
+      big + "\nexport const big = 1;\n",
+      "utf8",
+    );
     const report = await shield("demo", { noCache: true });
     const yagni = report.checks.find((c) => c.step === "yagni");
     expect(yagni?.status).toBe("WARN");
@@ -241,9 +252,17 @@ describe("shield: yagni signal (v0.15)", () => {
 
   it("PASSes when snippets are within repo norms", async () => {
     mkdirSync("src", { recursive: true });
-    writeFileSync("src/base.ts", "export const a = 1;\nexport const b = 2;\n", "utf8");
+    writeFileSync(
+      "src/base.ts",
+      "export const a = 1;\nexport const b = 2;\n",
+      "utf8",
+    );
     mkdirSync("changes/demo/snippets", { recursive: true });
-    writeFileSync("changes/demo/snippets/small.ts", "export const s = 1;\n", "utf8");
+    writeFileSync(
+      "changes/demo/snippets/small.ts",
+      "export const s = 1;\n",
+      "utf8",
+    );
     const report = await shield("demo", { noCache: true });
     const yagni = report.checks.find((c) => c.step === "yagni");
     expect(yagni?.status).toBe("PASS");
@@ -321,5 +340,26 @@ describe("shield: economy step (v0.17)", () => {
     const report = await shield("demo"); // run 2: must see the growth
     const eco = report.checks.find((c) => c.step === "economy");
     expect(eco?.status).toBe("WARN");
+  });
+
+  it("adds a verifiability step that WARNs on low verifiability (empty repo)", async () => {
+    const report = await shield("demo", { noCache: true });
+    const v = report.checks.find((c) => c.step === "verifiability");
+    expect(v).toBeDefined();
+    expect(v?.status).toBe("WARN");
+    expect(v?.detail).toContain("level 0");
+  });
+
+  it("reports PASS verifiability when the repo has a test runner + real assertions", () => {
+    writeFileSync("vitest.config.ts", "export default {}", "utf8");
+    mkdirSync("tests", { recursive: true });
+    writeFileSync(
+      "tests/a.test.ts",
+      "import { it, expect } from 'vitest';\nit('a', () => expect(1).toBe(1));\n",
+      "utf8",
+    );
+    const v = verifiabilityCheck();
+    expect(v.status).toBe("PASS");
+    expect(v.detail).toContain("level 3");
   });
 });

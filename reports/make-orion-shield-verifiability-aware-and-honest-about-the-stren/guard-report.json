@@ -1,0 +1,48 @@
+{
+  "changeId": "make-orion-shield-verifiability-aware-and-honest-about-the-stren",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  35 passed (35)\n      Tests  375 passed (375)\n   Duration  32.60s (transform 5.21s, setup 9ms, collect 12.87s, tests 89.10s, environment 19ms, prepare 23.85s)\n\n[orion: −38578 B (−99.5%) ≈ 9645 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 67 LOC, 2 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 2.5 KB of 100.0 MB (15 entries) — within budget; ≈ 410715 tok saved across 260 compress op(s)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    },
+    {
+      "step": "verifiability",
+      "status": "PASS",
+      "detail": "oracles: ci, lint, test-runner, type-check · verifiability level 3 — strong checks present"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-07T07:08:06.984Z",
+  "contextHash": "bc4360ff20d9"
+}

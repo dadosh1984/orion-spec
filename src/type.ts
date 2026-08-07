@@ -72,9 +72,23 @@ export interface ArtifactSet {
 
 /** Result of one guard-rail check in `shield`. */
 export interface GuardCheckResult {
-  step: "lint" | "type" | "test" | "drift" | "yagni" | "economy" | "security";
+  step:
+    | "lint"
+    | "type"
+    | "test"
+    | "drift"
+    | "yagni"
+    | "economy"
+    | "security"
+    | "verifiability";
   status: "PASS" | "FAIL" | "SKIP" | "WARN";
   detail?: string;
+  /**
+   * True when this check cannot fully support a strong verdict (e.g. the
+   * test step passed but the repo has no meaningful assertions). Honesty,
+   * never a gate.
+   */
+  weak?: boolean;
 }
 
 /** Full report produced by the `shield` skill. */

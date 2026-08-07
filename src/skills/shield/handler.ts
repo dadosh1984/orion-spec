@@ -10,6 +10,7 @@ import { compress } from "../../core/compress.js";
 import { economyStats } from "../../core/compress.js";
 import { recordLesson } from "../../core/lessons.js";
 import { recordDebt, closeDebt } from "../../core/debt.js";
+import { assessVerifiability } from "../../core/verifiability.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
 const execAsync = promisify(exec);
@@ -25,6 +26,7 @@ const STEPS: StepName[] = [
   "yagni",
   "economy",
   "security",
+  "verifiability",
 ];
 
 /**
@@ -85,6 +87,13 @@ export async function shield(
       continue;
     }
     const result = await runStep(step, changeId);
+    // Honesty about a test PASS on weak tests (verifiability-aware): a
+    // passing test step with no real assertions is marked `weak` — it cannot
+    // fully support a strong verdict.
+    if (step === "test" && result.status === "PASS") {
+      const { testsMeaningful } = assessVerifiability();
+      if (!testsMeaningful) result.weak = true;
+    }
     checks.push(result);
     // Debt sync (v0.18): yagni WARN -> open debt, PASS -> close it. Only
     // when yagni actually ran (cache hits SKIP above and mutate nothing).
@@ -127,6 +136,12 @@ export async function shield(
     ...checks.map((c) => `| ${c.step} | ${c.status} | ${c.detail ?? ""} |`),
     "",
     `**Overall: ${report.allPass ? "PASS" : "FAIL"}**`,
+    ...(checks.some((c) => c.step === "verifiability" && c.status === "WARN")
+      ? [
+          "",
+          "> ⚠️ lower-confidence PASS: this repo has weak/no verification oracles — treat as human-review needed.",
+        ]
+      : []),
     "",
   ].join("\n");
 
@@ -264,7 +279,43 @@ async function runStep(
       return economyCheck();
     case "security":
       return securityScan(changeId);
+    case "verifiability":
+      return verifiabilityCheck();
   }
+}
+
+/**
+ * Verifiability step (idea from a sibling toolkit, reimplemented in orion's
+ * own style): deterministically probe the repo and honestly label how much an
+ * automated PASS is worth. WARN, never a gate.
+ */
+export function verifiabilityCheck(): GuardCheckResult {
+  const v = assessVerifiability();
+  const ora = v.oracles.length ? v.oracles.join(", ") : "none";
+  const weak = v.testsMeaningful ? "" : " · tests weak/missing";
+  const base = "oracles: " + ora + " · verifiability level " + v.level + weak;
+  if (v.oracles.includes("test-runner") && !v.testsMeaningful) {
+    return {
+      step: "verifiability",
+      status: "WARN",
+      detail:
+        base + " — a test PASS here is lower-confidence (no real assertions)",
+    };
+  }
+  if (v.level <= 1) {
+    return {
+      step: "verifiability",
+      status: "WARN",
+      detail:
+        base +
+        " — low verifiability: treat this PASS as lower-confidence (human review advised)",
+    };
+  }
+  return {
+    step: "verifiability",
+    status: "PASS",
+    detail: base + " — strong checks present",
+  };
 }
 
 /** Run an external command and map exit status to PASS/FAIL. Output is
