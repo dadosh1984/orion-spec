@@ -4,7 +4,7 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
-## [Unreleased]
+## [0.19.0] — 2026-08-07
 
 - **Cache schema versioning** — each on-disk cache entry now carries a schema
   version; Orion drops (and never trusts) entries written with an
