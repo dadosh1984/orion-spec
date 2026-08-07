@@ -146,7 +146,12 @@ describe("full workflow (e2e)", () => {
     const out = execSync(`${CLI} metrics 2>&1`, { encoding: "utf8" });
     expect(out).toContain("⚙ orion:metrics");
     expect(out).toContain("✅ orion:metrics done");
-    expect(out).toContain("0.18.0");
+    // read the current version instead of hardcoding, so a version bump
+    // doesn't stale this e2e assertion
+    const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+      version: string;
+    };
+    expect(out).toContain(pkg.version);
     // machine-mode commands stay clean: mcp / help / --json
     const mcp = execSync(`${CLI} mcp --list 2>&1`, { encoding: "utf8" });
     expect(mcp).not.toContain("⚙ orion:");

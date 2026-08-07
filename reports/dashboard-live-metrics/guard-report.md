@@ -1,6 +1,6 @@
-# Guard Report — v0.10-honesty-companion
+# Guard Report — dashboard-live-metrics
 
-Generated: 2026-08-07T04:35:17.973Z
+Generated: 2026-08-07T04:30:18.286Z
 
 | Step | Status | Detail |
 |------|--------|--------|
@@ -10,12 +10,12 @@ Generated: 2026-08-07T04:35:17.973Z
 | test | PASS | [orion] no failures detected — summary:
  Test Files  32 passed (32)
       Tests  343 passed (343)
-   Duration  12.80s (transform 1.66s, setup 0ms, collect 5.29s, tests 41.19s, environment 9ms, prepare 9.53s)
+   Duration  17.26s (transform 1.94s, setup 6ms, collect 5.58s, tests 43.58s, environment 9ms, prepare 10.62s)
 
-[orion: −37899 B (−99.5%) ≈ 9475 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
+[orion: −37899 B (−99.4%) ≈ 9475 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
 | drift | PASS | matched 1 exported capabilities |
 | yagni | PASS | no snippets to check (repo median: 77 LOC, 3 imports) |
-| economy | PASS | cache 2.1 KB of 100.0 MB (12 entries) — within budget; ≈ 256655 tok saved across 202 compress op(s) |
+| economy | PASS | cache 2.3 KB of 100.0 MB (15 entries) — within budget; ≈ 247180 tok saved across 199 compress op(s) |
 | security | PASS | no obvious issues |
 
 **Overall: PASS**

@@ -1,0 +1,16 @@
+{
+  "title": "dashboard-live-metrics",
+  "goal": "Улучшить веб-дашборд Orion (orion serve): добавить новые метрики и сделать его живьём. Конкретные улучшения: (1) авто-обновление в реальном времени через периодический опрос (polling на ванильном JS, без зависимостей) — заменить ручную кнопку Refresh на авто-refresh каждые несколько секунд; (2) новые панели метрик, которые Orion уже умеет считать, но дашборд пока не показывает: экономия токенов (economy.savedTokens/savedBytes с разбивкой по проектам), бюджет по namespace (bytes/tokens/share), бенчмарк (cold/hot timings, стадии yagni/reuse/stdlib/native/dep), долг (debt.json), количество уроков самокоррекции (lessons.json), прогресс задач по каждому изменению (done/total из tasks.md) и вердикты shield; (3) сохранить жёсткие ограничения безопасности: сервер остаётся привязан к 127.0.0.1 по умолчанию, кэш целиком (полные значения) не должен светиться в сеть без явного --host, весь динамический текст (названия изменений, цели, ключи кэша) экранируется от XSS через escapeHtml; (4) расширить API-эндпоинты serve.ts для отдачи перечисленных метрик. Цель — чтобы пользователь видел работу Orion (экономию токенов, состояние, уроки) вживую в браузере и понимал, что инструмент активен.",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "appliesLessons": [
+    "first-run-orion-draft-forge-shield-orion:shield:6de650a0dba7",
+    "first-run-orion-draft-forge-shield-orion:shield:e0d43c3dfae5",
+    "first-run-orion-draft-forge-shield-orion:forge:e09f177aee62",
+    "find-bugs-and-improvement-suggestions-for-project-veridia:shield:940297ea1d5f",
+    "find-bugs-and-improvement-suggestions-for-project-veridia:shield:c7d0e1abf44d"
+  ]
+}

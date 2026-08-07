@@ -167,6 +167,74 @@ describe("serve: dashboard", () => {
   });
 });
 
+describe("serve: live metrics", () => {
+  it("serves /api/metrics with economy, budget, debt, lessons", async () => {
+    const track = OrionTrack.init();
+    track.store("scale:yagni:abc", "result");
+    server = await startServer(track, { port: 0, ui: true });
+    const res = await request("/api/metrics");
+    expect(res.status).toBe(200);
+    const body = res.json as {
+      version: string;
+      economy: { savedTokens: number; savedBytes: number; entries: number };
+      budget: Array<{ namespace: string; bytes: number; tokens: number; share: number }>;
+      debt: unknown[];
+      lessons: { count: number; lastTs: string | null };
+    };
+    expect(body.version).toBe(readVersion());
+    expect(typeof body.economy.savedTokens).toBe("number");
+    expect(Array.isArray(body.budget)).toBe(true);
+    expect(body.budget.length).toBeGreaterThanOrEqual(1);
+    expect(body.budget[0]?.namespace).toBe("scale");
+    expect(Array.isArray(body.debt)).toBe(true);
+    expect(typeof body.lessons.count).toBe("number");
+    expect(body.lessons).toHaveProperty("lastTs");
+  });
+
+  it("serves task progress (done/total) in /api/changes", async () => {
+    const track = OrionTrack.init();
+    mkdirSync(join("changes", "prog"), { recursive: true });
+    writeFileSync(
+      join("changes", "prog", "proposal.json"),
+      JSON.stringify({ goal: "With tasks" }),
+      "utf8",
+    );
+    writeFileSync(
+      join("changes", "prog", "tasks.md"),
+      ["# tasks", "", "- [x] one", "- [ ] two", "- [ ] three"].join("\n"),
+      "utf8",
+    );
+    // a change without tasks.md must carry tasks: null
+    mkdirSync(join("changes", "empty"), { recursive: true });
+    writeFileSync(
+      join("changes", "empty", "proposal.json"),
+      JSON.stringify({ goal: "No tasks" }),
+      "utf8",
+    );
+    server = await startServer(track, { port: 0, ui: true });
+    const res = await request("/api/changes");
+    expect(res.status).toBe(200);
+    const changes = (
+      res.json as { changes: Array<{ title: string; tasks: { done: number; total: number } | null }> }
+    ).changes;
+    const prog = changes.find((c) => c.title === "prog");
+    expect(prog?.tasks).toEqual({ done: 1, total: 3 });
+    const empty = changes.find((c) => c.title === "empty");
+    expect(empty?.tasks).toBeNull();
+  });
+
+  it("dashboardHtml embeds auto-refresh polling and panels", () => {
+    const html = dashboardHtml("7.7.7");
+    expect(html).toContain("setInterval(refresh, 5000)");
+    expect(html).toContain("Token economy");
+    expect(html).toContain("Budget by namespace");
+    expect(html).toContain("/api/metrics");
+    expect(html).toContain("/api/status");
+    // every dynamic value rendered through the client esc()
+    expect(html).toContain("const esc =");
+  });
+});
+
 describe("serve: helpers", () => {
   it("dashboardHtml embeds the version", () => {
     const html = dashboardHtml("9.9.9");

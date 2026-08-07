@@ -3,6 +3,11 @@ import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { OrionTrack } from "../core/track.js";
+import { economyStats } from "../core/compress.js";
+import { tokenBudget } from "../core/metrics.js";
+import { readDebt } from "../core/debt.js";
+import { lessonsStats } from "../core/lessons.js";
+import { readTasks } from "../skills/forge/handler.js";
 
 /** Options for the `orion serve` web dashboard. */
 export interface ServeOptions {
@@ -18,6 +23,8 @@ interface ApiChange {
   title: string;
   goal: string | null;
   hasResult: boolean;
+  /** Task checklist progress read from tasks.md, when one exists. */
+  tasks: { done: number; total: number } | null;
 }
 
 const pkgPath = fileURLToPath(new URL("../../package.json", import.meta.url));
@@ -49,10 +56,18 @@ export function listChanges(): ApiChange[] {
       } catch {
         /* no proposal summary */
       }
+      const tasks = readTasks(name);
       return {
         title: name,
         goal,
         hasResult: existsSync(join("changes", name, "result.md")),
+        tasks:
+          tasks.length > 0
+            ? {
+                done: tasks.filter((t) => t.done).length,
+                total: tasks.length,
+              }
+            : null,
       };
     });
 }
@@ -103,9 +118,8 @@ export function dashboardHtml(version: string): string {
            display: flex; align-items: baseline; gap: 14px; }
   header h1 { font-size: 18px; margin: 0; color: #fff; }
   header span { color: #6b7280; font-size: 12px; }
-  main { padding: 24px; display: grid; grid-template-columns: 320px 1fr;
-         gap: 24px; }
-  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  main { padding: 24px; display: grid;
+         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
   section { background: #161a23; border: 1px solid #262a36; border-radius: 8px;
             padding: 16px; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
@@ -114,6 +128,12 @@ export function dashboardHtml(version: string): string {
           border-bottom: 1px dashed #232838; }
   .stat:last-child { border-bottom: none; }
   .stat b { color: #e2e6ef; }
+  .bar-row { display: flex; align-items: center; gap: 8px; padding: 4px 0;
+             font-size: 12px; }
+  .bar-row .lbl { width: 96px; overflow: hidden; text-overflow: ellipsis;
+                  white-space: nowrap; color: #93a1c1; }
+  .bar-row .fill { color: #7ee2a8; letter-spacing: 0; }
+  .bar-row .val { color: #8b93a7; }
   ul { list-style: none; padding: 0; margin: 0; }
   li { padding: 8px 0; border-bottom: 1px dashed #232838; }
   li:last-child { border-bottom: none; }
@@ -124,49 +144,128 @@ export function dashboardHtml(version: string): string {
            border-radius: 6px; padding: 6px 14px; cursor: pointer; }
   button:hover { background: #262e40; }
   .err { color: #ff7b72; }
+  .foot { color: #5b6270; font-size: 11px; margin-top: 12px; }
 </style>
 </head>
 <body>
 <header>
   <h1>🪐 Orion</h1>
-  <span>v${version} · token-economy cache · dashboard</span>
+  <span>v${version} · token-economy cache · live dashboard</span>
 </header>
 <main>
   <section>
     <h2>Cache</h2>
     <div id="cache"><p class="err">loading…</p></div>
-    <p style="margin:12px 0 0"><button onclick="refresh()">Refresh</button></p>
   </section>
   <section>
+    <h2>Token economy</h2>
+    <div id="economy"><p class="err">loading…</p></div>
+  </section>
+  <section>
+    <h2>Budget by namespace</h2>
+    <div id="budget"><p class="err">loading…</p></div>
+  </section>
+  <section>
+    <h2>Debt · Lessons</h2>
+    <div id="pulse"><p class="err">loading…</p></div>
+  </section>
+  <section style="grid-column:1/-1">
     <h2>Changes</h2>
+    <p style="margin:0 0 8px"><button onclick="refresh()">Refresh now</button>
+       <span class="foot">auto-refresh every 5s</span></p>
     <ul id="changes"><li class="err">loading…</li></ul>
   </section>
 </main>
 <script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function rows(items) { return items.map(i => i).join(""); }
+function stat(label, value) {
+  return '<div class="stat"><span>' + esc(label) + '</span><b>' + esc(value) + '</b></div>';
+}
 async function refresh() {
   try {
-    const status = await fetch("/api/status").then(r => r.json());
+    const [status, metrics, changes] = await Promise.all([
+      fetch("/api/status").then(r => r.json()),
+      fetch("/api/metrics").then(r => r.json()),
+      fetch("/api/changes").then(r => r.json()),
+    ]);
     const cache = document.getElementById("cache");
     cache.innerHTML =
-      '<div class="stat"><span>entries</span><b>' + status.cache.count + '</b></div>' +
-      '<div class="stat"><span>size</span><b>' + status.cache.size + '</b></div>' +
-      '<div class="stat"><span>last write</span><b>' + (status.cache.lastPrune ?? "never") + '</b></div>';
-    const changes = await fetch("/api/changes").then(r => r.json());
-    const list = document.getElementById("changes");
-    list.innerHTML = changes.length
-      ? changes.map(c =>
-          '<li><b>' + esc(c.title) + '</b>' +
-          (c.hasResult ? '<span class="tag done">result</span>' : '') +
-          (c.goal ? '<div style="color:#8b93a7;font-size:12px;margin-top:4px">' + esc(c.goal) + '</div>' : '')
-        ).join("")
+      stat("entries", status.cache.count) +
+      stat("size", status.cache.size) +
+      stat("last write", status.cache.lastPrune ?? "never") +
+      stat("changes", status.changes);
+
+    const economy = document.getElementById("economy");
+    const eco = metrics.economy || {};
+    let proj = (eco.byProject || []).slice(0, 5)
+      .map(p => stat(esc(p.project), "≈" + p.savedTokens + " tok"))
+      .join("");
+    economy.innerHTML =
+      stat("saved", "≈" + (eco.savedTokens ?? 0) + " tok (" + human(eco.savedBytes ?? 0) + ")") +
+      stat("ops", eco.entries ?? 0) +
+      (proj ? '<div style="margin-top:8px"></div>' + proj : "");
+
+    const budget = document.getElementById("budget");
+    const list = metrics.budget || [];
+    const max = Math.max(...list.map(b => b.bytes), 0);
+    budget.innerHTML = list.length
+      ? list
+          .slice(0, 8)
+          .map(b => {
+            const pct = Math.round((b.share ?? 0) * 100);
+            return '<div class="bar-row"><span class="lbl">' + esc(b.namespace) +
+              '</span><span class="fill">' + bar(b.bytes, max) +
+              '</span><span class="val">' + human(b.bytes) + ' · ≈' + b.tokens +
+              ' tok · ' + pct + '%</span></div>';
+          })
+          .join("")
+      : "<p class='err'>cache empty</p>";
+
+    const pulse = document.getElementById("pulse");
+    const debt = (metrics.debt || []).length;
+    const lessons = metrics.lessons || {};
+    pulse.innerHTML =
+      stat("open debt", debt) +
+      stat("lessons", lessons.count ?? 0) +
+      stat("last lesson", lessons.lastTs ?? "never") +
+      '<p style="margin:12px 0 0"><button onclick="refresh()">Refresh now</button>' +
+      '<span class="foot"> auto-refresh every 5s</span></p>';
+
+    const listEl = document.getElementById("changes");
+    const ch = changes.changes || [];
+    listEl.innerHTML = ch.length
+      ? ch.map(c => {
+          let tags = '';
+          if (c.hasResult) tags += '<span class="tag done">result</span>';
+          if (c.tasks) tags += '<span class="tag">' + c.tasks.done + '/' + c.tasks.total +
+            ' tasks</span>';
+          return '<li><b>' + esc(c.title) + '</b>' + tags +
+            (c.goal
+              ? '<div style="color:#8b93a7;font-size:12px;margin-top:4px">' + esc(c.goal) + '</div>'
+              : '') +
+            '</li>';
+        }).join("")
       : '<li>no changes yet — run <code>orion think</code></li>';
   } catch (err) {
-    document.getElementById("cache").innerHTML =
+    document.getElementById("changes").innerHTML =
       '<p class="err">' + esc(String(err)) + '</p>';
   }
 }
-function esc(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function human(n) {
+  if (n >= 1048576) return (n/1048576).toFixed(1) + " MB";
+  if (n >= 1024) return (n/1024).toFixed(1) + " KB";
+  return n + " B";
+}
+function bar(v, m) {
+  const w = 14;
+  if (m <= 0) return "";
+  const filled = Math.round((v / m) * w);
+  return "█".repeat(filled) + "░".repeat(Math.max(0, w - filled));
+}
 refresh();
+setInterval(refresh, 5000);
 </script>
 </body>
 </html>`;
@@ -210,6 +309,19 @@ export function startServer(
             lastPrune: stats.lastPrune,
           },
           changes: listChanges().length,
+        });
+        return;
+      }
+      case "/api/metrics": {
+        // Aggregated live metrics: token economy, cache budget by
+        // namespace, open debt, and self-correction lessons. All derived
+        // from existing Orion ledgers — no state mutation here.
+        sendJson(res, 200, {
+          version: readVersion(),
+          economy: economyStats(),
+          budget: tokenBudget(track),
+          debt: readDebt(),
+          lessons: lessonsStats(),
         });
         return;
       }

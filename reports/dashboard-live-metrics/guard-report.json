@@ -1,5 +1,5 @@
 {
-  "changeId": "v0.10-honesty-companion",
+  "changeId": "dashboard-live-metrics",
   "checks": [
     {
       "step": "lint",
@@ -14,7 +14,7 @@
     {
       "step": "test",
       "status": "PASS",
-      "detail": "[orion] no failures detected — summary:\n Test Files  32 passed (32)\n      Tests  343 passed (343)\n   Duration  12.80s (transform 1.66s, setup 0ms, collect 5.29s, tests 41.19s, environment 9ms, prepare 9.53s)\n\n[orion: −37899 B (−99.5%) ≈ 9475 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+      "detail": "[orion] no failures detected — summary:\n Test Files  32 passed (32)\n      Tests  343 passed (343)\n   Duration  17.26s (transform 1.94s, setup 6ms, collect 5.58s, tests 43.58s, environment 9ms, prepare 10.62s)\n\n[orion: −37899 B (−99.4%) ≈ 9475 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
     },
     {
       "step": "drift",
@@ -29,7 +29,7 @@
     {
       "step": "economy",
       "status": "PASS",
-      "detail": "cache 2.1 KB of 100.0 MB (12 entries) — within budget; ≈ 256655 tok saved across 202 compress op(s)"
+      "detail": "cache 2.3 KB of 100.0 MB (15 entries) — within budget; ≈ 247180 tok saved across 199 compress op(s)"
     },
     {
       "step": "security",
@@ -38,6 +38,6 @@
     }
   ],
   "allPass": true,
-  "generatedAt": "2026-08-07T04:35:17.973Z",
-  "contextHash": "3b0970a69e81"
+  "generatedAt": "2026-08-07T04:30:18.286Z",
+  "contextHash": "1709d2517752"
 }

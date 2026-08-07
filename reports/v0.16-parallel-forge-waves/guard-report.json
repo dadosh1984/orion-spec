@@ -14,7 +14,7 @@
     {
       "step": "test",
       "status": "PASS",
-      "detail": "[orion] no failures detected — summary:\n Test Files  31 passed (31)\n      Tests  320 passed (320)\n   Duration  19.33s (transform 2.52s, setup 5ms, collect 6.61s, tests 50.84s, environment 13ms, prepare 12.98s)\n\n[orion: −35549 B (−99.4%) ≈ 8887 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+      "detail": "[orion] no failures detected — summary:\n Test Files  32 passed (32)\n      Tests  343 passed (343)\n   Duration  17.51s (transform 2.92s, setup 1ms, collect 7.73s, tests 56.97s, environment 12ms, prepare 15.00s)\n\n[orion: −37906 B (−99.4%) ≈ 9477 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
     },
     {
       "step": "drift",
@@ -24,7 +24,12 @@
     {
       "step": "yagni",
       "status": "PASS",
-      "detail": "no snippets to check (repo median: 85 LOC, 3 imports)"
+      "detail": "no snippets to check (repo median: 77 LOC, 3 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 2.1 KB of 100.0 MB (12 entries) — within budget; ≈ 313508 tok saved across 220 compress op(s)"
     },
     {
       "step": "security",
@@ -33,6 +38,6 @@
     }
   ],
   "allPass": true,
-  "generatedAt": "2026-08-06T18:39:47.503Z",
-  "contextHash": "e32200d8b9dd"
+  "generatedAt": "2026-08-07T04:37:48.120Z",
+  "contextHash": "d7d9c9fec4f5"
 }

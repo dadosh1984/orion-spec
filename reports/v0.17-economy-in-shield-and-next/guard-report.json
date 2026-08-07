@@ -3,41 +3,41 @@
   "checks": [
     {
       "step": "lint",
-      "status": "SKIP",
-      "detail": "cached PASS since 2026-08-06T18:53:15.448Z (hash unchanged)"
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
     },
     {
       "step": "type",
-      "status": "SKIP",
-      "detail": "cached PASS since 2026-08-06T18:53:16.622Z (hash unchanged)"
+      "status": "PASS",
+      "detail": "ok"
     },
     {
       "step": "test",
-      "status": "SKIP",
-      "detail": "cached PASS since 2026-08-06T18:53:04.610Z (hash unchanged)"
+      "status": "PASS",
+      "detail": "[orion] no failures detected — summary:\n Test Files  32 passed (32)\n      Tests  343 passed (343)\n   Duration  21.30s (transform 2.14s, setup 6ms, collect 7.72s, tests 56.58s, environment 12ms, prepare 14.35s)\n\n[orion: −37906 B (−99.4%) ≈ 9477 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
     },
     {
       "step": "drift",
-      "status": "SKIP",
-      "detail": "cached PASS since 2026-08-06T18:53:04.613Z (hash unchanged)"
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
     },
     {
       "step": "yagni",
-      "status": "SKIP",
-      "detail": "cached PASS since 2026-08-06T18:53:04.621Z (hash unchanged)"
+      "status": "PASS",
+      "detail": "no snippets to check (repo median: 77 LOC, 3 imports)"
     },
     {
       "step": "economy",
       "status": "PASS",
-      "detail": "cache 1.1 KB of 100.0 MB (10 entries) — within budget; ≈ 137426 tok saved across 157 compress op(s)"
+      "detail": "cache 2.3 KB of 100.0 MB (15 entries) — within budget; ≈ 322985 tok saved across 223 compress op(s)"
     },
     {
       "step": "security",
-      "status": "SKIP",
-      "detail": "cached PASS since 2026-08-06T18:53:04.625Z (hash unchanged)"
+      "status": "PASS",
+      "detail": "no obvious issues"
     }
   ],
   "allPass": true,
-  "generatedAt": "2026-08-06T18:53:22.525Z",
-  "contextHash": "b5c84ff43d04"
+  "generatedAt": "2026-08-07T04:38:16.290Z",
+  "contextHash": "e4dd55fc8300"
 }

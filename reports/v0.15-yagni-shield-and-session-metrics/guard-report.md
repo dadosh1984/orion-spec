@@ -1,6 +1,6 @@
 # Guard Report — v0.15-yagni-shield-and-session-metrics
 
-Generated: 2026-08-06T18:22:38.815Z
+Generated: 2026-08-07T04:37:23.796Z
 
 | Step | Status | Detail |
 |------|--------|--------|
@@ -8,13 +8,14 @@ Generated: 2026-08-06T18:22:38.815Z
  |
 | type | PASS | ok |
 | test | PASS | [orion] no failures detected — summary:
- Test Files  29 passed (29)
-      Tests  305 passed (305)
-   Duration  10.89s (transform 2.58s, setup 3ms, collect 6.47s, tests 33.18s, environment 13ms, prepare 12.71s)
+ Test Files  32 passed (32)
+      Tests  343 passed (343)
+   Duration  21.43s (transform 2.50s, setup 5ms, collect 7.15s, tests 56.04s, environment 13ms, prepare 13.80s)
 
-[orion: −35018 B (−99.4%) ≈ 8755 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
+[orion: −37901 B (−99.4%) ≈ 9475 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
 | drift | PASS | matched 2 exported capabilities |
-| yagni | PASS | no snippets to check (repo median: 86 LOC, 3 imports) |
+| yagni | PASS | no snippets to check (repo median: 77 LOC, 3 imports) |
+| economy | PASS | cache 2.3 KB of 100.0 MB (15 entries) — within budget; ≈ 304032 tok saved across 217 compress op(s) |
 | security | PASS | no obvious issues |
 
 **Overall: PASS**

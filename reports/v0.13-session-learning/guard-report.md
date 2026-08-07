@@ -1,6 +1,6 @@
 # Guard Report — v0.13-session-learning
 
-Generated: 2026-08-06T17:57:23.691Z
+Generated: 2026-08-07T04:36:29.103Z
 
 | Step | Status | Detail |
 |------|--------|--------|
@@ -8,12 +8,14 @@ Generated: 2026-08-06T17:57:23.691Z
  |
 | type | PASS | ok |
 | test | PASS | [orion] no failures detected — summary:
- Test Files  29 passed (29)
-      Tests  282 passed (282)
-   Duration  7.91s (transform 1.43s, setup 2ms, collect 4.30s, tests 23.30s, environment 8ms, prepare 7.90s)
+ Test Files  32 passed (32)
+      Tests  343 passed (343)
+   Duration  18.88s (transform 2.16s, setup 10ms, collect 6.64s, tests 49.74s, environment 12ms, prepare 12.83s)
 
-[orion: −34667 B (−99.4%) ≈ 8667 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
+[orion: −37902 B (−99.4%) ≈ 9476 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
 | drift | PASS | matched 3 exported capabilities |
+| yagni | PASS | no snippets to check (repo median: 77 LOC, 3 imports) |
+| economy | PASS | cache 2.3 KB of 100.0 MB (15 entries) — within budget; ≈ 285081 tok saved across 211 compress op(s) |
 | security | PASS | no obvious issues |
 
 **Overall: PASS**
