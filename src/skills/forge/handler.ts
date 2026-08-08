@@ -8,6 +8,7 @@ import { TddEngine } from "../../core/tddCore.js";
 import { OrionTrack } from "../../core/track.js";
 import { recordLesson } from "../../core/lessons.js";
 import { writeFileSafe } from "../../utils/file.js";
+import { writeCheckpoint } from "../../core/checkpoint.js";
 import { slugify } from "../think/handler.js";
 
 const execAsync = promisify(exec);
@@ -375,6 +376,11 @@ export async function forgeParallel(
       open.length,
       `wave ${waveIndex}/${waves.length} complete`,
     );
+    writeCheckpoint({
+      changeId: title,
+      phase: "forge",
+      step: `wave ${waveIndex}/${waves.length}`,
+    });
   }
 
   const summary: ForgeSummary = {
