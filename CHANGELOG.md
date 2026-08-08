@@ -4,6 +4,29 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.24.3] — 2026-08-08
+
+`orion forge` no longer reports a false `missingSnippets` when the snippet
+file exists under a legacy or agent-guessed name — same class of false
+signal as v0.24.1/v0.24.2, this time on the snippet side.
+
+### Fixed
+- **False `missingSnippets`**: forge derived the expected snippet path
+  deterministically from the current task text (`snippets/<slug>.ts`,
+  shortSlug since v0.24), so files written under any other name — legacy
+  long slugs from before v0.24 (`fact_v77_reader_1cv77_dat_id_nnn_yyyymmdd.ts`)
+  or guessed names — were reported missing even though the content existed.
+  Snippet lookup now goes through `resolveSnippet` (exact match first, then
+  a unique marker-stripped token/prefix candidate; ambiguity is a miss,
+  never a silent guess) in both the sequential forge and the `--parallel`
+  worker, and a genuine miss lists the existing snippet files so the agent
+  can rename instead of re-creating.
+
+### Docs
+- **Token economy rule**: `AGENTS.md` documents concise-reasoning and
+  terse-artifact rules (short thinking, substance-only files,
+  `budget: compact` for `orion think`, `orion: compress` for big outputs).
+
 ## [0.24.2] — 2026-08-08
 
 Drift can no longer fail on an impossible name — a false signal of the
