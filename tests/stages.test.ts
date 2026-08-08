@@ -165,3 +165,30 @@ describe("minimum stage", () => {
     expect(out).not.toContain("console.log");
   });
 });
+
+describe("reuse stage: relative import paths (v0.23)", () => {
+  it("emits an import relative to the scaled file, not to cwd", () => {
+    // Source duplicate lives in src/utils/, the scaled file in src/tasks/.
+    mkdirSync("src/utils", { recursive: true });
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      join("src", "utils", "shared.ts"),
+      "export function shared() { return 7; }",
+      "utf8",
+    );
+    const code =
+      "export function shared() { return 7; }\nexport const t = 1;\n";
+    const out = reuse(code, "src/tasks/thing.ts");
+    expect(out).toContain("import { shared } from '../utils/shared'");
+    expect(out).not.toContain("./shared");
+  });
+
+  it("falls back to basename when no file context is given (benchmark)", () => {
+    mkdirSync("lib", { recursive: true });
+    writeFileSync("lib/c.ts", "export function dupC() { return 3; }", "utf8");
+    const out = reuse(
+      "export function dupC() { return 3; }\nexport const q = 1;\n",
+    );
+    expect(out).toContain("import { dupC } from './c'");
+  });
+});

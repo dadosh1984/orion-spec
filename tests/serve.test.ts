@@ -11,6 +11,7 @@ import {
   readVersion,
   listChanges,
   escapeHtml,
+  generateToken,
 } from "../src/cli/serve.js";
 import { OrionTrack } from "../src/core/track.js";
 
@@ -177,7 +178,12 @@ describe("serve: live metrics", () => {
     const body = res.json as {
       version: string;
       economy: { savedTokens: number; savedBytes: number; entries: number };
-      budget: Array<{ namespace: string; bytes: number; tokens: number; share: number }>;
+      budget: Array<{
+        namespace: string;
+        bytes: number;
+        tokens: number;
+        share: number;
+      }>;
       debt: unknown[];
       lessons: { count: number; lastTs: string | null };
     };
@@ -215,7 +221,12 @@ describe("serve: live metrics", () => {
     const res = await request("/api/changes");
     expect(res.status).toBe(200);
     const changes = (
-      res.json as { changes: Array<{ title: string; tasks: { done: number; total: number } | null }> }
+      res.json as {
+        changes: Array<{
+          title: string;
+          tasks: { done: number; total: number } | null;
+        }>;
+      }
     ).changes;
     const prog = changes.find((c) => c.title === "prog");
     expect(prog?.tasks).toEqual({ done: 1, total: 3 });
@@ -251,5 +262,32 @@ describe("serve: helpers", () => {
 
   it("listChanges returns an empty array when changes/ is absent", () => {
     expect(listChanges()).toEqual([]);
+  });
+});
+
+describe("serve: dashboard hardening (v0.23)", () => {
+  it("redacts credential-shaped strings in /api/cache", async () => {
+    const track = new OrionTrack(join(dir, "cache"));
+    track.store("secret-entry", '{"password": "hunter2secret"}');
+    track.store("clean-entry", { ok: true });
+    server = await startServer(track, { port: 0, host: "127.0.0.1" });
+    const r = await request("/api/cache");
+    expect(r.status).toBe(200);
+    const entries = (r.json as { entries: { key: string; value: unknown }[] })
+      .entries;
+    const secret = entries.find((e) => e.key === "secret-entry");
+    const clean = entries.find((e) => e.key === "clean-entry");
+    expect(String(secret?.value)).toContain("[redacted");
+    expect(String(secret?.value)).not.toContain("hunter2secret");
+    expect(JSON.stringify(clean?.value)).toContain("ok");
+  });
+
+  it("generateToken returns 32 CSPRNG-backed url-safe chars, distinct per call", () => {
+    const a = generateToken();
+    const b = generateToken();
+    expect(a).toHaveLength(32);
+    expect(b).toHaveLength(32);
+    expect(a).not.toBe(b);
+    expect(/^[A-Za-z0-9_-]{32}$/.test(a)).toBe(true);
   });
 });

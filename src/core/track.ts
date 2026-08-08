@@ -6,6 +6,7 @@ import {
   readFileSync,
   statSync,
   writeFileSync,
+  renameSync,
   unlinkSync,
   readdirSync,
 } from "node:fs";
@@ -107,7 +108,13 @@ export class OrionTrack {
       value,
       storedAt: new Date().toISOString(),
     };
-    writeFileSync(this.entryPath(key), JSON.stringify(entry, null, 2), "utf8");
+    // Atomic write (v0.23): write to a temp file, then rename. docs/sandbox.md
+    // recommends sharing ORION_CACHE_DIR across a CI matrix — a direct write
+    // lets a parallel process read a half-written JSON entry mid-write.
+    const target = this.entryPath(key);
+    const tmp = `${target}.tmp-${process.pid}`;
+    writeFileSync(tmp, JSON.stringify(entry, null, 2), "utf8");
+    renameSync(tmp, target);
   }
 
   /** Load a value; returns null when the key is missing, corrupt or stale. */

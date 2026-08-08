@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync, realpathSync } from "node:fs";
-import { join, basename, resolve } from "node:path";
+import { join, basename, resolve, dirname, relative } from "node:path";
 
 /** A top-level function declaration found in source code. */
 interface FunctionDecl {
@@ -50,7 +50,17 @@ export function handler(code: string, selfFile?: string): string {
     .map((name) => {
       const decl = funcs.get(name);
       if (!decl) return null;
-      const importLine = `import { ${name} } from './${stripExtension(basename(library.get(name)!.file))}';`;
+      // Import path (v0.23): relative to the scaled file's directory, not
+      // to cwd. The old `./basename(file)` was only correct when the source
+      // duplicate lived in the same directory as the file being scaled — a
+      // src/tasks/y.ts importing a function reused from src/utils/x.ts got
+      // a broken './x.ts' that never resolves.
+      const src = library.get(name)!.file;
+      let rel = selfFile
+        ? relative(dirname(resolve(selfFile)), resolve(src)).replace(/\\/g, "/")
+        : stripExtension(basename(src));
+      if (!rel.startsWith(".")) rel = `./${rel}`;
+      const importLine = `import { ${name} } from '${stripExtension(rel)}';`;
       return { start: decl.start, end: decl.end, text: importLine };
     })
     .filter(

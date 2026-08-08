@@ -12,8 +12,10 @@ describe("Docker image (v0.4)", () => {
 
   it("Dockerfile exists with a multi-stage build and orion entrypoint", () => {
     const dockerfile = readFileSync(join(root, "Dockerfile"), "utf8");
-    expect(dockerfile).toContain("FROM node:22-alpine AS builder");
-    expect(dockerfile).toContain("FROM node:22-alpine AS runtime");
+    expect(dockerfile).toContain("node:22-alpine@sha256:");
+    expect(dockerfile).toContain("AS builder");
+    expect(dockerfile).toContain("AS runtime");
+    expect(dockerfile).toContain("HEALTHCHECK");
     expect(dockerfile).toContain('ENTRYPOINT ["node", "dist/cli/index.js"]');
     expect(dockerfile).toContain("pnpm install --frozen-lockfile");
     expect(dockerfile).toContain("COPY --from=builder");

@@ -332,3 +332,26 @@ describe("forge --parallel (v0.16)", () => {
     expect(() => parseArgs(["forge", "demo", "--parallel", "abc"])).toThrow();
   });
 });
+
+describe("track set reserved namespaces (v0.23)", () => {
+  it("refuses shield:/tdd:/forge: keys — hand-written PASS would fake a gate", async () => {
+    expect(await main(["track", "set", "shield:test", "PASS:abc"])).toBe(1);
+    expect(await main(["track", "set", "tdd:demo", "DONE"])).toBe(1);
+    expect(await main(["track", "set", "forge:task", "DONE"])).toBe(1);
+    // Ordinary keys still work.
+    expect(await main(["track", "set", "my:key", "v"])).toBe(0);
+  });
+});
+
+describe("lessons export/import CLI (v0.23)", () => {
+  it("exports and imports through the CLI", async () => {
+    expect(await main(["learn"])).toBe(1); // no target — guard still works
+    const dump = join(dir, "ledger.json");
+    expect(await main(["lessons", "export", dump])).toBe(0);
+    const exported = JSON.parse(readFileSync(dump, "utf8"));
+    expect(Array.isArray(exported)).toBe(true);
+    expect(await main(["lessons", "import", dump])).toBe(0);
+    expect(await main(["lessons", "bogus"])).toBe(1);
+    expect(await main(["lessons", "import"])).toBe(1);
+  });
+});

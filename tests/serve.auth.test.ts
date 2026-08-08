@@ -95,15 +95,16 @@ describe("serve dashboard auth", () => {
     expect(() => parseArgs(["serve", "--token"])).toThrow();
   });
 
-  it("passes the page's own query string to API fetches of the dashboard HTML", () => {
-    // The UI reads the token from the page URL (location.search) and reuses
-    // it on every /api fetch, so it works behind bearer-token auth.
-    expect(dashboardHtml("0.0.0").includes("const q = location.search")).toBe(
-      true,
-    );
-    expect(dashboardHtml("0.0.0").includes('fetch("/api/status" + q)')).toBe(
-      true,
-    );
+  it("sends the page token via the X-Orion-Token header, not the query string", () => {
+    // v0.23: the UI reads the token from the page URL ONCE and sends it as a
+    // header on every /api fetch — a ?token= query string leaks into server
+    // access logs, browser history and the Referer header.
+    const html = dashboardHtml("0.0.0");
+    expect(
+      html.includes('new URLSearchParams(location.search).get("token")'),
+    ).toBe(true);
+    expect(html.includes('"X-Orion-Token": t')).toBe(true);
+    expect(html.includes('fetch("/api/status" + q)')).toBe(false);
   });
 });
 

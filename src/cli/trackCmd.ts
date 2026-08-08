@@ -67,6 +67,15 @@ export async function trackCommand(
     case "set": {
       if (!key || value === undefined)
         return fail("track set requires a key and a value");
+      // Reserved namespaces (v0.23): shield:/tdd:/forge: are written only by
+      // the pipeline itself. A hand-written `track set shield:test "PASS:<hash>"`
+      // would be indistinguishable from a real pass to the cache check — a
+      // trust hole, so the manual command refuses them outright.
+      const reserved = /^(shield|tdd|forge):/.exec(key);
+      if (reserved)
+        return fail(
+          `track set refuses "${key}" — the ${reserved[1]}:* namespace is reserved for pipeline results; a hand-written ${key} would be indistinguishable from a real pass`,
+        );
       track.store(key, value);
       printOut(opts, { key, value }, `stored ${key}=${value}`);
       return 0;

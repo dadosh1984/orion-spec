@@ -1,0 +1,17 @@
+# Dependabot (v0.23): keep npm devDependencies and GitHub Actions current.
+# Orion itself ships zero runtime dependencies, but the build/test toolchain
+# (vitest, eslint, typescript, actions) deserves the same supply-chain
+# attention the security-scan step gives to code.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    versioning-strategy: increase-if-necessary
+    open-pull-requests-limit: 10
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10

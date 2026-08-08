@@ -1,4 +1,5 @@
 import http from "node:http";
+import { randomBytes } from "node:crypto";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,17 +48,34 @@ function extractToken(req: http.IncomingMessage, url: URL): string | null {
   return query && query.length > 0 ? query : null;
 }
 
-/** Generate a random 32-char bearer token (crypto-free, for the dashboard). */
+/**
+ * Generate a random 32-char bearer token.
+ *
+ * v0.23: switched from Math.random() to a CSPRNG (node:crypto builtin, zero
+ * new dependencies). Math.random()'s V8 state is recoverable from a few
+ * outputs, and this token is the only auth on a non-loopback bind — a
+ * predictable dashboard token defeats the whole point of auto-auth.
+ */
 export function generateToken(): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const bytes = new Uint8Array(32);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = Math.floor(Math.random() * chars.length);
-  }
-  let out = "";
-  for (let i = 0; i < bytes.length; i++) out += chars[bytes[i]];
-  return out;
+  return randomBytes(24).toString("base64url"); // 24 bytes -> 32 url-safe chars
+}
+
+/**
+ * Secret-looking tokens that must not be echoed back by the dashboard
+ * (v0.23). Deliberately conservative — a cache entry is user data, so a
+ * value that carries a credential-shaped string is redacted wholesale.
+ */
+const SECRET_RE =
+  /(api[_-]?key|secret|passwd|password|token|private[_-]?key|authorization|bearer)["']?\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{8,}["']?/gi;
+
+/** Replace credential-shaped matches with a short, honest marker. */
+function redactValue(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  if (!value.match(SECRET_RE)) return value;
+  return value.replace(
+    SECRET_RE,
+    (m) => `[redacted ${m.slice(0, 12)}… (${m.length} chars)]`,
+  );
 }
 
 interface ApiChange {
@@ -225,14 +243,17 @@ function stat(label, value) {
   return '<div class="stat"><span>' + esc(label) + '</span><b>' + esc(value) + '</b></div>';
 }
 async function refresh() {
-  // Reuse the page's own ?token= (set by the operator when auth is on) on
-  // every API fetch, so the dashboard works behind bearer-token auth.
-  const q = location.search;
+  // Auth travels in the X-Orion-Token header, not in ?token= (v0.23): a
+  // query string leaks into server access logs, browser history and the
+  // Referer header when the dashboard links out. The page URL may still
+  // carry ?token= for the initial load — read it once, send it as a header.
+  const t = new URLSearchParams(location.search).get("token");
+  const headers = t ? { "X-Orion-Token": t } : {};
   try {
     const [status, metrics, changes] = await Promise.all([
-      fetch("/api/status" + q).then(r => r.json()),
-      fetch("/api/metrics" + q).then(r => r.json()),
-      fetch("/api/changes" + q).then(r => r.json()),
+      fetch("/api/status", { headers }).then(r => r.json()),
+      fetch("/api/metrics", { headers }).then(r => r.json()),
+      fetch("/api/changes", { headers }).then(r => r.json()),
     ]);
     const cache = document.getElementById("cache");
     cache.innerHTML =
@@ -395,7 +416,10 @@ export function startServer(
             } catch {
               /* ignore */
             }
-            return { key, value: track.load(key), size };
+            // Redaction (v0.23): raw cache values can hold command output
+            // that contains a credential — the dashboard must never echo it
+            // back verbatim to anyone holding the token.
+            return { key, value: redactValue(track.load(key)), size };
           })
           .sort((a, b) => a.key.localeCompare(b.key));
         sendJson(res, 200, { entries });

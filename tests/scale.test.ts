@@ -136,7 +136,10 @@ describe("reuse", () => {
   });
 
   it("imports a function duplicated in another file, leaving the rest intact", () => {
-    writeFileSync(join(dir, "shared.ts"), "export function shared() { return 1; }\n");
+    writeFileSync(
+      join(dir, "shared.ts"),
+      "export function shared() { return 1; }\n",
+    );
     const code =
       "export function shared() { return 1; }\n\nexport function unique() { return 2; }\n";
     writeFileSync(join(dir, "a.ts"), code);
