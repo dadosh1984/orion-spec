@@ -10,8 +10,11 @@ import type { TaskStatus, TddConfig } from "../type.js";
 
 const execAsync = promisify(exec);
 
-/** Safe characters for a task identifier (filesystem + shell-safe). */
-const TASK_ID_RE = /^[a-zA-Z0-9_-]+$/;
+/** Safe characters for a task identifier (filesystem + shell-safe).
+ * v0.24: Unicode letters are allowed — Cyrillic task slugs must work, the
+ * same promise as change titles. Still no shell metacharacters, so the
+ * injection guard holds. */
+const TASK_ID_RE = /^[\p{L}\p{N}_-]+$/u;
 
 /** RED-GREEN-REFACTOR state machine. */
 export enum State {
@@ -23,25 +26,36 @@ export enum State {
 
 /** Load the TDD configuration with defaults. */
 export function loadTddConfig(): TddConfig {
+  const DEFAULTS: TddConfig = {
+    testTemplate:
+      "import { describe, it, expect } from 'vitest';\n" +
+      "import { {{task}} } from '../src/tasks/{{task}}';\n\n" +
+      "describe('{{task}}', () => {\n" +
+      "  it('works', () => {\n" +
+      "    expect({{task}}()).toBeDefined();\n" +
+      "  });\n" +
+      "});\n",
+    testDir: "tests",
+    srcDir: "src/tasks",
+    command: "pnpm vitest run tests/{{testFile}}",
+    minCoverage: 80,
+    testExt: ".test.ts",
+    srcExt: ".ts",
+  };
   try {
-    return JSON.parse(
+    const cfg = JSON.parse(
       readFileSync(resolveConfig("orionTdd.json"), "utf8"),
-    ) as TddConfig;
-  } catch {
+    ) as Partial<TddConfig>;
+    // File suffixes are optional: a project's orionTdd.json may omit them
+    // and still get the TS defaults (v0.24 framework-agnostic extensions).
     return {
-      testTemplate:
-        "import { describe, it, expect } from 'vitest';\n" +
-        "import { {{task}} } from '../src/tasks/{{task}}';\n\n" +
-        "describe('{{task}}', () => {\n" +
-        "  it('works', () => {\n" +
-        "    expect({{task}}()).toBeDefined();\n" +
-        "  });\n" +
-        "});\n",
-      testDir: "tests",
-      srcDir: "src/tasks",
-      command: "pnpm vitest run tests/{{task}}.test.ts",
-      minCoverage: 80,
+      ...DEFAULTS,
+      ...cfg,
+      testExt: cfg.testExt ?? DEFAULTS.testExt,
+      srcExt: cfg.srcExt ?? DEFAULTS.srcExt,
     };
+  } catch {
+    return DEFAULTS;
   }
 }
 
@@ -62,22 +76,31 @@ export class TddEngine {
     // commands and file paths, so only allow safe identifier characters.
     if (!TASK_ID_RE.test(task)) {
       throw new Error(
-        `invalid task id "${task}" — only [a-zA-Z0-9_-] are allowed`,
+        `invalid task id "${task}" — only letters, digits, _ and - are allowed`,
       );
     }
     this.task = task;
     this.track = track ?? OrionTrack.init();
-    this.config = config ?? loadTddConfig();
+    // Normalize optional file suffixes (v0.24): callers may pass a partial
+    // TddConfig (tests, plugins) that omits testExt/srcExt — never let
+    // `${task}${undefined}` become a filename.
+    const base = config ?? loadTddConfig();
+    this.config = {
+      ...base,
+      testExt: base.testExt ?? ".test.ts",
+      srcExt: base.srcExt ?? ".ts",
+    };
   }
 
   /** Generate a test file for the task from the template. */
   async generateTest(): Promise<string> {
-    const { testDir } = this.config;
+    const { testDir, testExt } = this.config;
+    const testFile = `${this.task}${testExt}`;
     const test = this.config.testTemplate
       .replaceAll("{{task}}", this.task)
-      .replaceAll("{{testFile}}", `${this.task}.test.ts`);
+      .replaceAll("{{testFile}}", testFile);
     await ensureDir(testDir);
-    await writeFileSafe(`${testDir}/${this.task}.test.ts`, test);
+    await writeFileSafe(`${testDir}/${testFile}`, test);
     this.state = State.RED;
     return test;
   }
@@ -98,8 +121,12 @@ export class TddEngine {
     // hand (or a snippet that slipped past the static check) must not run
     // either — gate before exec, never after.
     const hazards = [
-      ...scanHazards(safeRead(`${this.config.testDir}/${this.task}.test.ts`)),
-      ...scanHazards(safeRead(`${this.config.srcDir}/${this.task}.ts`)),
+      ...scanHazards(
+        safeRead(`${this.config.testDir}/${this.task}${this.config.testExt}`),
+      ),
+      ...scanHazards(
+        safeRead(`${this.config.srcDir}/${this.task}${this.config.srcExt}`),
+      ),
     ];
     if (hazards.length > 0) {
       this.state = State.RED;
@@ -112,6 +139,7 @@ export class TddEngine {
     const root = dirname(this.config.testDir);
     const cmd = this.config.command
       .replaceAll("{{task}}", this.task)
+      .replaceAll("{{testFile}}", `${this.task}${this.config.testExt}`)
       .replaceAll("{{testDir}}", this.config.testDir)
       .replaceAll("{{srcDir}}", this.config.srcDir)
       .replaceAll("{{root}}", root);
@@ -155,9 +183,9 @@ export class TddEngine {
           "review the code, remove the destructive call, then re-apply",
       );
     }
-    const { srcDir } = this.config;
+    const { srcDir, srcExt } = this.config;
     await ensureDir(srcDir);
-    await writeFileSafe(`${srcDir}/${this.task}.ts`, snippet);
+    await writeFileSafe(`${srcDir}/${this.task}${srcExt}`, snippet);
   }
 
   /** Advance the state machine based on the latest test run. */
