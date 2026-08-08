@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { fork } from "node:child_process";
 import { exec } from "node:child_process";
@@ -12,6 +11,7 @@ import { writeFileSafe } from "../../utils/file.js";
 import { writeCheckpoint } from "../../core/checkpoint.js";
 import { slugify } from "../think/handler.js";
 import { significantWords } from "../../core/titles.js";
+import { resolveSnippet } from "./snippet.js";
 
 const execAsync = promisify(exec);
 
@@ -279,9 +279,8 @@ export async function forge(
   title: string,
   opts?: ForgeOptions,
   snippetProvider: (slug: string) => Promise<string | null> = async (slug) => {
-    const file = `changes/${title}/snippets/${slug}.ts`;
-    if (!existsSync(file)) return null;
-    return readFile(file, "utf8");
+    const r = resolveSnippet(`changes/${title}/snippets`, slug);
+    return r.content;
   },
   engineFactory: EngineFactory = defaultEngineFactory,
 ): Promise<ForgeSummary> {
@@ -299,6 +298,8 @@ export async function forge(
 
   const pending: string[] = [];
   const missingSnippets: string[] = [];
+  /** Diagnostics for unresolved snippets: expected slug + existing files. */
+  const snippetHints: string[] = [];
   const rows: Array<{ desc: string; status: "done" | "skipped" | "pending" }> =
     [];
   let done = 0;
@@ -334,6 +335,17 @@ export async function forge(
     if (!outcome.ok) {
       pending.push(slug);
       missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
+      const r = resolveSnippet(`changes/${title}/snippets`, slug);
+      if (
+        r.content === null &&
+        r.candidates &&
+        r.candidates.length > 0 &&
+        snippetHints.length < 3
+      ) {
+        snippetHints.push(
+          `${slug}: no exact match — existing: ${r.candidates.join(", ")}`,
+        );
+      }
       rows.push({ desc, status: "pending" });
       opts?.onTask?.({ desc, status: "pending" });
       continue;
@@ -355,7 +367,8 @@ export async function forge(
     message:
       pending.length === 0
         ? `forge complete: ${done} done, ${skipped} skipped from cache`
-        : `forge paused: ${done} done, ${skipped} skipped, ${pending.length} pending — add snippets: ${missingSnippets.join(", ")}`,
+        : `forge paused: ${done} done, ${skipped} skipped, ${pending.length} pending — add snippets: ${missingSnippets.join(", ")}` +
+          (snippetHints.length > 0 ? `\n${snippetHints.join("\n")}` : ""),
   };
 
   await writeForgeReport(title, summary, rows);
