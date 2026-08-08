@@ -206,10 +206,12 @@ export function slugify(input: string): string {
 /**
  * Short, readable change title (3–4 words) derived from the prompt:
  * strip the leading action verb and fillers, drop stopwords, keep the
- * first few significant ASCII words. Falls back to `slugify(prompt)` when
- * too little remains (keeps "build a calculator" → build-a-calculator and
- * Cyrillic-only prompts → cli exactly as before). `slugify` itself is
- * unchanged, so forge task slugs are unaffected.
+ * first few significant words — Latin **and** Cyrillic — so Russian
+ * prompts get short meaningful titles instead of `untitled` or a single
+ * stray ASCII word. Falls back to the raw prompt's first significant
+ * words when too little remains (keeps "build a calculator" →
+ * build-a-calculator exactly as before). `slugify` itself is unchanged,
+ * so forge task slugs are unaffected.
  */
 export function shortTitle(prompt: string): string {
   const STOPWORDS = new Set([
@@ -244,14 +246,54 @@ export function shortTitle(prompt: string): string {
     "из",
     "о",
     "об",
+    "что",
+    "это",
+    "как",
+    "при",
+    "от",
+    "до",
+    "за",
+    "не",
+    "но",
+    "если",
+    "чтобы",
+    "уже",
+    "еще",
+    "также",
+    "только",
+    "который",
+    "которая",
+    "которые",
+    "его",
+    "ее",
+    "их",
+    "будет",
+    "быть",
+    "были",
+    "все",
+    "свой",
+    "своя",
+    "свои",
   ]);
+  // Significant words of the core (leading verb already stripped).
   const words: string[] = [];
   for (const w of extractCore(prompt)
     .toLowerCase()
-    .split(/[^a-z0-9]+/)) {
-    if (!w || !/^[a-z0-9]+$/.test(w) || STOPWORDS.has(w)) continue;
+    .split(/[^a-z0-9а-яё]+/)) {
+    if (!w || STOPWORDS.has(w)) continue;
     words.push(w);
     if (words.length >= 4) break;
   }
-  return words.length >= 2 ? words.join("-") : slugify(prompt);
+  if (words.length >= 2) return words.join("-");
+  // Too little survives the core filter — fall back to the raw prompt's
+  // first significant words (Cyrillic included), never a 64-char slug or
+  // "untitled" for a non-empty idea.
+  const raw: string[] = [];
+  for (const w of prompt.toLowerCase().split(/[^a-z0-9а-яё]+/)) {
+    if (!w || STOPWORDS.has(w)) continue;
+    raw.push(w);
+    if (raw.length >= 4) break;
+  }
+  if (raw.length >= 2) return raw.join("-");
+  return slugify(prompt) || "untitled";
 }

@@ -98,9 +98,12 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    // slugify drops Cyrillic, so the change id is "cli".
-    await draft("cli", { noCache: true });
-    const tasks = readFileSync(join("changes", "cli", "tasks.md"), "utf8");
+    // Short title keeps the Cyrillic words (was "cli" before v0.20).
+    await draft("cli-калькулятор-историей-операций", { noCache: true });
+    const tasks = readFileSync(
+      join("changes", "cli-калькулятор-историей-операций", "tasks.md"),
+      "utf8",
+    );
     expect(tasks).toContain("CLI entry point");
     // The raw goal verb is stripped; the concrete entity remains.
     expect(tasks).not.toContain("Implement: сделай");
@@ -136,9 +139,7 @@ describe("draft skill", () => {
     );
     // Restated from the goal = fact; template/inference = assumption.
     expect(tasks).toContain("- [ ] [fact] Implement the csv-to-json converter");
-    expect(tasks).toContain(
-      "- [ ] [assumption] Scaffold project structure",
-    );
+    expect(tasks).toContain("- [ ] [assumption] Scaffold project structure");
     expect(tasks).toContain("- [ ] [assumption] Cover the core capability");
     const design = readFileSync(
       join("changes", "csv-json-converter", "design.md"),
@@ -161,7 +162,9 @@ describe("draft skill", () => {
     );
     // A RED→fix→verify plan, not build templates.
     expect(tasks).toContain("Reproduce the failure");
-    expect(tasks).toContain("[fact] Implement the fix: broken test coverage gate in orion-spec");
+    expect(tasks).toContain(
+      "[fact] Implement the fix: broken test coverage gate in orion-spec",
+    );
     expect(tasks).toContain("without changing the external behavior/API");
     expect(tasks).toContain("gates still pass");
     // Generic build padding is skipped for maintenance goals.
@@ -175,8 +178,11 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    await draft("csv-parse-ts", { noCache: true });
-    const ruTasks = readFileSync(join("changes", "csv-parse-ts", "tasks.md"), "utf8");
+    await draft("сломанный-парсер-csv-модуле", { noCache: true });
+    const ruTasks = readFileSync(
+      join("changes", "сломанный-парсер-csv-модуле", "tasks.md"),
+      "utf8",
+    );
     // "почини" is stripped; the fix target is restated as a fact.
     expect(ruTasks).toContain("Implement the fix:");
     expect(ruTasks).toContain("parser csv");
@@ -237,7 +243,12 @@ describe("draft platform sanitization (v0.11 fix)", () => {
     );
     const artifacts = await draft("token-saver", { noCache: true });
     // No crash: every generated path is inside the change dir and path-safe.
-    for (const p of [artifacts.proposal, ...artifacts.specs, artifacts.design, artifacts.tasks]) {
+    for (const p of [
+      artifacts.proposal,
+      ...artifacts.specs,
+      artifacts.design,
+      artifacts.tasks,
+    ]) {
       expect(p).not.toMatch(/\s|>|=|\+/);
       expect(p.startsWith("changes/")).toBe(true);
     }

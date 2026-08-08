@@ -112,12 +112,28 @@ describe("think skill", () => {
     );
   });
 
-  it("shortTitle falls back to the full slug when too little remains", () => {
-    // One significant word → keep the historical slug (collision-safe).
-    expect(shortTitle("build a calculator")).toBe("build-a-calculator");
-    // Cyrillic-only prompt: slugify drops it to "cli" (historic title).
+  it("shortTitle keeps Cyrillic words — Russian prompts stay short", () => {
+    // Cyrillic must survive (slugify alone would strip it to "untitled").
+    expect(
+      shortTitle("проверить проект и убедиться что все файлы авторские"),
+    ).toBe("проверить-проект-убедиться-файлы");
+    expect(
+      shortTitle(
+        "добавить возможность экспорта данных в Excel и синхронизацию с облаком",
+      ),
+    ).toBe("возможность-экспорта-данных-excel");
+    expect(shortTitle("починить интерфейс приложения")).toBe(
+      "интерфейс-приложения",
+    );
+  });
+
+  it("shortTitle falls back to the raw prompt when too little core remains", () => {
+    // One significant word in the core → fall back to the raw prompt's
+    // first significant words (stopwords like "a" dropped).
+    expect(shortTitle("build a calculator")).toBe("build-calculator");
+    // Mostly-Cyrillic prompt: the raw-prompt fallback keeps it meaningful.
     expect(shortTitle("сделай CLI калькулятор с историей операций")).toBe(
-      "cli",
+      "cli-калькулятор-историей-операций",
     );
   });
 
@@ -145,7 +161,7 @@ describe("think skill", () => {
       { noCache: true },
       async () => "",
     );
-    expect(second.title).toBe("build-a-tool-2");
+    expect(second.title).toBe("build-tool-2");
     expect(second.goal).toBe("build a tool!");
 
     const third = await think(
@@ -153,7 +169,7 @@ describe("think skill", () => {
       { noCache: true },
       async () => "",
     );
-    expect(third.title).toBe("build-a-tool-3");
+    expect(third.title).toBe("build-tool-3");
   });
 
   it("asks clarifying questions for a vague prompt and refines the goal", async () => {
