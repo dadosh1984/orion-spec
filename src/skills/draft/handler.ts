@@ -15,15 +15,22 @@ import type { ArtifactSet, Proposal } from "../../type.js";
  * Guided answers are free-form sentences ("node >= 22, CLI + MCP"), which
  * must never become filesystem paths. Identifiers are kept as-is; anything
  * else collapses to "core".
+ *
+ * The result is ALSO the spec's `# Spec:` heading, and drift (v0.20+)
+ * requires that heading to match an exported symbol in `src/tasks` — so it
+ * must be a valid JS identifier. v0.24.2: words join with `_` instead of
+ * `-` — a hyphenated name like `read-only-mypy-...` can NEVER be exported
+ * (hyphens are illegal in identifiers), which made drift unsatisfiable for
+ * any change whose platform answer slugged into multiple words.
  */
 export function toCapability(platform: string): string {
   const slug = platform
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
     .slice(0, 40);
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length >= 2
+  return /^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(slug) && slug.length >= 2
     ? slug
     : "core";
 }

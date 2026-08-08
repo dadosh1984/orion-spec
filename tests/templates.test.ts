@@ -95,6 +95,20 @@ describe("template resolver", () => {
 });
 
 describe("draft with custom skeletons", () => {
+  it("toCapability produces identifier-safe capability names (v0.24.2)", () => {
+    // Multi-word platform answers must never produce hyphenated names:
+    // drift requires the spec heading to match an exported JS identifier,
+    // and hyphens are illegal in identifiers → unsatisfiable drift.
+    expect(toCapability("read only mypy strict ruff pytest http-m")).toBe(
+      "read_only_mypy_strict_ruff_pytest_http_m",
+    );
+    expect(toCapability("node >= 22, CLI + MCP")).toBe("node_22_cli_mcp");
+    // Identifiers and the legacy fallback are preserved.
+    expect(toCapability("python")).toBe("python");
+    expect(toCapability("!!!")).toBe("core");
+    expect(toCapability("")).toBe("core");
+  });
+
   it("applies a per-change design skeleton and marks it custom", async () => {
     seedProposal("demo");
     mkdirSync(join("changes", "demo", "templates"), { recursive: true });

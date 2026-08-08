@@ -380,11 +380,19 @@ async function shellCheck(
   }
 }
 
+/** A valid JS identifier — what a `# Spec:` capability heading must be. */
+const CAPABILITY_IDENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
 /**
  * Drift check: every capability named in the spec files under
  * `changes/<id>/specs/` must have a matching *exported symbol* in
  * `src/tasks/`. AST-free but honest: only real export declarations count
  * (comments and stray mentions no longer produce false positives).
+ *
+ * v0.24.2: a heading that is not a valid JS identifier is reported with a
+ * rename hint instead of an unsatisfiable "missing exported" — a name like
+ * `read-only-mypy-...` can never be exported, so the spec (not the code)
+ * is what needs fixing.
  */
 function driftCheck(changeId: string): GuardCheckResult {
   const specsDir = `changes/${changeId}/specs`;
@@ -404,6 +412,19 @@ function driftCheck(changeId: string): GuardCheckResult {
       step: "drift",
       status: "PASS",
       detail: "no capabilities in specs",
+    };
+  }
+
+  const invalid = expected.filter((cap) => !CAPABILITY_IDENT.test(cap));
+  if (invalid.length > 0) {
+    return {
+      step: "drift",
+      status: "FAIL",
+      detail:
+        `invalid capability name(s): ${invalid.join(", ")} — ` +
+        `"# Spec:" headings must be valid JS identifiers matching an ` +
+        `export in src/tasks (rename the heading to the exported module's ` +
+        `name, e.g. "# Spec: core" for src/tasks/core.ts)`, //
     };
   }
 
