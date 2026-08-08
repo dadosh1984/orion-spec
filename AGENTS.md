@@ -21,6 +21,12 @@ If MCP is unavailable, call the CLI directly: `orion <command>`.
 
 ## Never do this
 
+- Do **not** invoke skills, CLIs or change-stores from other agent toolkits
+  (OpenSpec, gsd, superpowers, spec-kit, rtk, ponytail). Orion owns the whole
+  change workflow: `orion think/draft/forge/shield/out`. OpenSpec commands
+  create `specs/changes/` stores that the Orion CLI does not understand — if
+  such a change was created by mistake, delete it and restart with
+  `orion think`.
 - Do **not** invent commands like `rtk lint` — they do not exist.
 - Do **not** run `pnpm exec eslint` / `pnpm lint` blind: eslint/prettier are
   installed in this repo (`node_modules/.bin/eslint`), but in other projects
