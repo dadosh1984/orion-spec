@@ -10,6 +10,7 @@ import { recordLesson } from "../../core/lessons.js";
 import { writeFileSafe } from "../../utils/file.js";
 import { writeCheckpoint } from "../../core/checkpoint.js";
 import { slugify } from "../think/handler.js";
+import { significantWords } from "../../core/titles.js";
 
 const execAsync = promisify(exec);
 
@@ -167,6 +168,37 @@ async function finishTask(
   }
 }
 
+/** Marker prefix on task lines that is not part of the task's name. */
+const SLUG_MARKER = /^\[(fact|assumption|risk|decision)\]\s*/i;
+
+/**
+ * Short, identifier-safe task slug (2–3 significant words, v0.24).
+ *
+ * The old slug kept EVERY word of the task description (up to 64 chars,
+ * marker included) — `[assumption] Add arithmetic operations: add,
+ * subtract, multiply, divide` became a 55-char file name. Now the marker
+ * is stripped and only 2–3 significant words survive, so snippet files are
+ * as short as change titles ("add_arithmetic_operations",
+ * "implement_calculator"). Underscores (not dashes): the slug is used as a
+ * JS identifier in the generated test template (`import { <slug> } …`).
+ * Uniqueness within a change is enforced deterministically: a collision
+ * appends `_2`, `_3`, … in tasks.md order. Cyrillic is kept — the same
+ * promise as change titles. Falls back to `slugify` when nothing
+ * significant survives.
+ */
+export function shortSlug(desc: string, used: Set<string>): string {
+  const cleaned = desc.replace(SLUG_MARKER, "");
+  const words = significantWords(cleaned, 3);
+  const base =
+    words.length > 0 ? words.join("_") : slugify(cleaned).replace(/-/g, "_");
+  const fallback = base || "untitled";
+  let slug = fallback;
+  let n = 2;
+  while (used.has(slug)) slug = `${fallback}_${n++}`;
+  used.add(slug);
+  return slug;
+}
+
 /**
  * `orion forge` — walk `changes/<title>/tasks.md` and drive each open
  * `- [ ]` task through the RED-GREEN-REFACTOR engine.
@@ -203,11 +235,14 @@ export async function forge(
     [];
   let done = 0;
   let skipped = 0;
+  // Slugs must be unique within a change (v0.24): two tasks whose first
+  // 2–3 significant words collide get `_2`, `_3`, … deterministically.
+  const usedSlugs = new Set<string>();
 
   for (const desc of open) {
     // identifier-safe slug: dashes are illegal in JS identifiers and would
     // break `import { <slug> } from ...` in the generated test template.
-    const slug = slugify(desc).replace(/-/g, "_");
+    const slug = shortSlug(desc, usedSlugs);
     if (!opts?.noCache && track.loadString(`forge:${slug}`) === "DONE") {
       skipped++;
       rows.push({ desc, status: "skipped" });
@@ -309,8 +344,10 @@ export async function forgeParallel(
   let skipped = 0;
 
   const bySlug = new Map<string, string>();
+  // Same uniqueness contract as the sequential path (v0.24).
+  const usedSlugs = new Set<string>();
   for (const desc of open) {
-    const slug = slugify(desc).replace(/-/g, "_");
+    const slug = shortSlug(desc, usedSlugs);
     bySlug.set(slug, desc);
     if (!opts?.noCache && track.loadString(`forge:${slug}`) === "DONE") {
       skipped++;

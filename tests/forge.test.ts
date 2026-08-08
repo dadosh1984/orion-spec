@@ -8,7 +8,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { forge, readTasks, defaultEngineFactory } from "../src/skills/forge/handler.js";
+import {
+  forge,
+  readTasks,
+  defaultEngineFactory,
+  shortSlug,
+} from "../src/skills/forge/handler.js";
 import { TddEngine } from "../src/core/tddCore.js";
 import { OrionTrack } from "../src/core/track.js";
 
@@ -90,7 +95,7 @@ describe("forge skill", () => {
     );
     expect(summary.missingSnippets).toEqual([
       "changes/demo/snippets/implement_add_function.ts",
-      "changes/demo/snippets/export_the_module.ts",
+      "changes/demo/snippets/export_module.ts",
     ]);
     expect(summary.message).toContain(
       "changes/demo/snippets/implement_add_function.ts",
@@ -189,5 +194,46 @@ describe("readTasks: CRLF robustness (v0.11 fix)", () => {
     expect(tasks).toHaveLength(2);
     expect(tasks[0]).toEqual({ done: true, text: "done task" });
     expect(tasks[1]).toEqual({ done: false, text: "open task" });
+  });
+});
+
+describe("forge: short task slugs (v0.24)", () => {
+  it("keeps 2–3 significant words and strips [fact]/[assumption] markers", () => {
+    const used = new Set<string>();
+    expect(shortSlug("[fact] Implement the calculator", used)).toBe(
+      "implement_calculator",
+    );
+    expect(shortSlug("[assumption] Add arithmetic operations", used)).toBe(
+      "add_arithmetic_operations",
+    );
+    expect(shortSlug("Export the module", used)).toBe("export_module");
+    expect(shortSlug("Document usage in README", used)).toBe(
+      "document_usage_readme",
+    );
+  });
+
+  it("is unique within a change — collisions get _2, _3 in order", () => {
+    const used = new Set<string>();
+    expect(shortSlug("Add tests for parser and lexer", used)).toBe(
+      "add_tests_parser",
+    );
+    expect(shortSlug("Add tests for parser and writer", used)).toBe(
+      "add_tests_parser_2",
+    );
+    expect(shortSlug("Add tests for parser and reader", used)).toBe(
+      "add_tests_parser_3",
+    );
+  });
+
+  it("keeps Cyrillic (same promise as change titles)", () => {
+    const used = new Set<string>();
+    expect(shortSlug("[assumption] Добавить операции калькулятора", used)).toBe(
+      "добавить_операции_калькулятора",
+    );
+  });
+
+  it("falls back to slugify when nothing significant survives", () => {
+    const used = new Set<string>();
+    expect(shortSlug("The of a an", used)).toBe("the_of_a_an");
   });
 });

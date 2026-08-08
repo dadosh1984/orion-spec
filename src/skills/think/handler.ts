@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import { readJson, writeJson } from "../../utils/file.js";
+import { significantWords } from "../../core/titles.js";
 import { OrionTrack } from "../../core/track.js";
 import { findLessons } from "../../core/lessons.js";
 import { loadQuestions } from "../../core/templates.js";
@@ -214,86 +215,13 @@ export function slugify(input: string): string {
  * so forge task slugs are unaffected.
  */
 export function shortTitle(prompt: string): string {
-  const STOPWORDS = new Set([
-    "the",
-    "a",
-    "an",
-    "in",
-    "of",
-    "for",
-    "to",
-    "with",
-    "on",
-    "at",
-    "by",
-    "and",
-    "or",
-    "so",
-    "is",
-    "it",
-    "as",
-    "that",
-    "this",
-    "from",
-    "into",
-    "via",
-    "по",
-    "в",
-    "на",
-    "и",
-    "с",
-    "для",
-    "из",
-    "о",
-    "об",
-    "что",
-    "это",
-    "как",
-    "при",
-    "от",
-    "до",
-    "за",
-    "не",
-    "но",
-    "если",
-    "чтобы",
-    "уже",
-    "еще",
-    "также",
-    "только",
-    "который",
-    "которая",
-    "которые",
-    "его",
-    "ее",
-    "их",
-    "будет",
-    "быть",
-    "были",
-    "все",
-    "свой",
-    "своя",
-    "свои",
-  ]);
   // Significant words of the core (leading verb already stripped).
-  const words: string[] = [];
-  for (const w of extractCore(prompt)
-    .toLowerCase()
-    .split(/[^a-z0-9а-яё]+/)) {
-    if (!w || STOPWORDS.has(w)) continue;
-    words.push(w);
-    if (words.length >= 4) break;
-  }
+  const words = significantWords(extractCore(prompt), 4);
   if (words.length >= 2) return words.join("-");
   // Too little survives the core filter — fall back to the raw prompt's
   // first significant words (Cyrillic included), never a 64-char slug or
   // "untitled" for a non-empty idea.
-  const raw: string[] = [];
-  for (const w of prompt.toLowerCase().split(/[^a-z0-9а-яё]+/)) {
-    if (!w || STOPWORDS.has(w)) continue;
-    raw.push(w);
-    if (raw.length >= 4) break;
-  }
+  const raw = significantWords(prompt, 4);
   if (raw.length >= 2) return raw.join("-");
   return slugify(prompt) || "untitled";
 }
