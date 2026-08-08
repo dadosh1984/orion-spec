@@ -11,6 +11,8 @@ import { forge, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { nextStep } from "../skills/next/handler.js";
+import { payDebt } from "../skills/pay-debt/handler.js";
+import { resume } from "../skills/resume/handler.js";
 import { applyScale, previewScale } from "./scale.js";
 import { OrionTrack } from "./track.js";
 import { metricsReport } from "./metrics.js";
@@ -274,6 +276,41 @@ export function getMcpTools(): McpTool[] {
       },
       handler: async () => {
         const r = await nextStep();
+        return JSON.stringify(r, null, 2);
+      },
+    },
+    {
+      name: "pay_debt",
+      description:
+        "Repay yagni debt for a change without an LLM: re-run the SAME deterministic yagni signal shield uses, sync the debt ledger (snippets that no longer trigger the WARN are paid/closed, still-oversized ones stay owed), and report honestly with the numbers. Never deletes code and never fabricates a done — the payment tool is orion scale.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          changeId: { type: "string", description: "Change id under changes/" },
+          limit: {
+            type: "number",
+            description: "Max still-owed lines to report (default 5)",
+          },
+        },
+        required: ["changeId"],
+      },
+      handler: async (args) => {
+        const limit = Number(args.limit) > 0 ? Number(args.limit) : 5;
+        const result = payDebt(String(args.changeId), limit);
+        return JSON.stringify(result, null, 2);
+      },
+    },
+    {
+      name: "resume",
+      description:
+        "Continue an interrupted change workflow: read the checkpoint (or derive the phase from artifacts), then execute the phase's skill with the normal machinery — already-done tasks are skipped via the same forge:slug cache, nothing is re-done and nothing is fabricated as done.",
+      inputSchema: {
+        type: "object",
+        properties: { changeId: { type: "string" } },
+        required: ["changeId"],
+      },
+      handler: async (args) => {
+        const r = await resume(String(args.changeId));
         return JSON.stringify(r, null, 2);
       },
     },

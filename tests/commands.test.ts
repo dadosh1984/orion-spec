@@ -10,6 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs, main } from "../src/cli/commands.js";
+import { HELP } from "../src/cli/parse.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -58,6 +59,9 @@ describe("main dispatcher", () => {
   it("returns 0 for help", async () => {
     expect(await main(["help"])).toBe(0);
     expect(await main([])).toBe(0);
+    // the v0.22 commands are discoverable in the help text
+    expect(HELP).toContain("pay-debt <change-id>");
+    expect(HELP).toContain("resume <change-id>");
   });
 
   it("returns 1 for unknown commands", async () => {
@@ -137,14 +141,26 @@ describe("main dispatcher", () => {
   it("routes multi-word unknown input to think (natural-language fallback)", async () => {
     expect(await main(["build", "a", "calculator"])).toBe(0);
     expect(
-      existsSync(join(dir, "changes", "build-a-calculator", "proposal.json")),
+      existsSync(join(dir, "changes", "build-calculator", "proposal.json")),
     ).toBe(true);
   });
 
   it("treats a whole quoted phrase as a prompt (single argv with spaces)", async () => {
     expect(await main(["сделай CLI калькулятор с историей"])).toBe(0);
-    // Cyrillic is stripped by slugify, so the title is "cli".
-    expect(existsSync(join(dir, "changes", "cli", "proposal.json"))).toBe(true);
+    // Short title keeps the Cyrillic words (was "cli" before v0.20).
+    expect(
+      existsSync(
+        join(dir, "changes", "cli-калькулятор-историей", "proposal.json"),
+      ),
+    ).toBe(true);
+  });
+
+  it("pay-debt fails honestly for a missing change (v0.22)", async () => {
+    await expect(main(["pay-debt", "ghost"])).rejects.toThrow(/not found/);
+  });
+
+  it("resume fails honestly for a missing change (v0.22)", async () => {
+    await expect(main(["resume", "ghost"])).rejects.toThrow(/not found/);
   });
 
   it("tasks prints the checklist with check marks", async () => {

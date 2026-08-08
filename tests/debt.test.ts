@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { shield } from "../src/skills/shield/handler.js";
@@ -15,6 +10,7 @@ import {
   countOpenDebt,
   readDebt,
 } from "../src/core/debt.js";
+import { payDebt } from "../src/skills/pay-debt/handler.js";
 
 const ORIGINAL_CWD = process.cwd();
 let dir: string;
@@ -82,10 +78,21 @@ describe("debt registry (v0.18)", () => {
 
   it("shield WARN records the debt, shield PASS closes it", async () => {
     mkdirSync("src", { recursive: true });
-    writeFileSync("src/base.ts", "export const a = 1;\nexport const b = 2;\n", "utf8");
+    writeFileSync(
+      "src/base.ts",
+      "export const a = 1;\nexport const b = 2;\n",
+      "utf8",
+    );
     mkdirSync("changes/demo/snippets", { recursive: true });
-    const big = Array.from({ length: 220 }, (_, i) => `const v${i} = ${i};`).join("\n");
-    writeFileSync("changes/demo/snippets/big.ts", big + "\nexport const big = 1;\n", "utf8");
+    const big = Array.from(
+      { length: 220 },
+      (_, i) => `const v${i} = ${i};`,
+    ).join("\n");
+    writeFileSync(
+      "changes/demo/snippets/big.ts",
+      big + "\nexport const big = 1;\n",
+      "utf8",
+    );
 
     const report = await shield("demo", { noCache: true });
     expect(report.checks.find((c) => c.step === "yagni")?.status).toBe("WARN");
@@ -94,18 +101,101 @@ describe("debt registry (v0.18)", () => {
     expect(listDebt()[0].loc).toBeGreaterThan(200);
 
     // fix the snippet → PASS closes the debt
-    writeFileSync("changes/demo/snippets/big.ts", "export const small = 1;\n", "utf8");
+    writeFileSync(
+      "changes/demo/snippets/big.ts",
+      "export const small = 1;\n",
+      "utf8",
+    );
     const report2 = await shield("demo", { noCache: true });
     expect(report2.checks.find((c) => c.step === "yagni")?.status).toBe("PASS");
     expect(countOpenDebt()).toBe(0);
     expect(readDebt()[0].closedAt).toBeDefined();
   });
 
+  it("pay-debt re-syncs the ledger and pays what stopped owing (v0.22)", async () => {
+    mkdirSync("src", { recursive: true });
+    writeFileSync(
+      "src/base.ts",
+      "export const a = 1;\nexport const b = 2;\n",
+      "utf8",
+    );
+    mkdirSync("changes/demo/snippets", { recursive: true });
+    const big = Array.from(
+      { length: 220 },
+      (_, i) => `const v${i} = ${i};`,
+    ).join("\n");
+    writeFileSync(
+      "changes/demo/snippets/big.ts",
+      big + "\nexport const big = 1;\n",
+      "utf8",
+    );
+
+    // shield opens the debt entry
+    await shield("demo", { noCache: true });
+    expect(countOpenDebt()).toBe(1);
+
+    // fix the snippet, then pay the debt WITHOUT re-running shield
+    writeFileSync(
+      "changes/demo/snippets/big.ts",
+      "export const small = 1;\n",
+      "utf8",
+    );
+    const result = payDebt("demo");
+    expect(result.paid).toHaveLength(1);
+    expect(result.paid[0]).toContain("big.ts");
+    expect(result.stillOwed).toHaveLength(0);
+    expect(result.openAfter).toBe(0);
+    expect(countOpenDebt()).toBe(0);
+    // audit trail keeps the closed row
+    expect(readDebt()[0].closedAt).toBeDefined();
+  });
+
+  it("pay-debt keeps a still-oversized snippet owed with honest numbers", async () => {
+    mkdirSync("src", { recursive: true });
+    writeFileSync(
+      "src/base.ts",
+      "export const a = 1;\nexport const b = 2;\n",
+      "utf8",
+    );
+    mkdirSync("changes/demo/snippets", { recursive: true });
+    const big = Array.from(
+      { length: 220 },
+      (_, i) => `const v${i} = ${i};`,
+    ).join("\n");
+    writeFileSync(
+      "changes/demo/snippets/big.ts",
+      big + "\nexport const big = 1;\n",
+      "utf8",
+    );
+
+    await shield("demo", { noCache: true });
+    expect(countOpenDebt()).toBe(1);
+
+    // nothing fixed → pay-debt closes nothing and reports the owed snippet
+    const result = payDebt("demo");
+    expect(result.paid).toHaveLength(0);
+    expect(result.stillOwed).toHaveLength(1);
+    expect(result.stillOwed[0]).toContain("big.ts");
+    expect(result.openAfter).toBe(1);
+  });
+
+  it("pay-debt fails honestly for a missing change", () => {
+    expect(() => payDebt("ghost")).toThrow(/not found/);
+  });
+
   it("a cache-hit run never mutates the debt ledger (no stale signal)", async () => {
     mkdirSync("src", { recursive: true });
-    writeFileSync("src/base.ts", "export const a = 1;\nexport const b = 2;\n", "utf8");
+    writeFileSync(
+      "src/base.ts",
+      "export const a = 1;\nexport const b = 2;\n",
+      "utf8",
+    );
     mkdirSync("changes/demo/snippets", { recursive: true });
-    writeFileSync("changes/demo/snippets/small.ts", "export const s = 1;\n", "utf8");
+    writeFileSync(
+      "changes/demo/snippets/small.ts",
+      "export const s = 1;\n",
+      "utf8",
+    );
 
     await shield("demo"); // run 1: yagni PASS, cached
     expect(countOpenDebt()).toBe(0);

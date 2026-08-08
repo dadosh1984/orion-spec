@@ -14,6 +14,8 @@ Commands:
   shield <change-id>      Run lint, type-check, tests, drift and security gates
   verify <change-id>      Whole-change spec→source evidence pass (signal, not a gate)
   out <change-id>         Produce the final result.md summary
+  pay-debt <change-id>    Repay yagni debt: re-sync the ledger, report what closed (v0.22)
+  resume <change-id>      Continue an interrupted workflow from its checkpoint (v0.22)
   next                    Decide the next action from context (draft → forge → shield → out)
   track status            Show cache statistics
   track prune             Remove expired / oversized cache entries

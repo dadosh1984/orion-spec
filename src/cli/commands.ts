@@ -21,6 +21,8 @@ import { forge, forgeParallel, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { nextStep } from "../skills/next/handler.js";
+import { payDebt } from "../skills/pay-debt/handler.js";
+import { resume } from "../skills/resume/handler.js";
 import { verifyChange, formatVerifyReport } from "../core/verify.js";
 import { guardPrompt, checkNpmPackages } from "../skills/think/guard.js";
 import { startServer, readVersion } from "./serve.js";
@@ -203,6 +205,40 @@ export async function main(argv: string[]): Promise<number> {
         console.log(formatVerifyReport(result));
       }
       // A signal, never a gate: exit 0 even when something is missing.
+      return 0;
+    }
+
+    case "pay-debt": {
+      const changeId = args[0];
+      if (!changeId)
+        return fail(
+          "pay-debt requires a change id, e.g. orion pay-debt my-csv-tool",
+        );
+      const result = payDebt(changeId);
+      printOut(
+        opts,
+        result,
+        result.paid.length > 0
+          ? `Debt paid: ${result.paid.length} snippet(s) closed`
+          : result.stillOwed.length > 0
+            ? `${result.stillOwed.length} snippet(s) still owe — run orion scale <file> to pay them`
+            : "No open debt — ledger is clean",
+      );
+      return 0;
+    }
+
+    case "resume": {
+      const changeId = args[0];
+      if (!changeId)
+        return fail(
+          "resume requires a change id, e.g. orion resume my-csv-tool",
+        );
+      const result = await resume(changeId);
+      printOut(
+        opts,
+        result,
+        `resumed ${changeId} at phase "${result.phase}" (from ${result.resumedFrom}${result.step ? `, step: ${result.step}` : ""})`,
+      );
       return 0;
     }
 

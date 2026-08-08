@@ -3,7 +3,7 @@
 Orion exposes a **universal MCP server** (`orion mcp`) — a zero-dependency
 implementation of the Model Context Protocol (JSON-RPC 2.0 over stdio).
 Any MCP-capable agent attaches to it the same way and can call
-`think`, `draft`, `forge`, `shield`, `out`, `scale`, `track_status`,
+`think`, `draft`, `forge`, `shield`, `out`, `pay_debt`, `resume`, `scale`, `track_status`,
 `track_prune`, `metrics`, `plugin_list`, `plugin_install`, `plugin_remove`,
 `version` as native tools.
 
@@ -180,17 +180,17 @@ Set `ORION_MCP_VERBOSE=0` to silence it.
 
 ## What the agent gets
 
-| Tool                           | Purpose                                                                                                            |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `think`                        | Capture an idea → `changes/<title>/proposal.json` (non-interactive: pass `platform`/`constraints`/`budget` inline) |
-| `draft`                        | Generate `design.md`, `specs/`, `tasks.md`                                                                         |
-| `forge`                        | Drive every task through RED-GREEN-REFACTOR (needs snippets in `changes/<title>/snippets/`)                        |
+| Tool                           | Purpose                                                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `think`                        | Capture an idea → `changes/<title>/proposal.json` (non-interactive: pass `platform`/`constraints`/`budget` inline)                   |
+| `draft`                        | Generate `design.md`, `specs/`, `tasks.md`                                                                                           |
+| `forge`                        | Drive every task through RED-GREEN-REFACTOR (needs snippets in `changes/<title>/snippets/`)                                          |
 | `shield`                       | lint → type → tests → drift → yagni → **economy** → security guard-rails (v0.17: economy = cache vs its 60% budget, WARN not a gate) |
-| `out`                          | Final `result.md` summary                                                                                          |
-| `scale`                        | YAGNI ladder on a file (`dry: true` = diff preview, no write)                                                      |
-| `track_status` / `track_prune` | Cache (token economy) statistics and maintenance                                                                   |
-| `metrics`                      | Benchmark + token budget by namespace                                                                              |
-| `plugin_*`                     | Plugin marketplace management                                                                                      |
+| `out`                          | Final `result.md` summary                                                                                                            |
+| `scale`                        | YAGNI ladder on a file (`dry: true` = diff preview, no write)                                                                        |
+| `track_status` / `track_prune` | Cache (token economy) statistics and maintenance                                                                                     |
+| `metrics`                      | Benchmark + token budget by namespace                                                                                                |
+| `plugin_*`                     | Plugin marketplace management                                                                                                        |
 
 ## Wiring an agent (v0.17 live proof)
 

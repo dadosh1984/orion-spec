@@ -146,6 +146,8 @@ describe("mcp: protocol surface", () => {
     expect(names).toContain("forge");
     expect(names).toContain("shield");
     expect(names).toContain("metrics");
+    expect(names).toContain("pay_debt");
+    expect(names).toContain("resume");
   });
 });
 
@@ -204,6 +206,36 @@ describe("mcp: tool calls", () => {
     await call(server, "initialize");
     const res = await call(server, "tools/call", 1, {
       name: "out",
+      arguments: { changeId: "does-not-exist" },
+    });
+    const result = res.result as {
+      isError: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not found");
+  });
+
+  it("tools/call pay_debt fails honestly for a missing change (v0.22)", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "pay_debt",
+      arguments: { changeId: "does-not-exist" },
+    });
+    const result = res.result as {
+      isError: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not found");
+  });
+
+  it("tools/call resume fails honestly for a missing change (v0.22)", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "resume",
       arguments: { changeId: "does-not-exist" },
     });
     const result = res.result as {
