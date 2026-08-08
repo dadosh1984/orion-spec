@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, rmSync, existsSync, mkdtempSync } from "node:fs";
+import {
+  mkdirSync,
+  rmSync,
+  existsSync,
+  mkdtempSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { TddEngine, State, describeFailure } from "../src/core/tddCore.js";
@@ -160,5 +166,39 @@ describe("TddEngine", () => {
       process.chdir(prior);
       rmSync(isolated, { recursive: true, force: true });
     }
+  });
+});
+
+describe("TddEngine hazard gate (v0.23)", () => {
+  it("refuses a destructive snippet in applyCode", async () => {
+    const engine = new TddEngine("hazardTask", track, config);
+    await expect(
+      engine.applyCode(
+        "import { rmSync } from 'node:fs';\nexport function nuke() { rmSync('/', { recursive: true }); }\n",
+      ),
+    ).rejects.toThrow(/hazard gate/);
+  });
+
+  it("runTestDetailed blocks a hazardous implementation file without running it", async () => {
+    const engine = new TddEngine("hazardRun", track, config);
+    // Write a hazardous src file directly (bypassing applyCode) to prove the
+    // pre-exec gate scans what the test runner is about to import.
+    writeFileSync(
+      join(work, "src", "tasks", "hazardRun.ts"),
+      "export function x() { eval('1+1'); }\n",
+      "utf8",
+    );
+    const r = await engine.runTestDetailed();
+    expect(r.passed).toBe(false);
+    expect(r.output).toContain("hazard gate");
+    expect(r.output).toContain("dynamic eval");
+  });
+
+  it("runTestDetailed stays green for clean code", async () => {
+    const engine = new TddEngine("hazardClean", track, config);
+    await engine.generateTest();
+    await engine.applyCode("export function hazardClean() { return 42; }");
+    const r = await engine.runTestDetailed();
+    expect(r.passed).toBe(true);
   });
 });

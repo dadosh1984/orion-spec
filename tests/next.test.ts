@@ -371,3 +371,58 @@ describe("next: calibration + budget + debt (v0.18)", () => {
     expect(r.summary).toContain("Open debt: 1 item(s)");
   });
 });
+
+describe("next: toxic-loop guard (v0.23)", () => {
+  it("stops when a change fails the same step 3+ times with different errors", async () => {
+    makeChange("flaky", true);
+    // recordLesson dedupes identical (changeId, step, error) — three
+    // DIFFERENT errors at the same step is the repeated-failure signal.
+    const lessons = [
+      { changeId: "flaky", step: "shield", error: "lint failed: no-empty" },
+      { changeId: "flaky", step: "shield", error: "tsc error TS2304" },
+      { changeId: "flaky", step: "shield", error: "test suite crashed" },
+    ].map((l, i) => ({
+      id: `l${i}`,
+      ts: new Date().toISOString(),
+      ...l,
+      cause: "guard-rail failed",
+      fix: "fix the check",
+    }));
+    process.env.ORION_LESSONS_FILE = join(process.cwd(), "lessons.json");
+    writeFileSync(
+      process.env.ORION_LESSONS_FILE,
+      JSON.stringify(lessons),
+      "utf8",
+    );
+    const r = await nextStep();
+    expect(r.loopDetected).toBeDefined();
+    expect(r.loopDetected?.changeId).toBe("flaky");
+    expect(r.loopDetected?.step).toBe("shield");
+    expect(r.loopDetected?.count).toBe(3);
+    expect(r.next).toBeNull();
+    expect(r.summary).toContain("Loop detected");
+    delete process.env.ORION_LESSONS_FILE;
+  });
+
+  it("does not trip on a single lesson (normal self-correction)", async () => {
+    makeChange("okay", true);
+    process.env.ORION_LESSONS_FILE = join(process.cwd(), "lessons.json");
+    writeFileSync(
+      process.env.ORION_LESSONS_FILE,
+      JSON.stringify([
+        {
+          id: "l1",
+          ts: new Date().toISOString(),
+          changeId: "okay",
+          step: "shield",
+          error: "lint failed once",
+        },
+      ]),
+      "utf8",
+    );
+    const r = await nextStep();
+    expect(r.loopDetected).toBeUndefined();
+    expect(r.selfCorrection).toBeDefined();
+    delete process.env.ORION_LESSONS_FILE;
+  });
+});

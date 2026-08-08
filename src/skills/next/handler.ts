@@ -59,6 +59,18 @@ export interface NextResult {
     correctivePrompt: string;
   };
   /**
+   * Toxic-loop stop (v0.23): set when a change has failed the SAME step
+   * 3+ times with different errors. `next` is then null — the agent must
+   * stop and hand the loop back to the human instead of burning budget on
+   * another self-correction cycle.
+   */
+  loopDetected?: {
+    changeId: string;
+    step: string;
+    count: number;
+    firstLesson: Lesson;
+  };
+  /**
    * Hard budget stop (v0.22): set when the recommended action would push
    * the cumulative estimated spend past ORION_MAX_BUDGET_TOKENS. `next` is
    * then null — the agent must stop, summarize and report.
@@ -82,6 +94,9 @@ const PHASE_RANK: Record<ChangePhase, number> = {
   out: 3,
   done: 4,
 };
+
+/** Same-step failures before `next` refuses to auto-retry (v0.23). */
+const LOOP_THRESHOLD = 3;
 
 /** Starter ideas offered when the user has no ideas yet (v0.10). */
 const STARTER_SUGGESTIONS = [
@@ -135,6 +150,50 @@ export async function nextStep(): Promise<NextResult> {
       alternativeCosts: [],
       confidence: "none",
     };
+  }
+
+  // Toxic-loop guard (v0.23): recordLesson dedupes exact (change, step,
+  // error) rows, so a change failing at the SAME step with several DIFFERENT
+  // errors is a genuine repeated-failure signal — the agent is grinding.
+  // Stop, summarize and hand the loop back to the human instead of routing
+  // into another self-correction cycle that would burn budget. Runs BEFORE
+  // self-correction so the loop wins over the automatic retry.
+  for (const c of sorted) {
+    if (c.phase === "done" || existsSync(`changes/${c.id}/result.md`)) continue;
+    const lessons = listLessons(c.id);
+    if (lessons.length === 0) continue;
+    const byStep = new Map<string, Lesson[]>();
+    for (const l of lessons) {
+      const arr = byStep.get(l.step) ?? [];
+      arr.push(l);
+      byStep.set(l.step, arr);
+    }
+    for (const [step, rows] of byStep) {
+      if (rows.length >= LOOP_THRESHOLD) {
+        return {
+          next: null,
+          summary:
+            `Loop detected: ${c.id} has failed step ${step} ${rows.length} times with different errors — ` +
+            "repeating fix attempts is burning budget without progress.\n" +
+            `Stop here and get human eyes on it: the last failure was "${rows[0].error.slice(0, 140)}".\n` +
+            `  orion shield ${c.id}    # re-check after the human fix\n` +
+            `  orion pay-debt ${c.id}  # or repay yagni debt if this is a norm deviation\n\n` +
+            `All changes:\n${sorted
+              .map((cc) => `  ${cc.id}  [${cc.phase}]  ${cc.detail}`)
+              .join("\n")}`,
+          changes: sorted,
+          alternatives: [],
+          alternativeCosts: [],
+          confidence: "none",
+          loopDetected: {
+            changeId: c.id,
+            step,
+            count: rows.length,
+            firstLesson: rows[0],
+          },
+        };
+      }
+    }
   }
 
   // Self-correction (v0.12): a change carries a recorded lesson — an error

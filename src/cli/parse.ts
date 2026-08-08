@@ -21,6 +21,8 @@ Commands:
   track prune             Remove expired / oversized cache entries
   track lessons [id]      List self-correction lessons (v0.12)
   learn <file|dir>        Learn lessons from agent session JSONL (v0.13)
+  lessons export <path>   Export the lesson ledger to a JSON file (v0.23)
+  lessons import <path|url>  Merge lessons from a file or URL, deduped (v0.23)
   track get <key>         Read a cache value
   track set <key> <val>   Write a cache value
   track clear             Delete the whole cache

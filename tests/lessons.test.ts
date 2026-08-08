@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createServer } from "node:http";
 import {
   mkdtempSync,
   rmSync,
@@ -16,6 +17,8 @@ import {
   readLessons,
   lessonsStats,
   lessonsPath,
+  exportLessons,
+  importLessons,
   type Lesson,
 } from "../src/core/lessons.js";
 import { shield, projectHash } from "../src/skills/shield/handler.js";
@@ -457,3 +460,78 @@ describe("mcp lessons_list", () => {
 
 // small local re-export to keep the failing-engine factory terse
 import { defaultEngineFactory as forgeDefaultEngine } from "../src/skills/forge/handler.js";
+
+describe("federated lessons: export/import (v0.23)", () => {
+  it("exports the whole ledger to a JSON file", () => {
+    recordLesson({ changeId: "exp-a", step: "shield", error: "boom-a" });
+    const out = join(dir, "ledger-export.json");
+    const r = exportLessons(out);
+    expect(r.exported).toBeGreaterThanOrEqual(1);
+    const back = JSON.parse(readFileSync(out, "utf8"));
+    expect(Array.isArray(back)).toBe(true);
+    expect(back[0].changeId).toBe("exp-a");
+  });
+
+  it("imports and dedupes by (changeId, step, error)", async () => {
+    // Seed one lesson locally, import a file that repeats it plus a new one.
+    recordLesson({ changeId: "imp-a", step: "shield", error: "dup-error" });
+    const src = join(dir, "incoming.json");
+    writeFileSync(
+      src,
+      JSON.stringify([
+        {
+          id: "x1",
+          ts: "2026-01-01T00:00:00.000Z",
+          changeId: "imp-a",
+          step: "shield",
+          error: "dup-error",
+        },
+        {
+          id: "x2",
+          ts: "2026-01-01T00:00:00.000Z",
+          changeId: "imp-b",
+          step: "out",
+          error: "stale verdict",
+        },
+        { id: "x3", ts: "bad", changeId: "imp-c" }, // invalid: missing error
+      ]),
+      "utf8",
+    );
+    const r = await importLessons(src);
+    expect(r.total).toBe(3);
+    expect(r.added).toBe(1); // only imp-b
+    expect(r.skipped).toBe(2); // duplicate + invalid
+    const all = readLessons();
+    expect(all.some((l) => l.changeId === "imp-b")).toBe(true);
+    expect(
+      all.filter((l) => l.changeId === "imp-a" && l.error === "dup-error"),
+    ).toHaveLength(1);
+  });
+
+  it("imports from a URL (built-in fetch) and reports honestly on failure", async () => {
+    // A tiny local HTTP source on a random port.
+    const server = createServer((_req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.end(
+        JSON.stringify([
+          {
+            id: "u1",
+            ts: "2026-01-01T00:00:00.000Z",
+            changeId: "url-a",
+            step: "forge",
+            error: "red hang",
+          },
+        ]),
+      );
+    });
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const addr = server.address();
+    const port = typeof addr === "object" && addr ? addr.port : 0;
+    try {
+      const r = await importLessons(`http://127.0.0.1:${port}/lessons.json`);
+      expect(r.added).toBe(1);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+});

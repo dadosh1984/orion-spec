@@ -37,6 +37,11 @@ export type NewLesson = Omit<Lesson, "id" | "ts">;
 
 const MAX_LESSONS = 500;
 
+/** Signature used for dedupe: one lesson per (changeId, step, error). */
+function signature(l: Pick<Lesson, "changeId" | "step" | "error">): string {
+  return `${l.changeId}:${l.step}:${l.error}`;
+}
+
 /** Ledger path (~/.orion/lessons.json; tests override via ORION_LESSONS_FILE). */
 export function lessonsPath(): string {
   return (
@@ -109,6 +114,76 @@ export function listLessons(changeId?: string): Lesson[] {
     ? readLessons().filter((l) => l.changeId === changeId)
     : readLessons();
   return [...rows].reverse();
+}
+
+/**
+ * Export the whole lesson ledger to a JSON file (v0.23, federated
+ * learning — idea #20). Zero dependencies: a plain JSON array of lessons.
+ */
+export function exportLessons(path: string): { exported: number } {
+  const rows = readLessons();
+  writeFileSync(path, `${JSON.stringify(rows, null, 2)}\n`, "utf8");
+  return { exported: rows.length };
+}
+
+/**
+ * Merge lessons from a JSON file or URL (v0.23, federated learning).
+ * Rows are validated and deduped by (changeId, step, error); the report is
+ * honest: added / skipped / total, never a fabricated "all imported".
+ * Network sources use the built-in fetch (Node 22+) — zero dependencies.
+ */
+export async function importLessons(source: string): Promise<{
+  added: number;
+  skipped: number;
+  total: number;
+}> {
+  let text: string;
+  if (/^https?:\/\//i.test(source)) {
+    const res = await fetch(source, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`fetch ${source} failed: HTTP ${res.status}`);
+    text = await res.text();
+  } else {
+    text = readFileSync(source, "utf8");
+  }
+  const parsed: unknown = JSON.parse(text);
+  if (!Array.isArray(parsed))
+    throw new Error(`import source ${source} is not a lessons array`);
+
+  const existing = readLessons();
+  const seen = new Set(existing.map(signature));
+  let added = 0;
+  let skipped = 0;
+  for (const row of parsed) {
+    if (!isLessonRow(row)) {
+      skipped++;
+      continue;
+    }
+    if (seen.has(signature(row))) {
+      skipped++;
+      continue;
+    }
+    existing.push({
+      ...row,
+      id: row.id || genLessonId(row),
+      ts: row.ts || new Date().toISOString(),
+    });
+    seen.add(signature(row));
+    added++;
+  }
+  if (added > 0) {
+    if (existing.length > MAX_LESSONS)
+      existing.splice(0, existing.length - MAX_LESSONS);
+    writeFileSync(lessonsPath(), JSON.stringify(existing), "utf8");
+  }
+  return { added, skipped, total: parsed.length };
+}
+
+/** Deterministic id for imported rows that lack one. */
+function genLessonId(l: Pick<Lesson, "changeId" | "step" | "error">): string {
+  return createHash("sha1")
+    .update(`${l.changeId}:${l.step}:${l.error}`)
+    .digest("hex")
+    .slice(0, 12);
 }
 
 /**

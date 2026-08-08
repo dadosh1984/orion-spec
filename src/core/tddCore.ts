@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { writeFileSafe, ensureDir, resolveConfig } from "../utils/file.js";
 import { trace } from "./telemetry.js";
 import { OrionTrack } from "./track.js";
+import { scanHazards, HAZARD_GATE_BLOCKED } from "./hazards.js";
 import type { TaskStatus, TddConfig } from "../type.js";
 
 const execAsync = promisify(exec);
@@ -92,6 +93,22 @@ export class TddEngine {
    * of a generic "tests failed".
    */
   async runTestDetailed(): Promise<{ passed: boolean; output: string }> {
+    // Hazard gate (v0.23): also scan the files the test runner is about to
+    // import. applyCode already blocks snippets, but a test file written by
+    // hand (or a snippet that slipped past the static check) must not run
+    // either — gate before exec, never after.
+    const hazards = [
+      ...scanHazards(safeRead(`${this.config.testDir}/${this.task}.test.ts`)),
+      ...scanHazards(safeRead(`${this.config.srcDir}/${this.task}.ts`)),
+    ];
+    if (hazards.length > 0) {
+      this.state = State.RED;
+      trace({ type: "tdd", state: "BLOCKED", task: this.task });
+      return {
+        passed: false,
+        output: `${HAZARD_GATE_BLOCKED} ${hazards.join("; ")} — not executed`,
+      };
+    }
     const root = dirname(this.config.testDir);
     const cmd = this.config.command
       .replaceAll("{{task}}", this.task)
@@ -129,6 +146,15 @@ export class TddEngine {
 
   /** Apply a user-provided implementation snippet. */
   async applyCode(snippet: string): Promise<void> {
+    // Hazard gate (v0.23): refuse destructive/escaping code BEFORE it is
+    // written to src/ — a written file is one import away from running.
+    const hazards = scanHazards(snippet);
+    if (hazards.length > 0) {
+      throw new Error(
+        `${HAZARD_GATE_BLOCKED} snippet refused: ${hazards.join("; ")} — ` +
+          "review the code, remove the destructive call, then re-apply",
+      );
+    }
     const { srcDir } = this.config;
     await ensureDir(srcDir);
     await writeFileSafe(`${srcDir}/${this.task}.ts`, snippet);
@@ -175,6 +201,15 @@ export class TddEngine {
   /** Current task status for cache/status queries. */
   status(): TaskStatus {
     return this.completed ? "DONE" : (this.state as TaskStatus);
+  }
+}
+
+/** Read a file for the hazard scan; missing/unreadable → "" (fail-safe). */
+function safeRead(path: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return "";
   }
 }
 

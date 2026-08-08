@@ -402,3 +402,50 @@ describe("shield: economy step (v0.17)", () => {
     expect(v.detail).toContain("level 3");
   });
 });
+
+describe("shield: policy gate (v0.23)", () => {
+  it("FAILs when a denied package is imported", async () => {
+    mkdirSync(join(".orion"), { recursive: true });
+    writeFileSync(
+      join(".orion", "policy.json"),
+      JSON.stringify({ denyImport: ["lodash"] }),
+      "utf8",
+    );
+    mkdirSync(join("src"), { recursive: true });
+    writeFileSync(
+      join("src", "evil.ts"),
+      "import lodash from 'lodash';\nexport const x = lodash.get({}, 'a');\n",
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const policy = report.checks.find((c) => c.step === "policy");
+    expect(policy?.status).toBe("FAIL");
+    expect(policy?.detail).toContain("lodash");
+  });
+
+  it("PASSes when no policy.json exists (no gates to enforce)", async () => {
+    const report = await shield("demo", { noCache: true });
+    const policy = report.checks.find((c) => c.step === "policy");
+    expect(policy?.status).toBe("PASS");
+    expect(policy?.detail).toContain("no .orion/policy.json");
+  });
+
+  it("FAILs when a denied regex pattern matches the change's snippets", async () => {
+    mkdirSync(join(".orion"), { recursive: true });
+    writeFileSync(
+      join(".orion", "policy.json"),
+      JSON.stringify({ denyPattern: ["process\.env\.AWS_"] }),
+      "utf8",
+    );
+    mkdirSync(join("changes", "demo", "snippets"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "snippets", "task-a.ts"),
+      "const key = process.env.AWS_SECRET_KEY;\n",
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const policy = report.checks.find((c) => c.step === "policy");
+    expect(policy?.status).toBe("FAIL");
+    expect(policy?.detail).toContain("pattern");
+  });
+});

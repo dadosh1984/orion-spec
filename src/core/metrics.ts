@@ -48,10 +48,35 @@ export interface MetricsReport {
     savedTokens: number;
     byProject: ProjectEconomy[];
   };
+  /**
+   * Estimated USD cost of the cache at the configured price (v0.23, idea
+   * #10 "AI cost center"): null when ORION_TOKEN_PRICES is unset — an
+   * honest "no price configured" beats a fabricated dollar figure.
+   */
+  cost: { usd: number; per1m: number } | null;
 }
 
 /** Rough token estimate: ~4 bytes per token (BPE heuristic). */
 // (source of truth lives in src/core/compress.ts; re-exported for callers)
+
+/**
+ * USD price per 1M tokens, from ORION_TOKEN_PRICES (JSON, e.g.
+ * '{"per1m": 5}'). Unset/malformed → null, never a fabricated number.
+ * The cost is an estimate: tokens are bytes/4 and one blended price is
+ * applied to the whole cache — honest labels, no invoice.
+ */
+export function tokenPrices(): { per1m: number } | null {
+  const raw = process.env.ORION_TOKEN_PRICES;
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as { per1m?: unknown };
+    if (typeof p.per1m === "number" && Number.isFinite(p.per1m) && p.per1m > 0)
+      return { per1m: p.per1m };
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /** Reference snippet that exercises every ladder stage. */
 const BENCHMARK_SNIPPET = [
@@ -141,14 +166,19 @@ export async function metricsReport(
   const { timings, stages } = await runBenchmark(track);
   const budget = tokenBudget(track);
   const stats = track.getStats();
+  const totalTokens = budget.reduce((sum, b) => sum + b.tokens, 0);
+  const price = tokenPrices();
   return {
     version,
     timings,
     stages,
     budget,
-    totalTokens: budget.reduce((sum, b) => sum + b.tokens, 0),
+    totalTokens,
     cached: { count: stats.count, bytes: stats.size },
     economy: economyStats(),
+    cost: price
+      ? { usd: (totalTokens / 1e6) * price.per1m, per1m: price.per1m }
+      : null,
   };
 }
 
@@ -191,6 +221,11 @@ export function formatMetricsReport(report: MetricsReport): string {
             ),
         ]
       : []),
+    "",
+    "Estimated cost (AI cost center, v0.23):",
+    report.cost
+      ? `  ≈ $${report.cost.usd.toFixed(2)} at $${report.cost.per1m}/1M tokens (bytes/4 estimate — not a bill)`
+      : `  no price configured — set ORION_TOKEN_PRICES='{"per1m": 5}' (USD per 1M tokens) to see one`,
   ].join("\n");
 }
 

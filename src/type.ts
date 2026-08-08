@@ -80,6 +80,7 @@ export interface GuardCheckResult {
     | "yagni"
     | "economy"
     | "security"
+    | "policy"
     | "verifiability";
   status: "PASS" | "FAIL" | "SKIP" | "WARN";
   detail?: string;

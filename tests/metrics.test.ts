@@ -8,6 +8,8 @@ import {
   tokenBudget,
   asciiBar,
   metricsReport,
+  formatMetricsReport,
+  tokenPrices,
 } from "../src/core/metrics.js";
 import { main } from "../src/cli/commands.js";
 import { OrionTrack } from "../src/core/track.js";
@@ -111,5 +113,35 @@ describe("metrics: token-economy ledger (v0.11)", () => {
     expect(Array.isArray(report.economy.byProject)).toBe(true);
     expect(report.economy.entries).toBeGreaterThanOrEqual(0);
     expect(report.economy.savedTokens).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("metrics: AI cost center (v0.23)", () => {
+  it("reports cost only when ORION_TOKEN_PRICES is set", async () => {
+    delete process.env.ORION_TOKEN_PRICES;
+    const report = await metricsReport(OrionTrack.init(), "test");
+    expect(report.cost).toBeNull();
+  });
+
+  it("converts tokens to USD at the configured price", async () => {
+    process.env.ORION_TOKEN_PRICES = '{"per1m": 5}';
+    try {
+      const report = await metricsReport(OrionTrack.init(), "test");
+      expect(report.cost).not.toBeNull();
+      expect(report.cost!.per1m).toBe(5);
+      expect(report.cost!.usd).toBeCloseTo((report.totalTokens / 1e6) * 5, 8);
+      expect(formatMetricsReport(report)).toContain("$");
+    } finally {
+      delete process.env.ORION_TOKEN_PRICES;
+    }
+  });
+
+  it("ignores a malformed price config (honest null, no invented number)", () => {
+    process.env.ORION_TOKEN_PRICES = "not-json";
+    try {
+      expect(tokenPrices()).toBeNull();
+    } finally {
+      delete process.env.ORION_TOKEN_PRICES;
+    }
   });
 });

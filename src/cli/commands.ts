@@ -14,6 +14,7 @@ import {
   sessionFiles,
   sessionRoleBreakdown,
 } from "../core/sessions.js";
+import { exportLessons, importLessons } from "../core/lessons.js";
 import { applyScale, previewScale } from "../core/scale.js";
 import { think, askQuestion } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
@@ -289,6 +290,38 @@ export async function main(argv: string[]): Promise<number> {
         `learned from ${report.files} file(s), ${report.records} record(s), ${report.actions} action(s): ${report.pairs} failure→success pattern(s), ${report.lessons} lesson(s) recorded${report.skipped > 0 ? `, ${report.skipped} invalid line(s) skipped` : ""}`,
       );
       return 0;
+    }
+
+    case "lessons": {
+      // Federated learning (v0.23): share the ledger between projects and
+      // developers via a file or any URL — zero dependencies (built-in fetch).
+      const sub = args[0];
+      const target = args[1];
+      if (sub === "export") {
+        if (!target) return fail("lessons export requires a destination path");
+        const r = exportLessons(target);
+        printOut(opts, r, `exported ${r.exported} lesson(s) to ${target}`);
+        return 0;
+      }
+      if (sub === "import") {
+        if (!target) return fail("lessons import requires a file path or URL");
+        try {
+          const r = await importLessons(target);
+          printOut(
+            opts,
+            r,
+            `imported ${r.added} lesson(s) from ${target} (${r.skipped} skipped: duplicate/invalid, ${r.total} rows read)`,
+          );
+        } catch (err) {
+          return fail(
+            `lessons import failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+        return 0;
+      }
+      return fail(
+        "lessons expects a sub-command: export <path> | import <path|url>",
+      );
     }
 
     case "scale": {

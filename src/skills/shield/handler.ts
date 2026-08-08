@@ -11,6 +11,7 @@ import { economyStats } from "../../core/compress.js";
 import { recordLesson } from "../../core/lessons.js";
 import { recordDebt, closeDebt } from "../../core/debt.js";
 import { assessVerifiability } from "../../core/verifiability.js";
+import { loadPolicy, policyFingerprint, scanPolicyFiles } from "./policy.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
 const execAsync = promisify(exec);
@@ -26,6 +27,7 @@ const STEPS: StepName[] = [
   "yagni",
   "economy",
   "security",
+  "policy",
   "verifiability",
 ];
 
@@ -63,6 +65,10 @@ export async function shield(
   const hash = projectHash(changeId);
 
   for (const step of STEPS) {
+    // The policy gate's cache key embeds the policy fingerprint: editing
+    // .orion/policy.json must invalidate a cached PASS (v0.23).
+    const stepHash =
+      step === "policy" ? `${hash}:${policyFingerprint(loadPolicy())}` : hash;
     opts?.onProgress?.(step, STEPS.indexOf(step) + 1, STEPS.length);
     if (skipShell && (step === "lint" || step === "type" || step === "test")) {
       checks.push({
@@ -78,7 +84,7 @@ export async function shield(
     if (
       step !== "economy" &&
       !opts?.noCache &&
-      track.loadString(`shield:${step}`) === `PASS:${hash}`
+      track.loadString(`shield:${step}`) === `PASS:${stepHash}`
     ) {
       const hit = track.loadWithDate(`shield:${step}`);
       const since = hit?.storedAt
@@ -117,7 +123,7 @@ export async function shield(
       });
     }
     if (result.status === "PASS" && !opts?.noCache && step !== "economy") {
-      track.store(`shield:${step}`, `PASS:${hash}`);
+      track.store(`shield:${step}`, `PASS:${stepHash}`);
     }
   }
 
@@ -284,6 +290,27 @@ async function runStep(
       return economyCheck();
     case "security":
       return securityScan(changeId);
+    case "policy": {
+      const cfg = loadPolicy();
+      const findings = scanPolicyFiles(process.cwd(), changeId, cfg);
+      if (findings.length === 0)
+        return {
+          step: "policy",
+          status: "PASS",
+          detail:
+            Object.keys(cfg).length === 0
+              ? "no .orion/policy.json — no project gates to enforce"
+              : "no policy violations",
+        };
+      return {
+        step: "policy",
+        status: "FAIL",
+        detail: `policy violation: ${findings
+          .slice(0, 5)
+          .map((f) => `${f.file} (${f.kind}: ${f.value})`)
+          .join("; ")}`,
+      };
+    }
     case "verifiability":
       return verifiabilityCheck();
   }

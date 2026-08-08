@@ -48,6 +48,74 @@ const PACKAGE_REF =
 /** Placeholder markers that would flow straight into a spec. */
 const PLACEHOLDER = /\b(tbd|todo|placeholder|something like|etc\.?)\b/gi;
 
+/**
+ * Prompt-injection / jailbreak tells (v0.23, idea: injection guard in
+ * think). Deliberately conservative: only explicit "ignore your
+ * instructions"-style rewrites count — ordinary task phrasing must never
+ * trip it. EN + RU, because this project serves Russian prompts too.
+ * A flagged prompt is a confirmation gate (--force overrides), not a censor.
+ */
+const INJECTION_RE: { re: RegExp; hint: string }[] = [
+  {
+    re: /ignore (all |any )?previous instructions/gi,
+    hint: "instruction-override attempt",
+  },
+  {
+    re: /ignore everything (above|before|below)/gi,
+    hint: "instruction-override attempt",
+  },
+  {
+    re: /disregard (all |your )?(previous|prior) (instructions|rules|prompt)/gi,
+    hint: "instruction-override attempt",
+  },
+  {
+    re: /override (your |the )?(system|instructions|guidelines)/gi,
+    hint: "instruction-override attempt",
+  },
+  {
+    re: /you are now (a |an )?(free|unrestricted|jailbroken|dan|nobody)/gi,
+    hint: "jailbreak persona",
+  },
+  { re: /act as (unrestricted|jailbroken|dan)/gi, hint: "jailbreak persona" },
+  {
+    re: /reveal (your|the|its) (system|original|hidden|base) prompt/gi,
+    hint: "system-prompt extraction",
+  },
+  {
+    re: /(print|show|output) your (system|original|hidden) prompt/gi,
+    hint: "system-prompt extraction",
+  },
+  { re: /jailbreak/i, hint: "jailbreak keyword" },
+  {
+    re: /\bno (rules|restrictions|limits|filter)\b/i,
+    hint: "restriction-removal attempt",
+  },
+  {
+    re: /игнорируй (все |любые )?(предыдущие|прежние) (инструкции|правила|указания)/gi,
+    hint: "попытка переопределить инструкции",
+  },
+  {
+    re: /забудь (все |свои )?(предыдущие|прежние) (инструкции|правила|указания)/gi,
+    hint: "попытка переопределить инструкции",
+  },
+  {
+    re: /отмени (все |свои )?(предыдущие|прежние) (инструкции|правила|ограничения)/gi,
+    hint: "попытка переопределить инструкции",
+  },
+  {
+    re: /ты теперь (свободен|неограничен|ничем не ограничен)/gi,
+    hint: "jailbreak-персона",
+  },
+  {
+    re: /(расскажи|покажи|опиши|напиши) (свой |свой системный |системный )?(промпт|системный промпт)/gi,
+    hint: "извлечение системного промпта",
+  },
+  {
+    re: /обойди (все )?(ограничения|фильтры|правила)/gi,
+    hint: "попытка снятия ограничений",
+  },
+];
+
 /** A relative/local path inside a require/from is not a package. */
 function isLocalPath(name: string): boolean {
   return (
@@ -89,6 +157,19 @@ export function guardPrompt(prompt: string): GuardVerdict {
       `prompt contains placeholder "${ph}" — a TBD will flow straight into ` +
         "the spec; replace it with the real requirement",
     );
+  }
+
+  // Prompt-injection scan (v0.23): a jailbreak prompt is a token-burning
+  // detour — think would "honestly" chase it into a proposal. Refuse it
+  // before any proposal file exists; --force still records the choice.
+  for (const { re, hint } of INJECTION_RE) {
+    const m = prompt.match(re);
+    if (m) {
+      issues.push(
+        `prompt looks like a prompt-injection attempt ("${m[0].slice(0, 60)}") — ` +
+          `${hint}; I won't turn that into a proposal without --force`,
+      );
+    }
   }
 
   return { ok: issues.length === 0, issues, packages };
