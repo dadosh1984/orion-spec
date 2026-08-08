@@ -4,6 +4,68 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.24.2] — 2026-08-08
+
+Drift can no longer fail on an impossible name — a false signal of the
+same class as the v0.24.1 forge fix.
+
+### Fixed
+- **Unsatisfiable drift FAIL**: `draft` generated the spec's `# Spec:`
+  heading from the think "Platform?" answer, slugified with **hyphens**
+  (`read-only-mypy-strict-ruff-pytest-http-m`). Drift requires that
+  heading to match an exported symbol in `src/tasks`, but hyphens are
+  illegal in JS identifiers — the capability could NEVER be exported, so
+  drift stayed FAIL regardless of implementation. `toCapability` now
+  joins words with `_` (`read_only_mypy_...` — a valid, satisfiable
+  identifier). New changes can no longer get an impossible spec heading.
+- **Unclear failure for existing broken specs**: a heading that is not a
+  valid JS identifier is now reported with a rename hint
+  (`invalid capability name(s): … — "# Spec:" headings must be valid JS
+  identifiers matching an export in src/tasks`) instead of a misleading
+  "missing exported" that implied the impossible. Rename the heading to
+  the real exported module's name and the check becomes satisfiable.
+
+### Unchanged
+- Drift still checks ONLY the `# Spec:` H1 headings; `## Purpose`,
+  acceptance criteria and prose are free-form documentation.
+- Existing changes keep their spec directories (per-change, not renamed).
+
+### Honest note
+- Changes created before 0.24.2 with hyphenated template headings need
+  one manual edit: rename the `# Spec:` heading to the exported symbol
+  (e.g. `# Spec: migrate_tool` for `src/tasks/migrate_tool.ts`).
+
+## [0.24.1] — 2026-08-08
+
+Forge no-junk contract — unfinished tasks leave ZERO trace.
+
+### Fixed
+- **Orphaned test files**: forge generated `tests/<slug>.test.ts` BEFORE
+  checking whether the implementation snippet exists, so a task waiting
+  for its snippet left a broken test importing a `src/tasks/<slug>.ts`
+  that never existed. Those orphans broke the project's vitest run and
+  produced FALSE shield FAILs (`test: N failing`, `drift: missing
+  exported`). The snippet is now read first — a missing snippet creates
+  nothing at all.
+- **RED/hazard rollback**: files forge created are removed when a task
+  ends RED or its snippet is refused by the hazard gate; files that
+  existed before forge (user work) are restored to their original
+  content, never deleted. A hazard snippet now reports an honest pending
+  with the gate reason instead of crashing the whole forge run.
+- Both the sequential path and `forge --parallel` (fork workers) share
+  the same `executeTask`, so the contract holds in both.
+
+### Unchanged
+- Completed tasks keep their test + implementation files; the run is
+  recorded in `forge-report.md` / `.json`. Interactive `orion tdd start`
+  still leaves the RED test in place for you to work on.
+
+### Honest note
+- Junk left by OLD broken runs (e.g. `tests/assumption_*.test.ts` from
+  pre-v0.24.1 slugs) is not auto-removed — forge cannot know which files
+  are its own. Delete them once, or complete the task (the next forge
+  run overwrites and finishes them).
+
 ## [0.24.0] — 2026-08-08
 
 Framework-agnostic TDD + short task slugs.

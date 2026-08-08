@@ -179,6 +179,25 @@ failing` from orphaned tests, `drift: missing exported`):
 - Interactive `orion tdd start` is unaffected — it deliberately leaves the
   RED test in place for you to work on.
 
+### Drift contract (v0.24.2)
+
+`shield`'s drift step checks that every capability named in
+`changes/<id>/specs/*/spec.md` is exported by `src/tasks/*.ts`. The exact
+contract:
+
+- Only the `# Spec: <name>` H1 heading counts — `## Purpose`,
+  acceptance criteria and prose are free-form documentation (drift never
+  parses them).
+- `<name>` must be a **valid JS identifier** matching a real exported
+  symbol (`export function <name>` / `export const <name>` / …).
+- A heading that is not a valid identifier (e.g. `read-only-mypy-…` with
+  hyphens — illegal in JS identifiers, so it can never be exported) is
+  reported with a rename hint instead of an unsatisfiable
+  "missing exported".
+- `draft` generates identifier-safe capability names (words joined with
+  `_`) from the platform answer, so a fresh change can never get an
+  impossible spec heading.
+
 ### Token-economy compress rules (v0.11, v0.14)
 
 | Surface | Command | Collapse behaviour |
