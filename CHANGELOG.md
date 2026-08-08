@@ -4,6 +4,50 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.22.0] — 2026-08-08
+
+- **Checkpoint-based resumption** — `orion resume <change-id>` continues an
+  interrupted workflow: every interruptible milestone (forge wave, shield,
+  out) writes a checkpoint; resume reads it (or derives the phase from
+  artifacts when none exists: result.md → guard report → open tasks →
+  proposal) and runs the phase's skill with the normal machinery — done
+  tasks are skipped via the same forge:slug cache, nothing is re-done and
+  nothing is fabricated as done.
+- **Automatic debt repayment** — `orion pay-debt <change-id>` re-runs the
+  same deterministic yagni signal shield uses, syncs the debt ledger and
+  reports honestly what closed and what still owes (LOC vs repo median).
+  No LLM, no token burn, no auto-delete — the concrete payment tool is
+  `orion scale`. Both commands are wired into the CLI and exposed to any
+  MCP client as `resume` and `pay_debt` tools.
+- **Short change titles keep Cyrillic** — `shortTitle()` counts Latin and
+  Cyrillic words (cap 3–4 significant words), so Russian prompts no longer
+  degrade to `untitled` or a single stray ASCII word
+  ("проверить проект и убедиться…" → проверить-проект-убедиться-файлы).
+  Falls back to the raw prompt's first significant words; `slugify` stays
+  unchanged for forge task slugs.
+- **MCP progress notifications** — `tools/call` honors
+  `params._meta.progressToken` and streams `notifications/progress`
+  (step/total/message) before the result: shield per guard-rail, forge per
+  task/wave. Backward compatible: no token ⇒ no notifications.
+- **Git-aware verify cache** — `orion verify` is cached on spec content
+  hash + a stat-only source-tree fingerprint (path+mtimeMs+size, no file
+  reads); an unchanged spec+tree returns the stored verdict instantly,
+  labelled `cached`.
+- **Prompt drift guard** — `think` blocks year-dated package tells and
+  placeholder markers before a proposal exists (re-run with `--force`);
+  new `orion guard-prompt` with an opt-in `--npm` registry probe
+  (fail-open). Offline by default.
+- **Hard budget stop** — `next` records the estimated cost of each
+  recommendation in `~/.orion/spend.json`; `ORION_MAX_BUDGET_TOKENS` turns
+  the advisory warning into a hard stop (`budget_exceeded` route — stop,
+  summarize, report).
+- **N-gram lesson recall** — `findLessons` adds character-trigram fuzzy
+  recall on top of signature words, surfacing typo'd/mutated terms that
+  share no 4+ letter word.
+- **Opt-in telemetry** — `~/.orion/traces.jsonl` (`ORION_TELEMETRY=1`):
+  append-only JSONL events for cache hits, TDD RED/GREEN and workflow
+  transitions. Strict opt-in, fail-safe, zero-dep.
+
 ## [0.21.0] — 2026-08-07
 
 - **Streaming whole-change verification** — `orion verify` no longer loads
