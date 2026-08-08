@@ -35,6 +35,22 @@ Framework-agnostic TDD + short task slugs.
   TypeScript-oriented; in a Python project they are no-ops or report
   honestly. The RED-GREEN loop itself is framework-agnostic.
 
+### Fixed (CI flakes found via `gh run` logs — pre-existing, not v0.24)
+- `reuse` emitted `../../../../../../private/var/...` imports on macOS: the
+  fixture dir from `mkdtemp` keeps the `/var` symlink form while
+  `process.cwd()` after `chdir` reports the physical `/private/var` path, so
+  `path.relative()` could not see they were the same directory. Both sides
+  are canonicalized with `realpathSync` (already used for the self-import
+  identity check).
+- `tests/cli/track.e2e.test.ts` ran `track clear` on the real `~/.orion`
+  cache in a parallel fork, wiping `tdd:<task>=DONE` between `tdd finalize`
+  and `track get` in `tests/cli/tdd.e2e.test.ts` (flaky
+  `expected '(null)' to be 'DONE'`). Both e2e files now use their own
+  `ORION_CACHE_DIR`; the shared global cache is never touched by tests.
+- Nested vitest runs (forge/tdd spawn `pnpm vitest run`) get their own
+  transform cache via `ORION_TDD_CACHE_DIR` → `cache.dir` instead of sharing
+  the outer run's `node_modules/.vite`.
+
 ## [0.23.0] — 2026-08-08
 
 ### Security & hardening (from the two code reviews)
