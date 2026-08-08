@@ -161,6 +161,24 @@ orion forge my-csv-tool --parallel 4
 forge paused: 2 done, 0 skipped, 1 pending across 1 wave(s) of 4
 ```
 
+### No-junk contract (v0.24.1)
+
+Forge never leaves broken files behind for unfinished tasks — the workspace
+must not be polluted with files that produce FALSE shield signals (`test: N
+failing` from orphaned tests, `drift: missing exported`):
+
+- The snippet is read **before** any file is written. A task waiting for its
+  snippet creates nothing at all (the old order wrote `tests/<slug>.test.ts`
+  first, so a missing snippet left an orphaned test importing a
+  `src/tasks/<slug>.ts` that never existed).
+- Files forge created are **rolled back** when a task ends RED or its snippet
+  is refused by the hazard gate. Files that existed before forge (your own
+  work) are restored to their original content, never deleted.
+- Completed tasks keep their test + implementation files (that is the point
+  of the loop) and the run is recorded in `forge-report.md` / `.json`.
+- Interactive `orion tdd start` is unaffected — it deliberately leaves the
+  RED test in place for you to work on.
+
 ### Token-economy compress rules (v0.11, v0.14)
 
 | Surface | Command | Collapse behaviour |
