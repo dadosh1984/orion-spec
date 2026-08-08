@@ -7,6 +7,16 @@ export default defineConfig({
     include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
     testTimeout: 60_000,
     hookTimeout: 60_000,
+    // Nested vitest runs (forge/tdd spawn `pnpm vitest run` as a child of
+    // the outer run) must NOT share the outer run's transform cache
+    // (node_modules/.vite) — concurrent read/write of the same cache
+    // corrupts entries and fails runs randomly on loaded CI runners
+    // (v0.24). tddCore sets ORION_TDD_CACHE_DIR on the child env; when
+    // unset (plain `orion tdd`, or a dev running vitest directly) the
+    // default is unchanged.
+    cache: {
+      dir: process.env.ORION_TDD_CACHE_DIR ?? "./node_modules/.vite",
+    },
   },
   coverage: {
     provider: "v8",

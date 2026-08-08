@@ -71,6 +71,12 @@ describe("full workflow (e2e)", () => {
     rmSync(reportDir, { recursive: true, force: true });
     rmSync(generatedTest, { force: true });
     rmSync(generatedTask, { force: true });
+    // v0.24: nested vitest runs get their own cache dir (no shared
+    // node_modules/.vite racing the outer run) — clean it up.
+    rmSync(join(process.cwd(), ".orion-vitest-cache"), {
+      recursive: true,
+      force: true,
+    });
   });
 
   it("forge drives the task to completion via the CLI", () => {

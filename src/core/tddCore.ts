@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { writeFileSafe, ensureDir, resolveConfig } from "../utils/file.js";
 import { trace } from "./telemetry.js";
@@ -147,6 +147,13 @@ export class TddEngine {
       const { stdout, stderr } = await execAsync(cmd, {
         cwd: process.cwd(),
         timeout: 120_000,
+        // v0.24: give the nested vitest run its own transform cache so it
+        // never races the outer run's node_modules/.vite (see
+        // vitest.config.ts cache.dir). Isolated per project/test dir.
+        env: {
+          ...process.env,
+          ORION_TDD_CACHE_DIR: join(root, ".orion-vitest-cache"),
+        },
       });
       this.state = State.GREEN;
       this.lastFailure = undefined;
