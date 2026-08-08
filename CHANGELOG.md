@@ -4,6 +4,37 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.24.0] — 2026-08-08
+
+Framework-agnostic TDD + short task slugs.
+
+### Added
+- `orionTdd.json` now supports `testExt` / `srcExt` (defaults `.test.ts` /
+  `.ts`) — the RED-GREEN loop generates `tests/<task><testExt>` and writes
+  `src/<dir>/<task><srcExt>`, so Python / Go / other projects drive the same
+  loop (`python -m pytest tests/{{testFile}}`). `{{testFile}}` is a new
+  template/command placeholder that follows `testExt`.
+- The hazard gate scans exactly the files the runner imports — now with the
+  configured suffixes, so non-TS projects are gated too.
+- Task slugs are short: 2–3 significant words, `[fact]`/`[assumption]`
+  markers stripped, unique within a change (`_2`, `_3`, … on collision),
+  Cyrillic-safe. `Implement add function` → `implement_add_function` (was the
+  whole sentence, marker included).
+- Cyrillic task ids are accepted (`TASK_ID_RE` is now Unicode-letter aware);
+  shell-injection guard unchanged (still no shell metacharacters).
+
+### Changed
+- `forge:<slug>` cache keys and snippet file names change for existing
+  in-progress changes (slugs are shorter) — re-run `orion forge` after
+  renaming/re-providing snippets.
+- Default `command` in `src/config/orionTdd.json` uses `{{testFile}}`
+  (same expansion as before for TS projects).
+
+### Honest limits
+- `tdd refactor` (eslint --fix + prettier) and `shield`'s code scans remain
+  TypeScript-oriented; in a Python project they are no-ops or report
+  honestly. The RED-GREEN loop itself is framework-agnostic.
+
 ## [0.23.0] — 2026-08-08
 
 ### Security & hardening (from the two code reviews)

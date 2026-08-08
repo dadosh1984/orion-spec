@@ -107,3 +107,24 @@ Each key is a self-contained file, so a mounted/restored directory works as-is.
 A remote backend (S3/HTTP) is deliberately out of scope: it would add a
 network trust boundary and credentials handling for a benefit the
 mount-a-volume pattern already provides.
+
+## Framework-agnostic hazard gate (v0.24)
+
+The gate scans the two files the test runner is about to import before they
+execute. Before v0.24 those paths were hardcoded (`<task>.ts` /
+`<task>.test.ts`), so a Python/Go/… project was never scanned. Now the paths
+follow `srcExt` / `testExt` from `orionTdd.json` (defaults unchanged:
+`.ts` / `.test.ts`):
+
+```json
+{ "testExt": "_test.py", "srcExt": ".py", "command": "python -m pytest {{testDir}}/{{testFile}}" }
+```
+
+Same honesty contract: the scan is a heuristic, not a sandbox — a clean scan
+is not a guarantee, a blocked snippet is reported verbatim and can be
+reviewed. The patterns are language-agnostic (`eval(`, `exec(`, `spawn(`,
+`child_process`, `process.exit`, `fetch(http…)`, `rm*`/`unlink`/`fs.rm`,
+`new Function(`, `chmod 777`, `truncate`), so they fire on Python's `eval` /
+`exec` and `os.system`-adjacent calls too — but a Python-only pattern that is
+not listed will not be flagged (the same honest "heuristic, not safety
+claim" wording applies).

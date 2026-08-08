@@ -55,6 +55,39 @@
 | `orion tdd refactor <task>`                 | Run `eslint --fix` + Prettier                                 |
 | `orion tdd finalize <task>`                 | Mark the task DONE, cache `tdd:<task>=DONE`                   |
 
+### TDD configuration — framework-agnostic (v0.24)
+
+By default the TDD engine is TypeScript + vitest: it generates
+`tests/<task>.test.ts`, writes implementations to `src/tasks/<task>.ts` and
+runs `pnpm vitest run tests/{{testFile}}`. The MCP server itself is
+framework-agnostic (JSON-RPC over stdio) — the engine's *file suffixes* were
+the only hardcoded part, and they are now configurable. Override them in your
+project's own `src/config/orionTdd.json` (that file is resolved before the
+built-in one):
+
+```json
+{
+  "testTemplate": "from {{task}} import {{task}}\n\ndef test_works():\n    assert {{task}}() is not None\n",
+  "testDir": "tests",
+  "srcDir": "src",
+  "testExt": "_test.py",
+  "srcExt": ".py",
+  "command": "python -m pytest {{testDir}}/{{testFile}}",
+  "minCoverage": 70
+}
+```
+
+- `testExt` / `srcExt` replace the hardcoded `.test.ts` / `.ts` suffixes
+  (v0.24). `{{testFile}}` in the template and command follows the configured
+  `testExt`, so a Python project gets `tests/<task>_test.py` and
+  `src/<task>.py` through the same RED-GREEN loop.
+- The hazard gate (v0.23) scans exactly the files the runner will import —
+  now with the configured suffixes, so a Python project is gated too.
+- Honest limits: `tdd refactor` (eslint --fix + prettier) and `shield`'s
+  code scans (lint / type / drift / security / policy) remain
+  TypeScript-oriented. In a Python project they are no-ops or report
+  honestly — the RED-GREEN loop itself is what becomes framework-agnostic.
+
 ## Other
 
 | Command                                    | Description                                                            |
