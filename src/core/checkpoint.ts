@@ -30,9 +30,7 @@ export interface Checkpoint {
 
 /** State dir (.orion/state under the project; tests override ORION_STATE_DIR). */
 export function stateDir(): string {
-  return (
-    process.env.ORION_STATE_DIR ?? join(process.cwd(), ".orion", "state")
-  );
+  return process.env.ORION_STATE_DIR ?? join(process.cwd(), ".orion", "state");
 }
 
 export function checkpointPath(changeId: string): string {

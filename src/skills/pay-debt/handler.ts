@@ -50,10 +50,12 @@ export function payDebt(changeId: string, limit = 5): PayDebtResult {
   const stillOwed =
     medianLoc === null
       ? []
-      : warnings.slice(0, limit).map(
-          (w) =>
-            `${w.path}: ${w.loc} LOC vs median ${medianLoc} (${w.reasons.join("; ")})`,
-        );
+      : warnings
+          .slice(0, limit)
+          .map(
+            (w) =>
+              `${w.path}: ${w.loc} LOC vs median ${medianLoc} (${w.reasons.join("; ")})`,
+          );
 
   return {
     changeId,
