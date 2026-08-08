@@ -5,7 +5,7 @@
 
 > **Orion** is a zero‑dependency framework that turns a high‑level idea into production‑ready code **while guaranteeing minimal token usage, full test coverage, and deterministic quality gates**. Everything – the cache, the YAGNI ladder, the RED‑GREEN‑REFACTOR engine and the CLI – is written from scratch.
 
-> **Status.** Honest about its age: the entire version history (v0.1 → v0.20) is
+> **Status.** Honest about its age: the entire version history (v0.1 → v0.23) is
 > compressed into a short span (first release 2026‑08‑06), so treat it as a young,
 > fast‑moving project rather than a battle‑tested one. Releases are cut manually;
 > the CHANGELOG tracks every change since v0.1.
@@ -228,9 +228,16 @@ presented as the standard one.
 - **`think <prompt>`** – asks 3 guided questions (platform, constraints, budget) and persists `changes/<title>/proposal.json` + `proposal:<title>` cache entry.
 - **`draft <title>`** – generates `proposal.md`, `specs/<capability>/spec.md`, `design.md`, `tasks.md`.
 - **`forge <title>`** – walks every open `- [ ]` task in `tasks.md` and drives it through TDD. Snippets are read from `changes/<title>/snippets/<slug>.ts`; completed tasks are marked `- [x]` and cached as `forge:<slug>=DONE` (skipped on re‑runs).
-- **`shield <change-id>`** – runs 5 guard‑rails: lint, type‑check (`tsc --noEmit`), unit tests, drift‑check (specs vs `src/tasks`), security scan (`eval`, `new Function`, `process.env.*`, `child_process`). Each step caches its result as `shield:<step>=PASS`; reports go to `reports/<change-id>/guard-report.{md,json}`.
+- **`shield <change-id>`** – runs 8 guard‑rails: lint, type‑check (`tsc --noEmit`), unit tests, drift‑check (specs vs `src/tasks`), yagni (norm deviation), economy (cache budget), security scan (`eval`, `new Function`, `process.env.*`, `child_process`), and a project policy gate (`denyImport`/`denyPattern` from `.orion/policy.json`, v0.23). Each step caches its result as `shield:<step>=PASS`; reports go to `reports/<change-id>/guard-report.{md,json}`.
 - **`verify <change-id> [--json]`** – evidence pass: for every spec criterion, extracts distinctive terms from the change's `specs/*/spec.md` and checks whether the codebase actually contains them. A **signal, never a gate** — it exits 0 even when a criterion is missing or drifted, so you can read the report without a failing exit code.
 - **`out <change-id>`** – writes the final `changes/<change-id>/result.md` summary.
+- **`resume <change-id>`** – continues an interrupted workflow from its checkpoint (v0.22).
+- **`pay-debt <change-id>`** – re-syncs the YAGNI debt ledger and reports what closed (v0.22).
+- **`next`** – decides the next action from context, ranks alternatives cheapest‑first, stops on budget‑exceeded (v0.22) and on a detected toxic loop (v0.23).
+- **`track status|get|set|lessons`** – cache stats, key/value access (pipeline namespaces `shield:`/`tdd:`/`forge:` are write‑protected, v0.23).
+- **`learn <file|dir>` / `lessons export|import`** – self‑learning from agent sessions; share the lesson ledger across projects via file or URL (v0.13, v0.23).
+- **`scale <file>`** – apply the YAGNI ladder; **`tdd start|implement|refactor|finalize <task>`** – the RED‑GREEN loop (snippets pass a pre‑execution hazard gate, v0.23).
+- **`metrics`** – benchmark + token‑budget report, now with an estimated USD cost when `ORION_TOKEN_PRICES` is set (v0.23).
 - **`serve [--port N] [--host H] [--ui] [--token T]`** – starts the zero‑dependency web dashboard (v0.2): cache stats, key/value explorer, change list. Binds `127.0.0.1` by default. Auth: `--token T` (or `ORION_DASHBOARD_TOKEN`) turns auth on — every API call then requires `?token=…` (or `Authorization: Bearer` / `x-orion-token`). Without a token, loopback binds (`127.0.0.1`/`localhost`) run **without** auth (local machine, trusted); a non‑loopback bind auto‑generates a token and prints it to stdout, so an exposed dashboard is never unauthenticated.
 
 ```bash
@@ -291,6 +298,11 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 - ✅ **v0.16** – Parallel forge waves — _done_: `orion forge <title> --parallel <n>` runs tasks in sequential waves, each task in its own forked worker (RED-GREEN only); all shared-file bookkeeping (tasks.md, lessons, forge cache) stays in the parent, applied after each wave — one writer per file; refactor runs once per wave
 - ✅ **v0.17** – Economy in the daily loop — _done_: shield runs a fresh read-only `economy` step (cache vs its 60% budget → WARN, never a gate); `orion next` appends the honest token-economy footer (≈ N tok saved across M compress ops)
 - ✅ **v0.18** – Calibration, debt & activity — _done_: `next` estimates calibrate against measured reality (median actual/estimate, honest `(uncalibrated)` otherwise); shield `yagni` WARNs feed an automatic debt registry (closed when the snippet is fixed); `next` warns when a candidate exceeds its proposal budget; every CLI run announces itself on stderr (`⚙ orion:<cmd> …` / `✅` / `❌` — same vocabulary as the MCP indicator)
+- ✅ **v0.19** – Cache schema versioning, dashboard token auth, OS-matrix CI + per-file coverage floors, verifiability-aware shield (v0.19)
+- ✅ **v0.20** – Runtime hardening — _done_: git-aware verify cache, measured per-stage YAGNI timings, fork-worker timeouts, working core-coverage gate, SECURITY.md
+- ✅ **v0.21** – Streaming whole-change verification (O(1) memory), security scan ignores comment/string literals, ranked lesson recall, sandbox trust-model docs
+- ✅ **v0.22** – Checkpoint-based `resume`, automatic `pay-debt`, short Cyrillic-safe change titles, MCP progress notifications, git-aware verify cache, hard token budget stop (`ORION_MAX_BUDGET_TOKENS`)
+- ✅ **v0.23** – Security & policy hardening — _done_: CSPRNG dashboard token + secret redaction in `/api/cache`, atomic cache writes, reserved pipeline cache namespaces, prompt-injection guard in `think`, project policy gates (`shield` `policy` step), pre-execution hazard gate for AI-generated code, toxic-loop guard in `next`, federated lessons (`lessons export/import`), AI cost center in `metrics` (ORION_TOKEN_PRICES), correct cross-directory reuse imports, Node 24 in CI, provenance + digest pinning + dependabot + Docker HEALTHCHECK
 
 ## 📜 License
 

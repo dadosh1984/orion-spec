@@ -4,6 +4,73 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.23.0] — 2026-08-08
+
+### Security & hardening (from the two code reviews)
+
+- **CSPRNG dashboard token** — `orion serve`'s auto-generated bearer token now
+  comes from `node:crypto.randomBytes` instead of `Math.random()` (whose V8
+  state is recoverable from a few outputs); 24 bytes → 32 url-safe chars.
+- **Dashboard sends the token as a header, not in the query string** — the UI
+  reads `?token=` once from the page URL and sends `X-Orion-Token` on every
+  `/api` fetch; a `?token=` query leaks into access logs, browser history and
+  the Referer header. The query fallback stays for curl-style clients.
+- **Secret redaction in `/api/cache`** — raw cache values are no longer echoed
+  back verbatim: credential-shaped strings (`password: …`, `token=…`, …) are
+  replaced with an honest `[redacted …]` marker.
+- **Atomic cache writes** — `OrionTrack.store` now writes to a temp file and
+  renames, so parallel processes sharing `ORION_CACHE_DIR` (the documented CI
+  pattern) can never read a half-written JSON entry.
+- **Reserved pipeline cache namespaces** — `track set shield:… / tdd:… /
+  forge:…` is refused: a hand-written `shield:test = PASS:<hash>` would be
+  indistinguishable from a real pass to the cache check.
+- **Prompt-injection guard in `think`** — a jailbreak/instruction-override
+  prompt (EN + RU) is flagged before any proposal exists; a confirmation gate
+  (`--force`), never a censor.
+- **Project policy gates** — `.orion/policy.json` (`denyImport` /
+  `denyPattern`) adds a hard `policy` step to `shield`: importing a denied
+  package or matching a denied pattern FAILS the guard like lint/type/test;
+  the cache key embeds the policy fingerprint, so editing the policy
+  invalidates a cached PASS.
+- **Pre-execution hazard gate for AI-generated code** — forge/tdd snippets and
+  the files the test runner is about to import are scanned deterministically
+  for destructive/escaping patterns (`rmSync(recursive)`, `child_process`,
+  `eval`, `process.exit`, outbound `fetch`, …) and blocked *before* they run
+  with an honest `[hazard gate]` report. This is the honest re-implementation
+  of the "node:vm sandbox" idea: the test runner is a child process, which
+  node:vm cannot isolate — a deterministic gate + timeouts is what can
+  actually be enforced zero-dependency.
+
+### Workflow & learning
+
+- **Toxic-loop guard in `next`** — a change that fails the same step 3+ times
+  with *different* errors (recordLesson dedupes exact duplicates) stops the
+  auto-retry loop: `next` returns `loopDetected` with a human-in-the-loop
+  report instead of burning budget on another self-correction cycle.
+- **Federated lessons** — `orion lessons export <path>` writes the ledger as
+  JSON; `orion lessons import <path|url>` merges it, deduped by
+  (changeId, step, error), with an honest added/skipped/total report. URLs use
+  the built-in fetch — zero new dependencies.
+- **AI cost center in `metrics`** — set `ORION_TOKEN_PRICES='{"per1m": 5}'`
+  and the benchmark report shows an estimated USD cost of the cache (bytes/4
+  estimate, explicitly not a bill); unset/malformed → honest "no price
+  configured".
+
+### Correctness & supply chain
+
+- **Correct cross-directory reuse imports** — the YAGNI reuse stage now emits
+  an import path relative to the scaled file's directory
+  (`../utils/shared`, not `./shared`), fixing broken output when a duplicate
+  lives in a different subdirectory.
+- **Node 24 in CI** — the matrix now runs 22.x and 24.x (the CHANGELOG's
+  Node-24 alignment claim was previously never tested).
+- **`npm publish --provenance`** — the release workflow mints signed npm
+  provenance attestations (OIDC `id-token: write`).
+- **Dependabot** for npm devDependencies and GitHub Actions.
+- **Docker image reproducibility** — `node:22-alpine` base pinned by digest
+  on both stages, plus a HEALTHCHECK that probes `/health` (port 4780).
+- **`CHANGELOG.md` ships in the npm package** — added to `package.json#files`.
+
 ## [0.22.0] — 2026-08-08
 
 - **Checkpoint-based resumption** — `orion resume <change-id>` continues an

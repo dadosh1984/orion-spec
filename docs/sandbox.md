@@ -60,15 +60,19 @@ plainly so nobody mistakes the guard-rails for isolation:
 - **forge / tdd execute AI-generated code** — the implementation snippets are
   written into `src/tasks/` and executed by the *project's own* test runner
   (vitest, …). Orion applies a per-command timeout (default 120 s per test
-  run, `ORION_FORGE_TASK_TIMEOUT_MS` for parallel waves) but does **not**
-  isolate the process: a hallucinated destructive snippet would run with the
-  same privileges as the developer's shell. Treat anything the agent
-  generates as untrusted input: run it in a disposable container (`docker run
-  --rm --network none`), a throwaway VM, or a scratch git branch — never in a
-  directory you are not willing to lose. A Wasm/node:vm execution sandbox is
-  deliberately out of scope: snippets are executed by the project's own test
-  runner, not by Orion, so an in-process sandbox would give false confidence
-  without containing the runner.
+  run, `ORION_FORGE_TASK_TIMEOUT_MS` for parallel waves) and a **deterministic
+  pre-execution hazard gate** (v0.23): snippets and the files the test runner
+  is about to import are scanned for destructive/escaping patterns
+  (`rmSync(recursive)`, `child_process`, `eval`, `process.exit`, outbound
+  `fetch`, …) and blocked *before* they run, with an honest `[hazard gate]`
+  report. This is a heuristic barrier, not an OS sandbox: a clean scan is not
+  a guarantee of safety. Treat anything the agent generates as untrusted
+  input: run it in a disposable container (`docker run --rm --network
+  none`), a throwaway VM, or a scratch git branch — never in a directory you
+  are not willing to lose. A Wasm/node:vm execution sandbox is deliberately
+  out of scope: snippets are executed by the project's own test runner, not
+  by Orion, so an in-process sandbox would give false confidence without
+  containing the runner.
 - **plugins run in-process** — `orion plugin install` copies a directory with
   `manifest.json` into `~/.orion/plugins` and its handler is imported and
   called in the CLI's own process with the same filesystem access as the
@@ -80,6 +84,11 @@ plainly so nobody mistakes the guard-rails for isolation:
   comment/string-literal filtering; it flags *obvious* issues and is honest
   about it ("no obvious issues" on PASS). It is a lint-like barrier, never a
   claim of safety.
+- **project policy gates are a hard FAIL** (v0.23) — a `.orion/policy.json`
+  (`denyImport` / `denyPattern`) turns repo rules into a strict shield gate:
+  importing a denied package or matching a denied pattern FAILS the guard
+  exactly like lint/type/test. Policy is a project decision; the cache key
+  embeds the policy fingerprint so editing it invalidates a cached PASS.
 
 ## Sharing the token-economy cache in CI
 

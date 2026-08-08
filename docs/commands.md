@@ -32,6 +32,8 @@
 | `orion track prune`             | Remove expired (TTL) and oversized entries |
 | `orion track lessons [id]`      | List self-correction lessons (v0.12)       |
 | `orion learn <file\|dir>`        | Learn lessons from agent session JSONL (v0.13) |
+| `orion lessons export <path>`   | Export the lesson ledger to a JSON file (v0.23) |
+| `orion lessons import <path\|url>` | Merge lessons from a file/URL, deduped (v0.23) |
 | `orion track get <key>`         | Print a cached value                       |
 | `orion track set <key> <value>` | Store a value                              |
 | `orion track clear`             | Delete the whole cache                     |
