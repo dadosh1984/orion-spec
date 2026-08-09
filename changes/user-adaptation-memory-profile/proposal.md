@@ -1,0 +1,8 @@
+# Proposal — user-adaptation-memory-profile
+
+**Goal:** Add a user-adaptation memory (profile) to Orion plus visible self-correction in the terminal. Part 1: an editable ~/.orion/profile.md (analog of memory.md), auto-maintained by think — records the prompt language via the existing RU/EN detection, typical platform/budget, frequent topic words — and hand-editable (Orion only appends/updates, never overwrites user notes); consulted by think/draft/out to adapt question language and artifact tone. New CLI command 'orion profile' to view it, MCP tool 'profile' to read it. Part 2: when Orion records a lesson (shield FAIL, out STALE/INCOMPLETE, forge RED) or attaches past lessons to a new proposal, print a clear visual marker to stderr (e.g. '🧠 orion lesson recorded: <step>: <error>' and '🧠 orion applies N past lesson(s)') so the user sees the learning happen in real time — stderr is protocol-safe for both CLI and MCP; toggleable via env (default on).
+
+- Platform: node >= 22, zero runtime dependencies, CLI + MCP
+- Constraints: Zero runtime dependencies; deterministic; honest — profile is hand-editable and Orion only appends, never fabricates; ORION_PROFILE_FILE env for tests; notifications toggleable via env; existing tests must stay green.
+- Budget: compact
+- **Lessons applied (v0.12):** orion-spec:session:6b4cf54ad029, orion-spec:session:14433127f773, orion-spec:session:4d99052ba17f, v0.12-self-correction:shield:eb3fe1f53f29, demo:forge:822ebbc53cbf

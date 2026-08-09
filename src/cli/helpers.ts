@@ -1,4 +1,5 @@
 /** Shared CLI helpers used by the dispatcher and sub-command modules. */
+import { statusMark } from "../utils/term.js";
 
 /** Global CLI flags shared by every command. */
 export interface CliOptions {
@@ -20,6 +21,8 @@ export interface CliOptions {
   parallel?: number;
   /** Bearer token for `serve` (v0.19); auto-generated on non-loopback bind. */
   token?: string;
+  /** Template language override for `draft` (v0.27): "en" | "ru". */
+  lang?: "en" | "ru";
 }
 
 /** Print JSON or plain text depending on the --json flag. */
@@ -33,7 +36,7 @@ export function printOut(opts: CliOptions, obj: unknown, plain: string): void {
 
 /** Print an error to stderr and return a non-zero exit code. */
 export function fail(message: string): number {
-  console.error(`orion: ${message}`);
+  console.error(`orion: ${statusMark("error")} ${message}`);
   return 1;
 }
 

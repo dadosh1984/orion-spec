@@ -21,6 +21,10 @@ import { listLessons } from "./lessons.js";
 import { learnFromSessions, sessionFiles } from "./sessions.js";
 import { listPlugins, installPlugin, removePlugin } from "./plugins.js";
 import { readVersion } from "../cli/serve.js";
+import { profileView } from "../tasks/profile_cli_view.js";
+import { changeStatus } from "./changeStatus.js";
+import { reviewChange } from "../skills/review/handler.js";
+import { scanChanges } from "../cli/overviewCmd.js";
 
 /**
  * Orion MCP server — a zero-dependency implementation of the Model Context
@@ -263,7 +267,10 @@ export function getMcpTools(): McpTool[] {
       },
       handler: async (args) => {
         const r = await out(String(args.changeId));
-        return JSON.stringify(r, null, 2);
+        // Return the human-readable markdown summary, not the nested JSON
+        // record — the summary already carries status, checklist, guard
+        // verdict and artifacts.
+        return r.summary;
       },
     },
     {
@@ -343,6 +350,37 @@ export function getMcpTools(): McpTool[] {
         );
         return JSON.stringify(r, null, 2);
       },
+    },
+    {
+      name: "profile",
+      description:
+        "Read the user-adaptation profile (~/.orion/profile.md, the memory.md analogue): preferred language, typical platform/budget, frequent topics and the user's own notes. Auto-maintained by think, hand-editable; the CLI shows it via 'orion profile'.",
+      inputSchema: { type: "object", properties: {} },
+      handler: async () => profileView(),
+    },
+    {
+      name: "change_status",
+      description:
+        "Status of a change (v0.27): task progress, guard verdict and artifact completeness — the same signal `orion list`/`orion stats` aggregate.",
+      inputSchema: {
+        type: "object",
+        properties: { changeId: { type: "string" } },
+        required: ["changeId"],
+      },
+      handler: async (args: Record<string, unknown>) =>
+        JSON.stringify(changeStatus(String(args.changeId)), null, 2),
+    },
+    {
+      name: "review",
+      description:
+        "Deterministic review of a change between forge and shield (v0.27): checks proposal, tasks, snippets, test files for done tasks and drift (spec heading vs exported symbols). No LLM involved — pure file checks.",
+      inputSchema: {
+        type: "object",
+        properties: { changeId: { type: "string" } },
+        required: ["changeId"],
+      },
+      handler: async (args: Record<string, unknown>) =>
+        JSON.stringify(reviewChange(String(args.changeId)), null, 2),
     },
     {
       name: "lessons_list",
@@ -602,10 +640,46 @@ export class McpServer {
           });
         }
       }
-      case "resources/list":
-        return result(id, { resources: [] });
+      case "resources/list": {
+        // One resource per change (v0.27): the MCP client can then
+        // read a change's full status without calling tools.
+        const rows = scanChanges();
+        return result(id, {
+          resources: rows.map((r) => ({
+            uri: `orion://change/${r.title}`,
+            name: r.title,
+            description: `${r.done}/${r.tasks} tasks — ${r.status}`,
+            mimeType: "text/markdown",
+          })),
+        });
+      }
       case "prompts/list":
-        return result(id, { prompts: [] });
+        return result(id, {
+          prompts: [
+            {
+              name: "review",
+              description: "Review a change between forge and shield",
+              arguments: [
+                {
+                  name: "changeId",
+                  description: "Change id under changes/",
+                  required: true,
+                },
+              ],
+            },
+            {
+              name: "resume",
+              description: "Continue an interrupted change workflow",
+              arguments: [
+                {
+                  name: "changeId",
+                  description: "Change id under changes/",
+                  required: true,
+                },
+              ],
+            },
+          ],
+        });
       default:
         if (!this.initialized && method.startsWith("tools/")) {
           return error(ERRORS.NOT_INITIALIZED, "Server not initialized", id);
@@ -618,10 +692,11 @@ export class McpServer {
     }
   }
 
-  /** Drive the stdio loop until EOF. */
-  async runStdio(): Promise<void> {
+  /** Drive the stdio loop until EOF. `input` defaults to stdin (overridable
+   * for tests and embedded servers). */
+  async runStdio(input: NodeJS.ReadableStream = processStdin): Promise<void> {
     const rl = createInterface({
-      input: processStdin,
+      input,
       crlfDelay: Infinity,
     });
     for await (const line of rl) {

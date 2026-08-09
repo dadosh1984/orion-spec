@@ -10,10 +10,9 @@
  * The token-economy cache is per-key files, so `finalize`'s `tdd:<slug>`
  * store inside the cycle cannot race the parent.
  */
-import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { OrionTrack } from "../../core/track.js";
 import { executeTask, defaultEngineFactory } from "./handler.js";
+import { resolveSnippet } from "./snippet.js";
 
 interface WorkerTask {
   title: string;
@@ -36,12 +35,7 @@ function reply(msg: WorkerReply): void {
 process.on("message", async (msg: WorkerTask) => {
   const { title, slug } = msg;
   const snippetProvider = async (s: string): Promise<string | null> => {
-    const file = `changes/${title}/snippets/${s}.ts`;
-    try {
-      return existsSync(file) ? await readFile(file, "utf8") : null;
-    } catch {
-      return null;
-    }
+    return resolveSnippet(`changes/${title}/snippets`, s).content;
   };
   const track = OrionTrack.init();
   let outcome;

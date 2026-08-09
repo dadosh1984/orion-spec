@@ -1,5 +1,6 @@
-import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import { readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { readCapped } from "../utils/file.js";
 
 /**
  * Verifiability assessment (idea adapted from a sibling toolkit, implemented
@@ -55,16 +56,6 @@ function collectTestFiles(dir: string, out: string[]): void {
     } else if (TEST_FILE_RE.test(name)) {
       out.push(full);
     }
-  }
-}
-
-/** Read a file defensively, capped in size (never let a huge file stall us). */
-function readCapped(file: string, maxBytes = 64 * 1024): string {
-  try {
-    const buf = readFileSync(file);
-    return buf.subarray(0, maxBytes).toString("utf8");
-  } catch {
-    return "";
   }
 }
 

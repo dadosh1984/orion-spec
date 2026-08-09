@@ -150,6 +150,49 @@ describe("shield skill", () => {
     expect(drift?.status).toBe("FAIL");
   });
 
+  it("drift reports unexportable headings with a rename hint, not an impossible 'missing exported' (v0.24.2)", async () => {
+    // A hyphenated heading can NEVER be exported (hyphens are illegal in JS
+    // identifiers) — drift must say the spec needs fixing, not that the
+    // code is missing a symbol it cannot contain.
+    mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "specs", "core", "spec.md"),
+      "# Spec: read-only-mypy-strict-ruff-pytest-http-m\n\n## Purpose\nx\n",
+      "utf8",
+    );
+    // Even a perfect implementation cannot satisfy the heading.
+    writeFileSync(
+      "src/tasks/migrate_tool.ts",
+      "export function migrate_tool() { return 1; }",
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const drift = report.checks.find((c) => c.step === "drift");
+    expect(drift?.status).toBe("FAIL");
+    expect(drift?.detail).toContain("invalid capability name");
+    expect(drift?.detail).toContain("rename");
+    expect(drift?.detail).not.toContain("missing exported");
+  });
+
+  it("drift passes when the heading is a valid identifier and is exported", async () => {
+    mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
+    mkdirSync("src/tasks", { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "specs", "core", "spec.md"),
+      "# Spec: migrate_tool\n\n## Purpose\nPhase 7 migrate tool\n",
+      "utf8",
+    );
+    writeFileSync(
+      "src/tasks/migrate_tool.ts",
+      "export function migrate_tool() { return 1; }",
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const drift = report.checks.find((c) => c.step === "drift");
+    expect(drift?.status).toBe("PASS");
+  });
+
   it("drift check passes when the capability is implemented", async () => {
     mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
     mkdirSync("src/tasks", { recursive: true });

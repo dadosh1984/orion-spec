@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { notifyLesson } from "../tasks/lesson_notify_visible.js";
 
 /**
  * Orion self-correction & learning (v0.12).
@@ -30,6 +31,12 @@ export interface Lesson {
   error: string;
   cause?: string;
   fix?: string;
+  /** "error" (default) or "success" — a positive pattern (v0.29). */
+  kind?: "error" | "success";
+  /** "what worked" for success lessons; omitted for errors. */
+  pattern?: string;
+  /** Relevance score; bumped when a lesson prevents a recurrence (v0.29). */
+  score?: number;
 }
 
 /** Payload accepted by `recordLesson` (id and ts are stamped). */
@@ -100,12 +107,69 @@ export function recordLesson(lesson: NewLesson): Lesson {
       rows.push(entry);
       if (rows.length > MAX_LESSONS) rows.splice(0, rows.length - MAX_LESSONS);
       writeFileSync(lessonsPath(), JSON.stringify(rows), "utf8");
+      // Visible self-correction (v0.26): the terminal shows that a lesson
+      // was recorded (stderr — protocol-safe for CLI and MCP).
+      notifyLesson(entry.step, entry.error);
     }
     return entry;
   } catch {
     // fail-safe: the caller must never break because a lesson could not be saved
     return { ...lesson, id: "n/a", ts: new Date().toISOString() };
   }
+}
+
+/** Record a positive learning pattern (v0.29, T5.6): what worked, so a
+ * good outcome is reinforced as loudly as a failure would be. Kind = success;
+ * dedupe keyed on (changeId, step, pattern). */
+export function recordPattern(
+  lesson: Omit<NewLesson, "error"> & { pattern: string },
+): Lesson | null {
+  const entry: Omit<Lesson, "id" | "ts"> = {
+    changeId: lesson.changeId,
+    step: lesson.step,
+    error: `pattern: ${lesson.pattern}`,
+    kind: "success",
+    pattern: lesson.pattern,
+    score: 0,
+  };
+  const rows = readLessons();
+  const duplicate = rows.some(
+    (r) =>
+      r.changeId === entry.changeId &&
+      r.step === entry.step &&
+      r.error === entry.error,
+  );
+  if (duplicate) return null;
+  return recordLesson(entry as NewLesson);
+}
+
+/** Bump a lesson's relevance score (v0.29): positive deltas mark a lesson
+ * that prevented a recurrence. Returns the new score, or null if missing. */
+export function rateLesson(id: string, delta = 1): number | null {
+  try {
+    const rows = readLessons();
+    const l = rows.find((r) => r.id === id);
+    if (!l) return null;
+    l.score = (l.score ?? 0) + delta;
+    writeFileSync(lessonsPath(), JSON.stringify(rows), "utf8");
+    return l.score;
+  } catch {
+    return null;
+  }
+}
+
+/** Lessons ranked by relevance: successes first, then by score, newest on
+ * ties. What `track lessons` and `next` route on (v0.29). */
+export function rankedLessons(): Lesson[] {
+  return [...readLessons()].sort((a, b) => {
+    const ka = a.kind === "success" ? 1 : 0;
+    const kb = b.kind === "success" ? 1 : 0;
+    if (ka !== kb) return kb - ka;
+    const sa = a.score ?? 0;
+    const sb = b.score ?? 0;
+    if (sa !== sb) return sb - sa;
+    return (b.ts ?? "").localeCompare(a.ts ?? "");
+  });
 }
 
 /** Lessons for one change, or all lessons; newest first. */

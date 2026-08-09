@@ -1,5 +1,14 @@
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { writeFileSafe } from "../utils/file.js";
+import { DEFAULT_PORT } from "../constants.js";
+import { statusMark, paint } from "../utils/term.js";
+import { readVersionSafe } from "../utils/version.js";
+import {
+  updateCheckEnabled,
+  checkForUpdate,
+  updateBanner,
+} from "../core/updateCheck.js";
 import { parseArgs, HELP } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
@@ -15,6 +24,8 @@ import {
   sessionRoleBreakdown,
 } from "../core/sessions.js";
 import { exportLessons, importLessons } from "../core/lessons.js";
+import { profilePath } from "../core/profile.js";
+import { profileView } from "../tasks/profile_cli_view.js";
 import { applyScale, previewScale } from "../core/scale.js";
 import { think, askQuestion } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
@@ -23,6 +34,17 @@ import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { nextStep } from "../skills/next/handler.js";
 import { payDebt } from "../skills/pay-debt/handler.js";
+import { reviewChange } from "../skills/review/handler.js";
+import { archiveChange } from "../skills/archive/handler.js";
+import { scanChanges, listTable, projectStats } from "./overviewCmd.js";
+import { planCmd } from "./planCmd.js";
+import { compareCmd, assumptionsCmd } from "./compareCmd.js";
+import { selfAudit } from "./selfauditCmd.js";
+import { backupCmd, restoreCmd } from "./backupCmd.js";
+import { doctor } from "./doctorCmd.js";
+import { exportProfile, importProfile, resetProfile } from "../core/profile.js";
+import { initRepo } from "../skills/init/handler.js";
+import { changelogFor, changelogAll } from "./changelogCmd.js";
 import { resume } from "../skills/resume/handler.js";
 import { verifyChange, formatVerifyReport } from "../core/verify.js";
 import { guardPrompt, checkNpmPackages } from "../skills/think/guard.js";
@@ -41,6 +63,10 @@ export async function main(argv: string[]): Promise<number> {
   const track = OrionTrack.init();
 
   switch (cmd) {
+    case "version": {
+      console.log(`orion ${readVersionSafe()}`);
+      return 0;
+    }
     case "":
     case "help":
     case "--help":
@@ -103,7 +129,10 @@ export async function main(argv: string[]): Promise<number> {
       const title = args[0];
       if (!title)
         return fail("draft requires a title, e.g. orion draft my-csv-tool");
-      const artifacts = await draft(title, opts);
+      const artifacts = await draft(title, {
+        noCache: opts.noCache,
+        lang: opts.lang,
+      });
       printOut(
         opts,
         artifacts,
@@ -276,6 +305,204 @@ export async function main(argv: string[]): Promise<number> {
     case "track":
       return await trackCommand(args, opts, track);
 
+    case "profile": {
+      // User adaptation (v0.26): show the memory.md analogue. Renders the
+      // file as-is (it is already human-readable markdown) or an honest
+      // hint when it does not exist yet. Sub-commands (v0.27):
+      //   orion profile --reset    clear auto-observed signals (keep notes)
+      //   orion profile export     print portable JSON to stdout
+      //   orion profile import <f> load a portable JSON profile
+      const sub = args[0];
+      if (sub === "--reset") {
+        resetProfile();
+        console.log("orion: profile auto-section reset (user notes kept)");
+        return 0;
+      }
+      if (sub === "export") {
+        console.log(JSON.stringify(exportProfile(), null, 2));
+        return 0;
+      }
+      if (sub === "import") {
+        const file = args[1];
+        if (!file) return fail("profile import requires a JSON file");
+        try {
+          const raw = readFileSync(file, "utf8");
+          const path = importProfile(raw);
+          console.log(`orion: profile imported from ${file} → ${path}`);
+          return 0;
+        } catch (err) {
+          return fail(
+            `profile import failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+      printOut(opts, { path: profilePath() }, profileView());
+      return 0;
+    }
+
+    case "plan": {
+      const prompt = args.join(" ").trim();
+      if (!prompt) {
+        return fail(
+          "plan requires a prompt, e.g. orion plan build a CLI converter",
+        );
+      }
+      const result = planCmd(prompt);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "compare": {
+      const a = args[0];
+      const b = args[1];
+      if (!a || !b) return fail("compare requires two change ids");
+      const result = compareCmd(a, b);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "assumptions": {
+      const id = args[0];
+      if (!id) return fail("assumptions requires a change id");
+      const result = assumptionsCmd(id);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "self-audit": {
+      const result = selfAudit();
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "backup": {
+      const target = args[0];
+      if (!target)
+        return fail(
+          "backup requires an output file, e.g. orion backup ./orion-backup.json",
+        );
+      const result = backupCmd(target);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "restore": {
+      const target = args[0];
+      if (!target) return fail("restore requires a backup file");
+      const result = restoreCmd(target);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "list": {
+      printOut(opts, { changes: scanChanges() }, listTable(scanChanges()));
+      return 0;
+    }
+
+    case "stats": {
+      printOut(
+        opts,
+        { stats: projectStats() },
+        (() => {
+          const s = projectStats();
+          return [
+            `Changes: ${s.changes} (${s.done} done, ${s.open} open)`,
+            `Tasks: ${s.tasksDone}/${s.tasks} done`,
+            `Lessons: ${s.lessons}`,
+            `Cache: ${s.cacheEntries} entries, ${Math.round(Number(s.cacheBytes) / 1024)} KB`,
+          ].join("\n");
+        })(),
+      );
+      return 0;
+    }
+
+    case "review": {
+      const title = args[0];
+      if (!title)
+        return fail("review requires a title, e.g. orion review my-csv-tool");
+      const report = reviewChange(title);
+      const head = report.pass
+        ? paint("PASS", "green")
+        : paint("issues found", "red");
+      printOut(
+        opts,
+        { changeId: title, pass: report.pass, checks: report.checks },
+        [
+          `Review ${statusMark(report.pass ? "done" : "error")} ${head} — ${title}`,
+          ...report.checks.map(
+            (c) =>
+              `  ${statusMark(c.ok ? "done" : "error")} ${c.name}: ${c.detail}`,
+          ),
+        ].join("\n"),
+      );
+      return report.pass ? 0 : 1;
+    }
+
+    case "archive": {
+      const title = args[0];
+      if (!title)
+        return fail("archive requires a title, e.g. orion archive my-csv-tool");
+      try {
+        const moved = archiveChange(title);
+        console.log(
+          `orion: archived ${moved.from} → ${moved.to} (debt ledger self-heals on orphaned snippets)`,
+        );
+        return 0;
+      } catch (err) {
+        return fail(err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    case "doctor": {
+      const report = doctor();
+      console.log(
+        [
+          `Doctor ${statusMark(report.pass ? "done" : "error")} ${paint(report.pass ? "all healthy" : "issues found", report.pass ? "green" : "red")}`,
+          ...report.checks.map(
+            (c) =>
+              `  ${statusMark(c.ok ? "done" : "error")} ${c.name}: ${c.detail}`,
+          ),
+        ].join("\n"),
+      );
+      return report.pass ? 0 : 1;
+    }
+
+    case "changelog": {
+      const title = args[0];
+      if (title) {
+        console.log(`## ${title}\n\n${changelogFor(title)}`);
+      } else {
+        const all = changelogAll();
+        printOut(
+          opts,
+          { entries: all.length },
+          all.length
+            ? all.join("\n\n---\n\n")
+            : "No changes with result.md yet — run orion out <title> first.",
+        );
+      }
+      return 0;
+    }
+
+    case "init": {
+      const res = initRepo();
+      printOut(
+        opts,
+        { created: res.created, existing: res.existing },
+        [
+          res.created.length
+            ? `Created:\n${res.created.map((f) => "  ✓ " + f).join("\n")}`
+            : "Nothing to create — all present",
+          res.existing.length
+            ? `Already present (kept): ${res.existing.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+      return 0;
+    }
+
     case "learn": {
       const target = args[0];
       if (!target)
@@ -392,14 +619,16 @@ export async function main(argv: string[]): Promise<number> {
     case "serve": {
       const token = opts.token ?? process.env.ORION_DASHBOARD_TOKEN;
       const server = await startServer(track, {
-        port: opts.port || 4780,
+        port: opts.port || DEFAULT_PORT,
         ui: opts.ui,
         host: opts.host ?? "127.0.0.1",
         token,
       });
       const addr = server.address();
       const port =
-        typeof addr === "object" && addr ? addr.port : opts.port || 4780;
+        typeof addr === "object" && addr
+          ? addr.port
+          : opts.port || DEFAULT_PORT;
       const host = opts.host ?? "127.0.0.1";
       console.log(
         `orion: dashboard at http://${host}:${port} (Ctrl+C to stop)`,
@@ -436,6 +665,13 @@ export async function main(argv: string[]): Promise<number> {
         return 0;
       }
       const server = new McpServer();
+      // Update banner (v0.36): non-blocking; the registry check has a 2.5s
+      // timeout and fails silently offline. stderr so stdio stays protocol-
+      // clean. Agents see the version + a heads-up when a release exists.
+      if (updateCheckEnabled()) {
+        const info = await checkForUpdate();
+        process.stderr.write(`\n${updateBanner(info)}\n`);
+      }
       await server.runStdio();
       return 0;
     }

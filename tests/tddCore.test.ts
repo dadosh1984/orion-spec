@@ -202,3 +202,55 @@ describe("TddEngine hazard gate (v0.23)", () => {
     expect(r.passed).toBe(true);
   });
 });
+
+describe("TddEngine: framework-agnostic extensions (v0.24)", () => {
+  it("writes test/impl files with configured suffixes (Python-style)", async () => {
+    const pyConfig: TddConfig = {
+      ...config,
+      testTemplate:
+        "from {{task}} import {{task}}\n\ndef test_works():\n    assert {{task}}() is not None\n",
+      testExt: "_test.py",
+      srcExt: ".py",
+      command: "python -m pytest {{testDir}}/{{testFile}}",
+    };
+    const engine = new TddEngine("calculator", track, pyConfig);
+    await engine.generateTest();
+    expect(existsSync(join(work, "tests", "calculator_test.py"))).toBe(true);
+    expect(existsSync(join(work, "tests", "calculator.test.ts"))).toBe(false);
+    await engine.applyCode("def calculator():\n    return 42\n");
+    expect(existsSync(join(work, "src", "tasks", "calculator.py"))).toBe(true);
+  });
+
+  it("hazard gate scans the configured suffixes, not hardcoded .ts", async () => {
+    const pyConfig: TddConfig = {
+      ...config,
+      testExt: "_test.py",
+      srcExt: ".py",
+      command: "python -m pytest {{testDir}}/{{testFile}}",
+    };
+    const engine = new TddEngine("risky", track, pyConfig);
+    // .ts is the OLD hardcoded name and must NOT be scanned (it is not a
+    // configured suffix) — it carries eval, which would block if read.
+    writeFileSync(
+      join(work, "src", "tasks", "risky.ts"),
+      "export function x() { eval('1'); }",
+      "utf8",
+    );
+    // .py IS the configured src suffix — eval is a matched hazard pattern.
+    writeFileSync(
+      join(work, "src", "tasks", "risky.py"),
+      "def x():" + "\n" + "    return eval('1')" + "\n",
+      "utf8",
+    );
+    const r = await engine.runTestDetailed();
+    expect(r.passed).toBe(false);
+    expect(r.output).toContain("hazard gate");
+  });
+
+  it("accepts Cyrillic task ids (Unicode-safe identifier guard)", async () => {
+    const engine = new TddEngine("операции", track, config);
+    expect(engine.task).toBe("операции");
+    await engine.generateTest();
+    expect(existsSync(join(work, "tests", "операции.test.ts"))).toBe(true);
+  });
+});

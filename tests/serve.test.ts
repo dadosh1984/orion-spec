@@ -291,3 +291,44 @@ describe("serve: dashboard hardening (v0.23)", () => {
     expect(/^[A-Za-z0-9_-]{32}$/.test(a)).toBe(true);
   });
 });
+
+describe("dashboard v0.28 (phase/guard/drift/profile)", () => {
+  it("listChanges reports phase, guard and drift per change", async () => {
+    process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
+    writeFileSync(
+      join(dir, "profile.md"),
+      "# Orion user profile\n\n## Auto (updated by Orion)\n- Language: en\n- Platform: node\n\n## User notes\n",
+      "utf8",
+    );
+    mkdirSync(join("changes", "demo"), { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "proposal.json"),
+      JSON.stringify({ goal: "Demo change" }),
+      "utf8",
+    );
+    const rows = listChanges();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].phase).toBe("think"); // proposal only, no tasks.md
+    expect("guard" in rows[0]).toBe(true);
+    delete process.env.ORION_PROFILE_FILE;
+  });
+
+  it("/api/status includes the profile block", async () => {
+    process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
+    writeFileSync(
+      join(dir, "profile.md"),
+      "# Orion user profile\n\n## Auto (updated by Orion)\n- Language: ru\n- Platform: node\n\n## User notes\n",
+      "utf8",
+    );
+    const track = OrionTrack.init();
+    server = await startServer(track, { port: 0, ui: true });
+    const res = await request("/api/status");
+    const body = res.json as {
+      profile: { language: string; platform: string };
+    };
+    expect(body.profile).toBeDefined();
+    expect(body.profile.language).toBe("ru");
+    expect(body.profile.platform).toBe("node");
+    delete process.env.ORION_PROFILE_FILE;
+  });
+});

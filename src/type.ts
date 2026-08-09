@@ -41,6 +41,14 @@ export interface TddConfig {
   srcDir: string;
   command: string;
   minCoverage: number;
+  /**
+   * Test file suffix (default ".test.ts"). v0.24: framework-agnostic
+   * RED-GREEN — a Python project sets `"testExt": "_test.py"` and a
+   * pytest command; {{testFile}} in the template/command follows it.
+   */
+  testExt?: string;
+  /** Implementation file suffix (default ".ts"). */
+  srcExt?: string;
 }
 
 /** A user proposal gathered by the `think` skill. */

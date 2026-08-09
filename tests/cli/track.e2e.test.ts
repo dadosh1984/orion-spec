@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const CLI = "node dist/cli/index.js";
+let cacheDir: string;
 
 beforeAll(() => {
   // dist/ is built before tests (CI: build step; local: pretest).
@@ -12,7 +15,18 @@ beforeAll(() => {
       stdio: "pipe",
     });
   }
+  // v0.24: isolate from the real ~/.orion cache — `track clear` below must
+  // never wipe a cache that a parallel test fork (e.g. tdd.e2e finalize)
+  // is writing to. The global cache is shared mutable state; each e2e file
+  // gets its own dir instead.
+  cacheDir = mkdtempSync(join(tmpdir(), "orion-track-e2e-"));
+  process.env.ORION_CACHE_DIR = cacheDir;
 }, 120_000);
+
+afterAll(() => {
+  delete process.env.ORION_CACHE_DIR;
+  rmSync(cacheDir, { recursive: true, force: true });
+});
 
 function run(args: string): { code: number; out: string } {
   try {
