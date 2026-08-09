@@ -1,15 +1,17 @@
-import { readFile } from "node:fs/promises";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { fork } from "node:child_process";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { TddEngine } from "../../core/tddCore.js";
 import { OrionTrack } from "../../core/track.js";
 import { recordLesson } from "../../core/lessons.js";
 import { writeFileSafe } from "../../utils/file.js";
 import { writeCheckpoint } from "../../core/checkpoint.js";
 import { slugify } from "../think/handler.js";
+import { significantWords } from "../../core/titles.js";
+import { resolveSnippet } from "./snippet.js";
 
 const execAsync = promisify(exec);
 
@@ -79,12 +81,50 @@ export interface TaskOutcome {
   reason: "no-snippet" | "red" | "timeout";
 }
 
+/** Snapshot of a file's pre-forge state — the rollback target. */
+interface FileSnapshot {
+  existed: boolean;
+  content: string;
+}
+
+/** Read a file for the rollback snapshot; missing → `{ existed: false }`. */
+function snapshotFile(path: string): FileSnapshot {
+  try {
+    return { existed: true, content: readFileSync(path, "utf8") };
+  } catch {
+    return { existed: false, content: "" };
+  }
+}
+
+/**
+ * Restore a file to its pre-forge state: files that existed before forge
+ * (user work) are rewritten with their original content; files forge
+ * created are removed. Best effort — never masks the underlying outcome.
+ */
+function restoreFile(path: string, snap: FileSnapshot): void {
+  try {
+    if (snap.existed) writeFileSync(path, snap.content, "utf8");
+    else rmSync(path, { force: true });
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Run one task's RED-GREEN cycle without touching shared files
  * (tasks.md, lessons.json, forge cache). Generates the test, applies the
  * snippet, runs the tests, transitions the state machine. The caller
  * (sequential forge, the wave engine's parent, or the fork worker)
  * applies bookkeeping — this is the single source of truth for the cycle.
+ *
+ * No-junk contract (v0.25): the snippet is checked BEFORE anything is
+ * written, and files forge created are rolled back on a RED/hazard
+ * outcome. The old order generated `tests/<slug>.test.ts` first, so a
+ * task waiting for its snippet left an orphaned test importing a
+ * `src/tasks/<slug>.ts` that never existed — breaking the project's
+ * vitest run and producing FALSE shield FAILs (`test: N failing`, `drift:
+ * missing exported`). Unfinished tasks now leave zero trace; files that
+ * existed before forge (user work) are restored, never deleted.
  */
 export async function executeTask(
   title: string,
@@ -95,7 +135,8 @@ export async function executeTask(
   track: OrionTrack,
 ): Promise<TaskOutcome> {
   const engine = engineFactory(slug, track);
-  await engine.generateTest();
+
+  // Snippet first: a missing snippet must create nothing at all.
   const snippet = await snippetProvider(slug);
   if (snippet === null) {
     return {
@@ -106,10 +147,38 @@ export async function executeTask(
       lastFailure: `missing implementation snippet for ${slug}`,
     };
   }
-  await engine.applyCode(snippet);
-  const passed = await engine.runTest();
+
+  // Snapshot the two files forge is about to touch so a RED/hazard
+  // outcome can restore them exactly.
+  const testPath = join(
+    engine.config.testDir,
+    `${slug}${engine.config.testExt}`,
+  );
+  const srcPath = join(engine.config.srcDir, `${slug}${engine.config.srcExt}`);
+  const testSnap = snapshotFile(testPath);
+  const srcSnap = snapshotFile(srcPath);
+
+  let passed: boolean;
+  try {
+    await engine.generateTest();
+    await engine.applyCode(snippet);
+    passed = await engine.runTest();
+  } catch (err) {
+    // Hazard gate or any engine error — refuse to leave half-written files.
+    restoreFile(testPath, testSnap);
+    restoreFile(srcPath, srcSnap);
+    return {
+      slug,
+      desc,
+      ok: false,
+      reason: "red",
+      lastFailure: err instanceof Error ? err.message : String(err),
+    };
+  }
   engine.transition(passed);
   if (!passed) {
+    restoreFile(testPath, testSnap);
+    restoreFile(srcPath, srcSnap);
     return {
       slug,
       desc,
@@ -167,6 +236,53 @@ async function finishTask(
   }
 }
 
+/** Marker prefix on task lines that is not part of the task's name. */
+const SLUG_MARKER = /^\[(fact|assumption|risk|decision)\]\s*/i;
+
+/**
+ * Explicit per-task slug marker: `- [ ] [fact] Implement add {slug: my_unit}`
+ * (v0.25). Lets the plan author pin the file name instead of guessing
+ * which 2–3 significant words `shortSlug` will pick.
+ */
+const EXPLICIT_SLUG = /\{\s*slug\s*:\s*([a-z0-9_-]+)\s*\}/i;
+
+/**
+ * Short, identifier-safe task slug (2–3 significant words, v0.24).
+ *
+ * The old slug kept EVERY word of the task description (up to 64 chars,
+ * marker included) — `[assumption] Add arithmetic operations: add,
+ * subtract, multiply, divide` became a 55-char file name. Now the marker
+ * is stripped and only 2–3 significant words survive, so snippet files are
+ * as short as change titles ("add_arithmetic_operations",
+ * "implement_calculator"). Underscores (not dashes): the slug is used as a
+ * JS identifier in the generated test template (`import { <slug> } …`).
+ * Uniqueness within a change is enforced deterministically: a collision
+ * appends `_2`, `_3`, … in tasks.md order. Cyrillic is kept — the same
+ * promise as change titles. Falls back to `slugify` when nothing
+ * significant survives.
+ *
+ * v0.25: an explicit `{slug: name}` marker in the description wins over
+ * the word derivation — predictable file names, no guessing.
+ */
+export function shortSlug(desc: string, used: Set<string>): string {
+  const cleaned = desc.replace(SLUG_MARKER, "");
+  const explicit = cleaned.match(EXPLICIT_SLUG)?.[1]?.toLowerCase();
+  const base =
+    explicit ??
+    (() => {
+      const words = significantWords(cleaned, 3);
+      return words.length > 0
+        ? words.join("_")
+        : slugify(cleaned).replace(/-/g, "_");
+    })();
+  const fallback = base || "untitled";
+  let slug = fallback;
+  let n = 2;
+  while (used.has(slug)) slug = `${fallback}_${n++}`;
+  used.add(slug);
+  return slug;
+}
+
 /**
  * `orion forge` — walk `changes/<title>/tasks.md` and drive each open
  * `- [ ]` task through the RED-GREEN-REFACTOR engine.
@@ -179,9 +295,8 @@ export async function forge(
   title: string,
   opts?: ForgeOptions,
   snippetProvider: (slug: string) => Promise<string | null> = async (slug) => {
-    const file = `changes/${title}/snippets/${slug}.ts`;
-    if (!existsSync(file)) return null;
-    return readFile(file, "utf8");
+    const r = resolveSnippet(`changes/${title}/snippets`, slug);
+    return r.content;
   },
   engineFactory: EngineFactory = defaultEngineFactory,
 ): Promise<ForgeSummary> {
@@ -199,15 +314,20 @@ export async function forge(
 
   const pending: string[] = [];
   const missingSnippets: string[] = [];
+  /** Diagnostics for unresolved snippets: expected slug + existing files. */
+  const snippetHints: string[] = [];
   const rows: Array<{ desc: string; status: "done" | "skipped" | "pending" }> =
     [];
   let done = 0;
   let skipped = 0;
+  // Slugs must be unique within a change (v0.24): two tasks whose first
+  // 2–3 significant words collide get `_2`, `_3`, … deterministically.
+  const usedSlugs = new Set<string>();
 
   for (const desc of open) {
     // identifier-safe slug: dashes are illegal in JS identifiers and would
     // break `import { <slug> } from ...` in the generated test template.
-    const slug = slugify(desc).replace(/-/g, "_");
+    const slug = shortSlug(desc, usedSlugs);
     if (!opts?.noCache && track.loadString(`forge:${slug}`) === "DONE") {
       skipped++;
       rows.push({ desc, status: "skipped" });
@@ -231,6 +351,17 @@ export async function forge(
     if (!outcome.ok) {
       pending.push(slug);
       missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
+      const r = resolveSnippet(`changes/${title}/snippets`, slug);
+      if (
+        r.content === null &&
+        r.candidates &&
+        r.candidates.length > 0 &&
+        snippetHints.length < 3
+      ) {
+        snippetHints.push(
+          `${slug}: no exact match — existing: ${r.candidates.join(", ")}`,
+        );
+      }
       rows.push({ desc, status: "pending" });
       opts?.onTask?.({ desc, status: "pending" });
       continue;
@@ -252,7 +383,8 @@ export async function forge(
     message:
       pending.length === 0
         ? `forge complete: ${done} done, ${skipped} skipped from cache`
-        : `forge paused: ${done} done, ${skipped} skipped, ${pending.length} pending — add snippets: ${missingSnippets.join(", ")}`,
+        : `forge paused: ${done} done, ${skipped} skipped, ${pending.length} pending — add snippets: ${missingSnippets.join(", ")}` +
+          (snippetHints.length > 0 ? `\n${snippetHints.join("\n")}` : ""),
   };
 
   await writeForgeReport(title, summary, rows);
@@ -309,8 +441,10 @@ export async function forgeParallel(
   let skipped = 0;
 
   const bySlug = new Map<string, string>();
+  // Same uniqueness contract as the sequential path (v0.24).
+  const usedSlugs = new Set<string>();
   for (const desc of open) {
-    const slug = slugify(desc).replace(/-/g, "_");
+    const slug = shortSlug(desc, usedSlugs);
     bySlug.set(slug, desc);
     if (!opts?.noCache && track.loadString(`forge:${slug}`) === "DONE") {
       skipped++;

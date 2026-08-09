@@ -19,6 +19,7 @@ beforeEach(() => {
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
+  process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
   process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
 });
@@ -27,6 +28,7 @@ afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
   delete process.env.ORION_LESSONS_FILE;
   delete process.env.ORION_ECONOMY_FILE;
+  delete process.env.ORION_PROFILE_FILE;
   delete process.env.ORION_SHIELD_SKIP_SHELL;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
@@ -56,6 +58,10 @@ function textOf(res: Record<string, unknown>): string {
     content: Array<{ type: string; text: string }>;
   };
   return result.content.map((c) => c.text).join("");
+}
+
+function makeServer(): McpServer {
+  return new McpServer(getMcpTools(), "7.0.0");
 }
 
 describe("mcp: protocol surface", () => {
@@ -214,6 +220,41 @@ describe("mcp: tool calls", () => {
     };
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("not found");
+  });
+
+  it("tools/call out returns the human-readable markdown summary (not JSON)", async () => {
+    mkdirSync(join(dir, "changes/demo"), { recursive: true });
+    writeFileSync(
+      join(dir, "changes/demo/proposal.json"),
+      JSON.stringify({ goal: "demo" }),
+    );
+    writeFileSync(join(dir, "changes/demo/tasks.md"), "");
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "out",
+      arguments: { changeId: "demo" },
+    });
+    const text = textOf(res);
+    expect(text).toContain("# Result — demo");
+    expect(text).not.toContain('"changeId"');
+  });
+
+  it("tools/call profile returns the user-adaptation profile (v0.26)", async () => {
+    writeFileSync(
+      join(dir, "profile.md"),
+      "# Orion user profile\n\n## Auto (updated by Orion)\n- Language: ru\n- Platform: (not yet observed)\n- Budget: (not yet observed)\n- Frequent topics: (none yet)\n\n## User notes\n\nПишите кратко.\n",
+    );
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "profile",
+      arguments: {},
+    });
+    const text = textOf(res);
+    expect(text).toContain("# Orion user profile");
+    expect(text).toContain("Language: ru");
+    expect(text).toContain("## User notes");
   });
 
   it("tools/call pay_debt fails honestly for a missing change (v0.22)", async () => {
@@ -536,5 +577,109 @@ describe("mcp: lessons_learn tool (session learning, v0.13)", () => {
     };
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/no \*\.jsonl session files/);
+  });
+});
+
+describe("MCP protocol edge cases (v0.25 coverage)", () => {
+  it("returns a parse error for invalid JSON", async () => {
+    const server = makeServer();
+    const res = await server.handleMessage("{broken");
+    expect(res?.error?.code).toBe(-32700);
+  });
+
+  it("returns invalid-request for a non-JSON-RPC body", async () => {
+    const server = makeServer();
+    const res = await server.handleMessage(JSON.stringify({ hello: 1 }));
+    expect(res?.error?.code).toBe(-32600);
+  });
+
+  it("ignores notifications (no id) per the spec", async () => {
+    const server = makeServer();
+    const res = await server.handleMessage(
+      JSON.stringify({ jsonrpc: "2.0", method: "initialized" }),
+    );
+    expect(res).toBeNull();
+  });
+
+  it("serves resources/list and prompts/list (v0.27 real payloads)", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const r1 = await call(server, "resources/list", 1);
+    expect((r1.result as { resources: unknown[] }).resources).toBeDefined();
+    const r2 = await call(server, "prompts/list", 1);
+    const prompts = (r2.result as { prompts: Array<{ name: string }> }).prompts;
+    expect(prompts.map((p) => p.name)).toContain("review");
+    expect(prompts.map((p) => p.name)).toContain("resume");
+  });
+
+  it("is lenient with tools/call before initialize (compat, v0.25)", async () => {
+    // The server does not hard-fail tools/call pre-init — some clients
+    // probe tools early; the result is served regardless.
+    const server = makeServer();
+    const res = await call(server, "tools/call", 1, {
+      name: "version",
+      arguments: {},
+    });
+    expect((res.result as { content: unknown[] }).content).toBeDefined();
+  });
+
+  it("reports tool errors as isError results, not thrown exceptions", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "lessons_learn",
+      arguments: { path: "no-such-session.jsonl" },
+    });
+    const result = res.result as {
+      isError: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("no *.jsonl");
+  });
+});
+
+describe("MCP protocol defaults (v0.25)", () => {
+  it("unknown methods after init yield METHOD_NOT_FOUND", async () => {
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "bogus/method", 1);
+    expect(res.error?.code).toBe(-32601);
+  });
+
+  it("initialize negotiates any protocol version", async () => {
+    const server = makeServer();
+    const res = await call(server, "initialize", 1, {
+      protocolVersion: "9999.0.0",
+      capabilities: {},
+      clientInfo: { name: "t", version: "1" },
+    });
+    // Negotiation: the server answers with the highest version it supports.
+    expect((res.result as { protocolVersion: string }).protocolVersion).toBe(
+      "2025-06-18",
+    );
+  });
+});
+
+describe("mcp: stdio loop (v0.25)", () => {
+  it("runStdio answers each line and exits at EOF", async () => {
+    const { Readable } = await import("node:stream");
+    const lines = [
+      JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } } }),
+      JSON.stringify({ jsonrpc: "2.0", id: 2, method: "ping" }),
+      "   ",
+      "",
+    ];
+    const writes: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      writes.push(String(chunk));
+      return true;
+    });
+    const server = new McpServer();
+    await server.runStdio(Readable.from(lines.map((l) => l + "\n")));
+    vi.restoreAllMocks();
+    const answers = writes.filter((w) => w.includes('"jsonrpc"'));
+    expect(answers).toHaveLength(2);
+    expect(JSON.parse(answers[1])).toMatchObject({ id: 2, result: {} });
   });
 });

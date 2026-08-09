@@ -55,9 +55,17 @@ export function handler(code: string, selfFile?: string): string {
       // duplicate lived in the same directory as the file being scaled — a
       // src/tasks/y.ts importing a function reused from src/utils/x.ts got
       // a broken './x.ts' that never resolves.
+      // Both sides are canonicalized (v0.24): on macOS `mkdtemp` keeps the
+      // `/var` symlink form while `process.cwd()` after `chdir` reports the
+      // physical `/private/var` path — a plain `resolve()` comparison of the
+      // two forms fails to see they are the same directory and emits an
+      // absurd `../../../../../../private/var/...` import.
       const src = library.get(name)!.file;
       let rel = selfFile
-        ? relative(dirname(resolve(selfFile)), resolve(src)).replace(/\\/g, "/")
+        ? relative(
+            realPath(dirname(resolve(selfFile))),
+            realPath(resolve(src)),
+          ).replace(/\\/g, "/")
         : stripExtension(basename(src));
       if (!rel.startsWith(".")) rel = `./${rel}`;
       const importLine = `import { ${name} } from '${stripExtension(rel)}';`;

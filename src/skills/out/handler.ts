@@ -2,7 +2,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { writeFileSafe, readJson } from "../../utils/file.js";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
-import { recordLesson, lessonsForChange } from "../../core/lessons.js";
+import {
+  recordLesson,
+  lessonsForChange,
+  recordPattern,
+} from "../../core/lessons.js";
 import { recordCalibration } from "../../core/calibration.js";
 import { estimateChangeCost } from "../next/handler.js";
 import type { GuardReport, Proposal } from "../../type.js";
@@ -76,6 +80,14 @@ export async function out(
           : "guard not passing",
       cause: "out could not produce a SUCCESS verdict",
       fix: `resolve the condition above, then re-run orion out ${changeId}`,
+    });
+  } else {
+    // Positive learning (v0.29, T5.6): a SUCCESS is also a lesson — the
+    // exact conditions that let `out` deliver are worth reinforcing.
+    recordPattern({
+      changeId,
+      step: "out",
+      pattern: `SUCCESS: ${tasksDone}/${tasksTotal} tasks + non-stale guard → result.md written`,
     });
   }
 
@@ -181,18 +193,28 @@ export async function out(
  * invented wisdom.
  */
 function lessonsSection(changeId: string, goal: string): string[] {
-  const lessons = lessonsForChange(changeId, goal);
+  const all = lessonsForChange(changeId, goal);
+  const errors = all.filter((l) => l.kind !== "success");
+  const successes = all.filter((l) => l.kind === "success");
   const lines = ["## Уроки и решения", ""];
-  if (lessons.length === 0) {
+  // The “no errors” line reflects only real failures — a recorded success
+  // pattern (v0.29) must not make a clean run look like it errored.
+  if (errors.length === 0) {
     lines.push("_Уроков нет — эта задача прошла без зафиксированных ошибок._");
   } else {
-    for (const l of lessons) {
+    for (const l of errors) {
       const prefix = l.changeId === changeId ? "" : `[${l.changeId}] `;
       const fix = l.fix ? ` → ${l.fix}` : "";
       lines.push(`> ${prefix}${l.error}${fix}`);
     }
   }
-  return [...lines, ""];
+  if (successes.length > 0) {
+    lines.push("", "++ Успешные паттерны:");
+    for (const l of successes) {
+      lines.push(`  + ${l.pattern ?? l.error}`);
+    }
+  }
+  return lines;
 }
 
 /**
@@ -226,7 +248,9 @@ function walkFiles(dir: string): string[] {
   return out;
 }
 
-/** Existing artifacts of a change, best-effort walk. */
+/** Existing artifacts of a change, best-effort walk. result.md is the
+ * output of `out` itself, not a source artifact — listing it would make
+ * the summary self-referential and the second run differ from the first. */
 function listArtifacts(changeId: string): string[] {
   const dir = `changes/${changeId}`;
   const candidates = [
@@ -234,7 +258,6 @@ function listArtifacts(changeId: string): string[] {
     `${dir}/design.md`,
     `${dir}/tasks.md`,
     `${dir}/forge-report.md`,
-    `${dir}/result.md`,
     `reports/${changeId}/guard-report.md`,
   ];
   const out = candidates.filter((p) => existsSync(p));

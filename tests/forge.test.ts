@@ -5,10 +5,17 @@ import {
   readFileSync,
   mkdirSync,
   writeFileSync,
+  existsSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { forge, readTasks, defaultEngineFactory } from "../src/skills/forge/handler.js";
+import {
+  forge,
+  readTasks,
+  defaultEngineFactory,
+  shortSlug,
+  type EngineFactory,
+} from "../src/skills/forge/handler.js";
 import { TddEngine } from "../src/core/tddCore.js";
 import { OrionTrack } from "../src/core/track.js";
 
@@ -80,6 +87,88 @@ describe("forge skill", () => {
     expect(tasks).toContain("- [ ] Implement add function");
   });
 
+  it("leaves NO test/src files when a snippet is missing (no-junk, v0.25)", async () => {
+    seedChange("demo", ["Implement add function"]);
+    const summary = await forge(
+      "demo",
+      { noCache: true },
+      async () => null,
+      fakeEngineFactory,
+    );
+    expect(summary.ok).toBe(false);
+    // The old order generated tests/<slug>.test.ts BEFORE checking the
+    // snippet, so a waiting task left an orphaned test importing a
+    // src/tasks/<slug>.ts that never existed — broken vitest, false
+    // shield FAILs. Now a missing snippet must create nothing.
+    expect(existsSync("tests/implement_add_function.test.ts")).toBe(false);
+    expect(existsSync("src/tasks/implement_add_function.ts")).toBe(false);
+  });
+
+  it("rolls back forge-created files when the task ends RED (v0.25)", async () => {
+    seedChange("demo", ["Implement add function"]);
+    const redFactory: EngineFactory = (slug, track) => {
+      const engine = defaultEngineFactory(slug, track);
+      engine.runTest = async () => false;
+      engine.refactor = async () => true;
+      return engine;
+    };
+    const summary = await forge(
+      "demo",
+      { noCache: true },
+      async () => "export function add() { return 1; }",
+      redFactory,
+    );
+    expect(summary.ok).toBe(false);
+    expect(summary.pending).toHaveLength(1);
+    // A pending task must not leave a broken test + partial src behind.
+    expect(existsSync("tests/implement_add_function.test.ts")).toBe(false);
+    expect(existsSync("src/tasks/implement_add_function.ts")).toBe(false);
+  });
+
+  it("restores pre-existing files on RED instead of deleting them (v0.25)", async () => {
+    seedChange("demo", ["Implement add function"]);
+    // User work that existed before forge ran must survive a RED outcome.
+    mkdirSync(join("src", "tasks"), { recursive: true });
+    writeFileSync(
+      join("src", "tasks", "implement_add_function.ts"),
+      "// user work\n",
+      "utf8",
+    );
+    const redFactory: EngineFactory = (slug, track) => {
+      const engine = defaultEngineFactory(slug, track);
+      engine.runTest = async () => false;
+      engine.refactor = async () => true;
+      return engine;
+    };
+    const summary = await forge(
+      "demo",
+      { noCache: true },
+      async () => "export function add() { return 1; }",
+      redFactory,
+    );
+    expect(summary.ok).toBe(false);
+    expect(
+      readFileSync(join("src", "tasks", "implement_add_function.ts"), "utf8"),
+    ).toBe("// user work\n");
+    expect(existsSync("tests/implement_add_function.test.ts")).toBe(false);
+  });
+
+  it("hazard snippet → honest pending, no junk left (v0.25)", async () => {
+    seedChange("demo", ["Implement add function"]);
+    const summary = await forge(
+      "demo",
+      { noCache: true },
+      async () =>
+        "import { rmSync } from 'node:fs';\n" +
+        "export function add() { rmSync('/', { recursive: true }); }\n",
+      defaultEngineFactory,
+    );
+    expect(summary.ok).toBe(false);
+    expect(summary.pending).toHaveLength(1);
+    expect(existsSync("tests/implement_add_function.test.ts")).toBe(false);
+    expect(existsSync("src/tasks/implement_add_function.ts")).toBe(false);
+  });
+
   it("reports the exact snippet paths forge is waiting on", async () => {
     seedChange("demo", ["Implement add function", "Export the module"]);
     const summary = await forge(
@@ -90,7 +179,7 @@ describe("forge skill", () => {
     );
     expect(summary.missingSnippets).toEqual([
       "changes/demo/snippets/implement_add_function.ts",
-      "changes/demo/snippets/export_the_module.ts",
+      "changes/demo/snippets/export_module.ts",
     ]);
     expect(summary.message).toContain(
       "changes/demo/snippets/implement_add_function.ts",
@@ -189,5 +278,59 @@ describe("readTasks: CRLF robustness (v0.11 fix)", () => {
     expect(tasks).toHaveLength(2);
     expect(tasks[0]).toEqual({ done: true, text: "done task" });
     expect(tasks[1]).toEqual({ done: false, text: "open task" });
+  });
+});
+
+describe("forge: short task slugs (v0.24)", () => {
+  it("keeps 2–3 significant words and strips [fact]/[assumption] markers", () => {
+    const used = new Set<string>();
+    expect(shortSlug("[fact] Implement the calculator", used)).toBe(
+      "implement_calculator",
+    );
+    expect(shortSlug("[assumption] Add arithmetic operations", used)).toBe(
+      "add_arithmetic_operations",
+    );
+    expect(shortSlug("Export the module", used)).toBe("export_module");
+    expect(shortSlug("Document usage in README", used)).toBe(
+      "document_usage_readme",
+    );
+  });
+
+  it("is unique within a change — collisions get _2, _3 in order", () => {
+    const used = new Set<string>();
+    expect(shortSlug("Add tests for parser and lexer", used)).toBe(
+      "add_tests_parser",
+    );
+    expect(shortSlug("Add tests for parser and writer", used)).toBe(
+      "add_tests_parser_2",
+    );
+    expect(shortSlug("Add tests for parser and reader", used)).toBe(
+      "add_tests_parser_3",
+    );
+  });
+
+  it("keeps Cyrillic (same promise as change titles)", () => {
+    const used = new Set<string>();
+    expect(shortSlug("[assumption] Добавить операции калькулятора", used)).toBe(
+      "добавить_операции_калькулятора",
+    );
+  });
+
+  it("falls back to slugify when nothing significant survives", () => {
+    const used = new Set<string>();
+    expect(shortSlug("The of a an", used)).toBe("the_of_a_an");
+  });
+});
+
+describe("explicit task slugs (v0.25)", () => {
+  it("honours the {slug: name} marker over word derivation", () => {
+    const used = new Set<string>();
+    expect(shortSlug("[fact] Implement add {slug: my_adder}", used)).toBe(
+      "my_adder",
+    );
+    // Uniqueness still enforced on explicit slugs.
+    expect(shortSlug("[fact] Another one {slug: my_adder}", used)).toBe(
+      "my_adder_2",
+    );
   });
 });

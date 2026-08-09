@@ -4,6 +4,317 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.36.0] — 2026-08-09
+
+Visibility and update notifications.
+
+- CLI `orion version` and `--version`/`-V` now print the installed version
+  (was silently showing help). Version resolves against the module so it
+  works in any install (global pnpm/npm or source dist).
+- `orion mcp` prints a non-blocking stderr banner at startup with the
+  installed version and, when a newer release exists, `→ update available:
+  vX.Y.Z`. Offline-safe (2.5s timeout, silent on failure, cached for a
+  day); disable with ORION_UPDATE_CHECK=0.
+- MCP initialize already announced serverInfo {name,version}; clients get
+  the version at handshake and via the version tool.
+- Tests: tests/version.test.ts (5). 595 tests green.
+
+## [0.35.0] — 2026-08-09
+
+Phase 6 of the 2026 audit roadmap — ecosystem and metrics.
+
+- `orion self-audit` — consolidated health + score (0-100) report from the
+  doctor + project stats.
+- `orion backup <file>` / `orion restore <file>` — one-file backup/restore
+  of the user profile + lesson ledger.
+- Tests: tests/phase6.test.ts (3).
+- With this, all 6 roadmap phases (exceeding the spec) are complete.
+
+## [0.34.0] — 2026-08-09
+
+Phase 5 of the 2026 audit roadmap — security.
+
+- denyEnv in the hazard gate: test snippets may not read credential-shaped
+  env vars (AWS_*/SECRET/API_KEY/TOKEN/PASSWORD). denyExec (exec/spawn/
+  child_process) was already covered; now env-reading is too.
+- Path-traversal guard assertSafeChangeId in archive: rejects /, \ and .. in
+  a change id so joins never escape changes/.
+- Atomic writes: writeFileSafe now writes to a temp file then renames, so a
+  crash never leaves a corrupt ledger/json artifact.
+- Tests: tests/hazards.test.ts (4).
+
+## [0.33.0] — 2026-08-09
+
+Phase 4 of the 2026 audit roadmap — functionality.
+
+- `orion plan <prompt>` — guarded dry-run plan (language, title, derived
+  tasks) WITHOUT writing any file.
+- `orion compare <a> <b>` — side-by-side status of two changes (phase,
+  tasks, guard, result).
+- `orion assumptions <change>` — list draft's [assumption] tasks so
+  inferred (not proposed) requirements are visible and verifiable.
+- Tests: tests/phase4v2.test.ts (7).
+
+## [0.32.0] — 2026-08-09
+
+Phase 3 of the 2026 audit roadmap — performance.
+
+- Memoized readProfile (by path+mtime+size) and loadDenyList (by file
+  mtimes) — hot paths in think/draft/serve no longer stat+read the file
+  on every call.
+- Documented startup baselines: CLI ~136ms, MCP ~118ms — already fast, so
+  lazy MCP imports were deliberately deferred (risk > benefit).
+- Note: shield stays sequential by design (determinism over a ~30% speed
+  win); scanChanges memoization skipped (small win, complex invalidation).
+
+## [0.31.0] — 2026-08-09
+
+Phase 2 of the 2026 audit roadmap — terminal interactivity.
+
+- New src/utils/term.ts: colorEnabled, statusMark, paint, bar. Honours
+  NO_COLOR and ORION_COLOR; monochrome fallback is bracketed ([+]/[x]/[.]).
+- Consistent status markers across review/list/doctor/fail; list now shows
+  a progress bar; new --no-color flag (+ HELP) and NO_COLOR support.
+- Tests: tests/term.test.ts.
+
+## [0.30.0] — 2026-08-09
+
+Phase 1 of the 2026 audit roadmap — bugs and utilities.
+
+- Dedupe `readCapped` (was duplicated in core/verifiability.ts and
+  core/verify.ts with 64KB/128KB defaults) into src/utils/file.ts; verify
+  passes an explicit wider evidence cap.
+- New `humanBytes` in src/utils/file.ts; constants DAY_MS and DEFAULT_PORT
+  in src/constants.ts.
+- `listChanges` (dashboard) now uses a memoized `driftOf` that reads only
+  spec headings + exported symbols, instead of a full reviewChange pass on
+  every 5s auto-refresh.
+- Tests: src/utils.test.ts (readCapped boundaries, humanBytes).
+- Test speed: ORION_VITEST_MAX_WORKERS env to bound fork workers on loaded
+  CI runners; confirmed the suite (571 tests) runs in ~21s with no slow
+  tests except the real async waves suite.
+
+## [0.29.0] — 2026-08-09
+
+Phase 5 of the analysis roadmap — performance, security, ecosystem.
+
+- Cache benchmark `scripts/cache-bench.mjs`: honest numbers confirm the
+  many-small-files format (0.36 ms/op) over a single blob (~9 ms) — no
+  risky storage refactor needed.
+- Memoized `significantWords` (bounded cache) on the think/forge hot path.
+- Deny-list prompt policy: `.orion/deny.txt` + `~/.orion/deny.txt`, enforced
+  case-insensitively by guardPrompt as a confirmation gate (--force wins);
+  sandbox.md documents it and the hazard gate.
+- Positive learning: `recordPattern`, `rateLesson`, `rankedLessons`. A
+  successful `out` now records a success pattern; `track lessons` ranks by
+  relevance; result.md gains a `++ Успешные паттерны` block without
+  suppressing the honest "no errors" line.
+- JSON Schema for orionTdd.json + `validateTddConfig()` (degrade, never crash).
+- GitHub Action `orion-shield` for CI (lint, type-check, tests, orion shield).
+
+## [0.28.0] — 2026-08-09
+
+Phase 4 of the analysis roadmap — UX, dashboard, documentation.
+
+- Dashboard (orion serve): the changes list now shows each change's
+  deterministic phase (think→draft→forge→shield→out), guard PASS/FAIL and
+  drift ✓/✗ tags; `/api/status` includes the user profile block
+  (language/platform/budget/topics) from the memory.md analogue.
+- `orion init` — scaffold orionTdd.json, a guard deny-list template and a
+  pre-commit hook starter; idempotent, never overwrites.
+- `orion changelog [title]` — generate a CHANGELOG entry from result.md;
+  no title prints entries for every finished change.
+- Docs: new `docs/configuration.md` (all ORION_* env vars, templates,
+  language), commands.md and README updated.
+- `phaseOf()` shared by the dashboard, `orion list` and MCP change_status.
+
+## [0.27.0] — 2026-08-09
+
+Phase 3 of the analysis roadmap — demand: language, overview, review.
+
+- Language-adaptive templates: Russian variants of proposal/design/tasks/
+  spec selected by the profile language or `draft --lang en|ru`. The
+  `# Spec:` drift key stays English so the drift gate keeps working.
+- `orion list` — table of all changes with task progress; `orion stats` —
+  aggregate project statistics.
+- New `review` skill: deterministic, zero-LLM change review (proposal,
+  tasks, snippets, test files for done tasks, spec-symbol drift).
+- MCP: real `resources/list` and `prompts/list`, plus `change_status` and
+  `review` tools.
+- `orion archive` — move a finished change to changes/archived (debt ledger
+  self-heals on orphaned snippets); `orion doctor` — environment + repo
+  health checks (cache, lessons, profile, git, dist freshness, changes/).
+- `orion profile --reset | export | import` — portable JSON round-trip.
+
+## [0.26.0] — 2026-08-09
+
+Phase 2 of the analysis roadmap — test coverage and reliability.
+
+- Coverage up to 90.3% overall (was 88.4); `commands.ts` 55.7% → 67%,
+  `mcp.ts` 68.4% → 70.4%, `tddCmd.ts` 21.6% → 75.7%.
+- New suites: `tests/commands2.test.ts` (guard-prompt, mcp --list, next,
+  verify, plugin lifecycle incl. a throwing plugin handler, scale, tdd,
+  tasks), `tests/robustness.test.ts` (slugify invariants, readTasks
+  junk/CRLF/emoji survival, deterministic topic counts, draft/out
+  idempotency, 10k-entry cache volume, template golden structure).
+- MCP: protocol edge cases covered (parse errors, notifications, unknown
+  methods, version negotiation, runStdio loop — now takes an injectable
+  input stream for embedded use).
+- Fix: `out` no longer lists its own `result.md` as an artifact (was
+  self-referential and broke idempotency of a second run).
+
+## [0.25.0] — 2026-08-09
+
+Phase 1 (stabilization) of the analysis-driven roadmap (docs/analysis-roadmap.md):
+
+- `draft` decides maintenance vs feature plans by the **leading action verb**
+  of the goal — “updates” inside a feature description no longer produces a
+  fix plan (false positive reproduced on user-adaptation-memory-profile).
+- `tasks.md` supports an explicit per-task slug marker `{slug: name}` —
+  predictable file names, no guessing which significant words win.
+- `profile` filters action verbs (RU+EN) from frequent topics and persists
+  honest word frequencies (`Topic counts`).
+- `shield` strips Orion's own stderr chatter (🧠 lesson markers, ⚙/✅/❌
+  tool announcements, forge progress) from captured child output — the
+  guard report shows the command's signal, not the toolkit's noise.
+- `shield` security scan whitelists Orion's own `ORION_*` env toggles —
+  task code may read `process.env.ORION_…` without tripping the gate.
+- `tdd` CLI now has tests (start/implement/refactor/finalize, validation)
+  — coverage of tddCmd raised from 21% to ~70%.
+- Repo hygiene: `cwd/`, `.pytest_cache/` removed and git-ignored.
+
+## [0.24.3] — 2026-08-08
+
+`orion forge` no longer reports a false `missingSnippets` when the snippet
+file exists under a legacy or agent-guessed name — same class of false
+signal as v0.24.1/v0.24.2, this time on the snippet side.
+
+### Fixed
+- **False `missingSnippets`**: forge derived the expected snippet path
+  deterministically from the current task text (`snippets/<slug>.ts`,
+  shortSlug since v0.24), so files written under any other name — legacy
+  long slugs from before v0.24 (`fact_v77_reader_1cv77_dat_id_nnn_yyyymmdd.ts`)
+  or guessed names — were reported missing even though the content existed.
+  Snippet lookup now goes through `resolveSnippet` (exact match first, then
+  a unique marker-stripped token/prefix candidate; ambiguity is a miss,
+  never a silent guess) in both the sequential forge and the `--parallel`
+  worker, and a genuine miss lists the existing snippet files so the agent
+  can rename instead of re-creating.
+
+### Docs
+- **Token economy rule**: `AGENTS.md` documents concise-reasoning and
+  terse-artifact rules (short thinking, substance-only files,
+  `budget: compact` for `orion think`, `orion: compress` for big outputs).
+
+## [0.24.2] — 2026-08-08
+
+Drift can no longer fail on an impossible name — a false signal of the
+same class as the v0.24.1 forge fix.
+
+### Fixed
+- **Unsatisfiable drift FAIL**: `draft` generated the spec's `# Spec:`
+  heading from the think "Platform?" answer, slugified with **hyphens**
+  (`read-only-mypy-strict-ruff-pytest-http-m`). Drift requires that
+  heading to match an exported symbol in `src/tasks`, but hyphens are
+  illegal in JS identifiers — the capability could NEVER be exported, so
+  drift stayed FAIL regardless of implementation. `toCapability` now
+  joins words with `_` (`read_only_mypy_...` — a valid, satisfiable
+  identifier). New changes can no longer get an impossible spec heading.
+- **Unclear failure for existing broken specs**: a heading that is not a
+  valid JS identifier is now reported with a rename hint
+  (`invalid capability name(s): … — "# Spec:" headings must be valid JS
+  identifiers matching an export in src/tasks`) instead of a misleading
+  "missing exported" that implied the impossible. Rename the heading to
+  the real exported module's name and the check becomes satisfiable.
+
+### Unchanged
+- Drift still checks ONLY the `# Spec:` H1 headings; `## Purpose`,
+  acceptance criteria and prose are free-form documentation.
+- Existing changes keep their spec directories (per-change, not renamed).
+
+### Honest note
+- Changes created before 0.24.2 with hyphenated template headings need
+  one manual edit: rename the `# Spec:` heading to the exported symbol
+  (e.g. `# Spec: migrate_tool` for `src/tasks/migrate_tool.ts`).
+
+## [0.24.1] — 2026-08-08
+
+Forge no-junk contract — unfinished tasks leave ZERO trace.
+
+### Fixed
+- **Orphaned test files**: forge generated `tests/<slug>.test.ts` BEFORE
+  checking whether the implementation snippet exists, so a task waiting
+  for its snippet left a broken test importing a `src/tasks/<slug>.ts`
+  that never existed. Those orphans broke the project's vitest run and
+  produced FALSE shield FAILs (`test: N failing`, `drift: missing
+  exported`). The snippet is now read first — a missing snippet creates
+  nothing at all.
+- **RED/hazard rollback**: files forge created are removed when a task
+  ends RED or its snippet is refused by the hazard gate; files that
+  existed before forge (user work) are restored to their original
+  content, never deleted. A hazard snippet now reports an honest pending
+  with the gate reason instead of crashing the whole forge run.
+- Both the sequential path and `forge --parallel` (fork workers) share
+  the same `executeTask`, so the contract holds in both.
+
+### Unchanged
+- Completed tasks keep their test + implementation files; the run is
+  recorded in `forge-report.md` / `.json`. Interactive `orion tdd start`
+  still leaves the RED test in place for you to work on.
+
+### Honest note
+- Junk left by OLD broken runs (e.g. `tests/assumption_*.test.ts` from
+  pre-v0.24.1 slugs) is not auto-removed — forge cannot know which files
+  are its own. Delete them once, or complete the task (the next forge
+  run overwrites and finishes them).
+
+## [0.24.0] — 2026-08-08
+
+Framework-agnostic TDD + short task slugs.
+
+### Added
+- `orionTdd.json` now supports `testExt` / `srcExt` (defaults `.test.ts` /
+  `.ts`) — the RED-GREEN loop generates `tests/<task><testExt>` and writes
+  `src/<dir>/<task><srcExt>`, so Python / Go / other projects drive the same
+  loop (`python -m pytest tests/{{testFile}}`). `{{testFile}}` is a new
+  template/command placeholder that follows `testExt`.
+- The hazard gate scans exactly the files the runner imports — now with the
+  configured suffixes, so non-TS projects are gated too.
+- Task slugs are short: 2–3 significant words, `[fact]`/`[assumption]`
+  markers stripped, unique within a change (`_2`, `_3`, … on collision),
+  Cyrillic-safe. `Implement add function` → `implement_add_function` (was the
+  whole sentence, marker included).
+- Cyrillic task ids are accepted (`TASK_ID_RE` is now Unicode-letter aware);
+  shell-injection guard unchanged (still no shell metacharacters).
+
+### Changed
+- `forge:<slug>` cache keys and snippet file names change for existing
+  in-progress changes (slugs are shorter) — re-run `orion forge` after
+  renaming/re-providing snippets.
+- Default `command` in `src/config/orionTdd.json` uses `{{testFile}}`
+  (same expansion as before for TS projects).
+
+### Honest limits
+- `tdd refactor` (eslint --fix + prettier) and `shield`'s code scans remain
+  TypeScript-oriented; in a Python project they are no-ops or report
+  honestly. The RED-GREEN loop itself is framework-agnostic.
+
+### Fixed (CI flakes found via `gh run` logs — pre-existing, not v0.24)
+- `reuse` emitted `../../../../../../private/var/...` imports on macOS: the
+  fixture dir from `mkdtemp` keeps the `/var` symlink form while
+  `process.cwd()` after `chdir` reports the physical `/private/var` path, so
+  `path.relative()` could not see they were the same directory. Both sides
+  are canonicalized with `realpathSync` (already used for the self-import
+  identity check).
+- `tests/cli/track.e2e.test.ts` ran `track clear` on the real `~/.orion`
+  cache in a parallel fork, wiping `tdd:<task>=DONE` between `tdd finalize`
+  and `track get` in `tests/cli/tdd.e2e.test.ts` (flaky
+  `expected '(null)' to be 'DONE'`). Both e2e files now use their own
+  `ORION_CACHE_DIR`; the shared global cache is never touched by tests.
+- Nested vitest runs (forge/tdd spawn `pnpm vitest run`) get their own
+  transform cache via `ORION_TDD_CACHE_DIR` → `cache.dir` instead of sharing
+  the outer run's `node_modules/.vite`.
+
 ## [0.23.0] — 2026-08-08
 
 ### Security & hardening (from the two code reviews)

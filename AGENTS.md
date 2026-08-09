@@ -42,6 +42,17 @@ pnpm run test:coverage         # build + vitest with coverage
 pnpm exec tsc --noEmit         # type check
 ```
 
+## Token economy (applies to all Orion work)
+
+- Reason briefly: a few sentences max, then act. Do not write long
+  hypotheses or option essays into context.
+- Every `orion think` call passes a small `budget` (e.g. `compact`) so
+  draft/forge keep proposals, specs and tasks terse. Files: only substance.
+- Prefer `orion: compress` and piped/`head`/`tail` output over dumping
+  full command output into context.
+- Short answers, short files, short comments. Truth first: never omit a
+  failing check or a real number to save tokens.
+
 ## One-line natural language
 
 `orion <multi-word prompt>` is shorthand for `orion think <prompt>`.

@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execSync } from "node:child_process";
-import { rmSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const CLI = "node dist/cli/index.js";
+let cacheDir: string;
 
 beforeAll(() => {
   // dist/ is built before tests (CI: build step; local: pretest).
@@ -13,7 +15,18 @@ beforeAll(() => {
       stdio: "pipe",
     });
   }
+  // v0.24: NEVER touch the real ~/.orion cache. tests/cli/track.e2e.test.ts
+  // runs `track clear` in a parallel fork — sharing the global cache made
+  // this file's `tdd finalize` → `track get` flaky (clear wiped the key
+  // between the two subprocesses). Each e2e file gets its own cache dir.
+  cacheDir = mkdtempSync(join(tmpdir(), "orion-tdd-e2e-"));
+  process.env.ORION_CACHE_DIR = cacheDir;
 }, 120_000);
+
+afterAll(() => {
+  delete process.env.ORION_CACHE_DIR;
+  rmSync(cacheDir, { recursive: true, force: true });
+});
 
 /**
  * tdd e2e: the CLI drives a task through RED → GREEN → DONE with real
