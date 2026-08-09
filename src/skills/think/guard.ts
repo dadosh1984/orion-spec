@@ -22,7 +22,7 @@
  * - deterministic, zero dependencies (global `fetch` is built into Node 22).
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -134,12 +134,26 @@ function isLocalPath(name: string): boolean {
 /** Deny-list patterns (v0.28): project `.orion/deny.txt` then user-level
  * `~/.orion/deny.txt`. Blank lines and `#` comments are ignored; each
  * remaining line is a plain-substring policy enforced by guardPrompt. */
+// Memoized loadDenyList (v0.31): read on every guardPrompt; the file is
+// tiny but stat+read adds up under think/draft/next. Cache by file mtimes.
+const denyCache: { key: string; value: string[] } = { key: "", value: [] };
+
 export function loadDenyList(): string[] {
-  const out: string[] = [];
   const candidates = [
     join(".orion", "deny.txt"),
     join(homedir(), ".orion", "deny.txt"),
   ];
+  let key = "";
+  for (const f of candidates) {
+    try {
+      const st = statSync(f);
+      key += `${st.mtimeMs}:${st.size};`;
+    } catch {
+      key += "missing;";
+    }
+  }
+  if (denyCache.key === key) return denyCache.value;
+  const out: string[] = [];
   for (const f of candidates) {
     if (!existsSync(f)) continue;
     for (const line of readFileSync(f, "utf8").split(/\r?\n/)) {
@@ -148,6 +162,8 @@ export function loadDenyList(): string[] {
       if (!out.includes(t)) out.push(t);
     }
   }
+  denyCache.key = key;
+  denyCache.value = out;
   return out;
 }
 

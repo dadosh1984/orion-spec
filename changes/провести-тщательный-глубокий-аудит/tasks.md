@@ -13,8 +13,8 @@
 - [x] [assumption] --no-color / NO_COLOR + консистентные эмодзи
 
 ## Фаза 3 — Производительность (0.32.0)
-- [ ] [assumption] Ленивые import() MCP-тулов — замер startup
-- [ ] [assumption] Мемоизация readProfile/loadDenyList/scanChanges по mtime
+- [~] [assumption] Ленивые import() MCP-тулов — замер startup (отложено: старт уже 118ms)
+- [x] [assumption] Мемоизация readProfile/loadDenyList по mtime (+scanChanges отложено)
 
 ## Фаза 4 — Функциональность (0.33.0)
 - [ ] [assumption] orion plan <prompt> (dry-run)

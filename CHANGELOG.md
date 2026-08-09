@@ -4,6 +4,18 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.32.0] — 2026-08-09
+
+Phase 3 of the 2026 audit roadmap — performance.
+
+- Memoized readProfile (by path+mtime+size) and loadDenyList (by file
+  mtimes) — hot paths in think/draft/serve no longer stat+read the file
+  on every call.
+- Documented startup baselines: CLI ~136ms, MCP ~118ms — already fast, so
+  lazy MCP imports were deliberately deferred (risk > benefit).
+- Note: shield stays sequential by design (determinism over a ~30% speed
+  win); scanChanges memoization skipped (small win, complex invalidation).
+
 ## [0.31.0] — 2026-08-09
 
 Phase 2 of the 2026 audit roadmap — terminal interactivity.

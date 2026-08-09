@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { TITLE_STOPWORDS } from "./titles.js";
@@ -53,8 +53,25 @@ export function profilePath(): string {
 }
 
 /** Read the profile; defaults on a missing or corrupt file (fail-safe). */
+/**
+ * Memoized readProfile (v0.31): readProfile is called from think/draft/
+ * serve/doctor repeatedly in one process; the file is small but stat+read
+ * per call adds up. Cache by path+mtime+size; invalidates the moment the
+ * file changes (tests rewrite the profile between calls and stay honest).
+ */
+const profileCache = new Map<string, { key: string; value: UserProfile }>();
+
 export function readProfile(): UserProfile {
   const path = profilePath();
+  let cacheKey = "missing";
+  try {
+    const st = statSync(path);
+    cacheKey = `${st.mtimeMs}:${st.size}`;
+  } catch {
+    cacheKey = "missing";
+  }
+  const hit = profileCache.get(path);
+  if (hit && hit.key === cacheKey) return hit.value;
   const defaults: UserProfile = {
     exists: false,
     language: "en",
@@ -64,57 +81,58 @@ export function readProfile(): UserProfile {
     topicCounts: {},
     notes: "",
   };
+  let result: UserProfile;
   try {
-    if (!existsSync(path)) return defaults;
-    const text = readFileSync(path, "utf8");
-    // Split on the heading as a full line — a code-span mention like
-    // "`## User notes`" inside the header must never split here.
-    const heading = text.match(/^## User notes$/m);
-    const notesIdx = heading ? heading.index ?? -1 : -1;
-    const auto = notesIdx >= 0 ? text.slice(0, notesIdx) : text;
-    const notes =
-      notesIdx >= 0
-        ? text.slice(notesIdx + NOTES_HEADING.length).trim()
-        : "";
-    // The default placeholder is not a real note.
-    const notesValue = /^\(.*\)$/.test(notes) ? "" : notes;
-    const get = (label: string): string => {
-      const m = auto.match(new RegExp(`^-\\s*${label}:\\s*(.+)$`, "m"));
-      if (!m) return "";
-      const v = m[1].trim();
-      // Informational placeholders ("(not yet observed)") are empty values.
-      return /^\(.*\)$/.test(v) ? "" : v;
-    };
-    const lang = get("Language").toLowerCase();
-    // Topic counts (v0.25): "converter:3, parser:1" — the honest
-    // frequency. Falls back to the plain names list for pre-v0.25 files.
-    const counts = new Map<string, number>();
-    for (const entry of get("Topic counts").split(",")) {
-      const m = entry.match(/^\s*([^:]+):\s*(\d+)\s*$/);
-      if (m) counts.set(m[1].trim(), Number(m[2]));
+    if (!existsSync(path)) {
+      result = defaults;
+    } else {
+      const text = readFileSync(path, "utf8");
+      // Split on the heading as a full line — a code-span mention like
+      // "`## User notes`" inside the header must never split here.
+      const heading = text.match(/^## User notes$/m);
+      const notesIdx = heading ? heading.index ?? -1 : -1;
+      const auto = notesIdx >= 0 ? text.slice(0, notesIdx) : text;
+      const notes =
+        notesIdx >= 0 ? text.slice(notesIdx + NOTES_HEADING.length).trim() : "";
+      const notesValue = /^\(.*\)$/.test(notes) ? "" : notes;
+      const get = (label: string): string => {
+        const m = auto.match(new RegExp(`^-\\s*${label}:\\s*(.+)$`, "m"));
+        if (!m) return "";
+        const v = m[1].trim();
+        return /^\(.*\)$/.test(v) ? "" : v;
+      };
+      const lang = get("Language").toLowerCase();
+      const counts = new Map<string, number>();
+      for (const entry of get("Topic counts").split(",")) {
+        const m = entry.match(/^\s*([^:]+):\s*(\d+)\s*$/);
+        if (m) counts.set(m[1].trim(), Number(m[2]));
+      }
+      let topics = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([w]) => w);
+      if (topics.length === 0) {
+        topics = get("Frequent topics")
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t && !/^\(.*\)$/.test(t));
+        for (const t of topics) counts.set(t, 1);
+      }
+      result = {
+        exists: true,
+        language:
+          lang === "ru" ? "ru" : lang === "en" ? "en" : defaults.language,
+        platform: get("Platform"),
+        budget: get("Budget"),
+        topics,
+        topicCounts: Object.fromEntries(counts),
+        notes: notesValue,
+      };
     }
-    let topics = [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([w]) => w);
-    if (topics.length === 0) {
-      topics = get("Frequent topics")
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t && !/^\(.*\)$/.test(t));
-      for (const t of topics) counts.set(t, 1);
-    }
-    return {
-      exists: true,
-      language: lang === "ru" ? "ru" : lang === "en" ? "en" : defaults.language,
-      platform: get("Platform"),
-      budget: get("Budget"),
-      topics,
-      topicCounts: Object.fromEntries(counts),
-      notes: notesValue,
-    };
   } catch {
-    return defaults;
+    result = defaults;
   }
+  profileCache.set(path, { key: cacheKey, value: result });
+  return result;
 }
 
 /**
