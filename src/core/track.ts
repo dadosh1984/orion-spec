@@ -11,6 +11,7 @@ import {
   readdirSync,
 } from "node:fs";
 import { resolveConfig } from "../utils/file.js";
+import { DAY_MS } from "../constants.js";
 import type { TrackConfig, TrackStats } from "../type.js";
 
 /**
@@ -190,7 +191,7 @@ export class OrionTrack {
    */
   prune(): number {
     const { maxSize, ttlDays } = this.config();
-    const ttlMs = ttlDays * 24 * 60 * 60 * 1000;
+    const ttlMs = ttlDays * DAY_MS;
     const now = Date.now();
     let removed = 0;
 

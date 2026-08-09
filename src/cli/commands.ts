@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { writeFileSafe } from "../utils/file.js";
+import { DEFAULT_PORT } from "../constants.js";
 import { parseArgs, HELP } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
@@ -533,14 +534,14 @@ export async function main(argv: string[]): Promise<number> {
     case "serve": {
       const token = opts.token ?? process.env.ORION_DASHBOARD_TOKEN;
       const server = await startServer(track, {
-        port: opts.port || 4780,
+        port: opts.port || DEFAULT_PORT,
         ui: opts.ui,
         host: opts.host ?? "127.0.0.1",
         token,
       });
       const addr = server.address();
       const port =
-        typeof addr === "object" && addr ? addr.port : opts.port || 4780;
+        typeof addr === "object" && addr ? addr.port : opts.port || DEFAULT_PORT;
       const host = opts.host ?? "127.0.0.1";
       console.log(
         `orion: dashboard at http://${host}:${port} (Ctrl+C to stop)`,

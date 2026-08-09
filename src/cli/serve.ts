@@ -10,7 +10,6 @@ import { readDebt } from "../core/debt.js";
 import { lessonsStats } from "../core/lessons.js";
 import { readTasks } from "../skills/forge/handler.js";
 import { phaseOf } from "../core/changeStatus.js";
-import { reviewChange } from "../skills/review/handler.js";
 import { readProfile } from "../core/profile.js";
 
 /** Options for the `orion serve` web dashboard. */
@@ -109,6 +108,68 @@ export function readVersion(): string {
   }
 }
 
+/** One drift check memoized by the change directory's newest mtime.
+ * Unlike full reviewChange, it reads only the spec headings + exported
+ * symbols — the precise drift gate — and is order-of-magnitude cheaper,
+ * which matters because the dashboard re-renders on a 5s timer (v0.30). */
+const SYMBOL = /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/m;
+const driftCache = new Map<string, { mtime: number; ok: boolean | null }>();
+function driftOf(changeId: string): boolean | null {
+  const base = join("changes", changeId, "specs");
+  if (!existsSync(base)) return null;
+  // Newest mtime of any file under the change dir (cheap stat, not full walk).
+  let mtime = 0;
+  const walk = (dir: string): void => {
+    let ents: string[] = [];
+    try {
+      ents = readdirSync(dir);
+    } catch {
+      return;
+    }
+    for (const e of ents) {
+      if (e === ".orion-cache") continue;
+      const p = join(dir, e);
+      try {
+        const st = statSync(p);
+        if (st.isDirectory()) walk(p);
+        else mtime = Math.max(mtime, st.mtimeMs);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+  walk(base);
+  const hit = driftCache.get(changeId);
+  if (hit && hit.mtime === mtime) return hit.ok;
+  // Recompute: expected capability names from spec.md headings, then check
+  // each is exported under src/tasks/*.
+  let ok: boolean | null = true;
+  const expected: string[] = [];
+  for (const d of readdirSync(base, { withFileTypes: true })) {
+    if (!d.isDirectory()) continue;
+    const specFile = join(base, d.name, "spec.md");
+    if (!existsSync(specFile)) continue;
+    const spec = readFileSync(specFile, "utf8");
+    for (const m of spec.matchAll(/^# Spec: (.+)$/gm)) expected.push(m[1].trim());
+  }
+  if (expected.length === 0) ok = null;
+  else if (expected.length && existsSync(join("src", "tasks"))) {
+    const exports = new Set<string>();
+    for (const f of readdirSync(join("src", "tasks")).filter((f) => f.endsWith(".ts"))) {
+      const code = readFileSync(join("src", "tasks", f), "utf8");
+      for (const sm of code.matchAll(SYMBOL)) exports.add(sm[1]);
+    }
+    for (const cap of expected) {
+      if (!exports.has(cap)) {
+        ok = false;
+        break;
+      }
+    }
+  }
+  driftCache.set(changeId, { mtime, ok: ok as boolean | null });
+  return ok;
+}
+
 /** List the change directories in ./changes with their proposal summaries. */
 export function listChanges(): ApiChange[] {
   if (!existsSync("changes")) return [];
@@ -134,10 +195,12 @@ export function listChanges(): ApiChange[] {
       } catch {
         /* no guard report yet */
       }
-      // Drift is one review check; cheap enough to compute per change here.
+      // Drift check (v0.30): computed by a focused read of spec + exported
+      // symbols, NOT the full reviewChange pass, and memoized by directory
+      // mtime so the 5s dashboard auto-refresh does not re-scan every change.
       let drift: boolean | null = null;
       try {
-        drift = reviewChange(name).checks.find((c) => c.name === "drift")?.ok ?? null;
+        drift = driftOf(name);
       } catch {
         drift = null;
       }

@@ -4,6 +4,23 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.30.0] — 2026-08-09
+
+Phase 1 of the 2026 audit roadmap — bugs and utilities.
+
+- Dedupe `readCapped` (was duplicated in core/verifiability.ts and
+  core/verify.ts with 64KB/128KB defaults) into src/utils/file.ts; verify
+  passes an explicit wider evidence cap.
+- New `humanBytes` in src/utils/file.ts; constants DAY_MS and DEFAULT_PORT
+  in src/constants.ts.
+- `listChanges` (dashboard) now uses a memoized `driftOf` that reads only
+  spec headings + exported symbols, instead of a full reviewChange pass on
+  every 5s auto-refresh.
+- Tests: src/utils.test.ts (readCapped boundaries, humanBytes).
+- Test speed: ORION_VITEST_MAX_WORKERS env to bound fork workers on loaded
+  CI runners; confirmed the suite (571 tests) runs in ~21s with no slow
+  tests except the real async waves suite.
+
 ## [0.29.0] — 2026-08-09
 
 Phase 5 of the analysis roadmap — performance, security, ecosystem.
