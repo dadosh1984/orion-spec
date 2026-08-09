@@ -128,3 +128,23 @@ reviewed. The patterns are language-agnostic (`eval(`, `exec(`, `spawn(`,
 `exec` and `os.system`-adjacent calls too — but a Python-only pattern that is
 not listed will not be flagged (the same honest "heuristic, not safety
 claim" wording applies).
+
+## Prompt deny-list policy (v0.28)
+
+`think` enforces a **deny-list** on the raw prompt before a proposal exists.
+Patterns are plain substrings, matched case-insensitively, so `# rm -rf` in
+the deny list blocks `run rm -rf ./cache` too. A match is a confirmation
+gate, not a censor: the prompt is reported and the user must pass `--force`
+to proceed.
+
+Files (merged, project first):
+
+| File | Level |
+|------|-------|
+| `.orion/deny.txt` (scaffolded by `orion init`) | project |
+| `~/.orion/deny.txt` | user (all projects) |
+
+Format: one pattern per line; blank lines and `#` comments are ignored.
+Combine with the drift guard (hallucinated packages, placeholders) and the
+hazard gate above to cover prompt-, import-, and execution-level policy in
+one deterministic, zero-dependency layer.

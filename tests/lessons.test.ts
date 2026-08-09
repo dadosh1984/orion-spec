@@ -19,6 +19,9 @@ import {
   lessonsPath,
   exportLessons,
   importLessons,
+  recordPattern,
+  rateLesson,
+  rankedLessons,
   type Lesson,
 } from "../src/core/lessons.js";
 import { shield, projectHash } from "../src/skills/shield/handler.js";
@@ -535,5 +538,26 @@ describe("federated lessons: export/import (v0.23)", () => {
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+});
+
+describe("positive learning + rating (v0.29)", () => {
+  it("recordPattern stores a success lesson and is deduped", () => {
+    const a = recordPattern({ changeId: "x", step: "forge", pattern: "write the test first" });
+    expect(a).not.toBeNull();
+    expect(a?.kind).toBe("success");
+    const again = recordPattern({ changeId: "x", step: "forge", pattern: "write the test first" });
+    expect(again).toBeNull();
+  });
+
+  it("rateLesson bumps score; rankedLessons puts successes first", () => {
+    const err = recordLesson({ changeId: "y", step: "shield", error: "lint failed" });
+    const pat = recordPattern({ changeId: "y", step: "forge", pattern: "run format before shield" });
+    rateLesson(pat!.id, 3);
+    const ranked = rankedLessons();
+    expect(ranked[0].kind).toBe("success");
+    expect(ranked[0].score).toBe(3);
+    expect(rateLesson("ghost", 1)).toBeNull();
+    expect(err).toBeDefined();
   });
 });

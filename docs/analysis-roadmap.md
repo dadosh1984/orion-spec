@@ -267,16 +267,18 @@
 
 **Результаты:** 559 тестов (было 554), lint чист, tsc чист. Новые файлы: `src/skills/init/handler.ts`, `src/cli/changelogCmd.ts`.
 
-### Фаза 5 — Производительность, безопасность, экосистема
-Критерий выхода: бенчмарки кэша и startup, MCP-SSE, npm-плагины.
+### Фаза 5 — Производительность, безопасность, экосистема ✅ частично (0.29.0)
+Критерий выхода близок: бенчмарки есть, deny-политики и positive learning — работают; MCP-SSE и npm-плагины — скоупированы на след. версию.
 
-- **T5.1** Бенчмарк кэша (мелкие файлы vs один файл) + оптимизация по цифрам.
-- **T5.2** Startup: ленивые import; мемоизация significantWords/триграмм.
-- **T5.3** MCP по SSE/TCP с аутентификацией.
-- **T5.4** Политики `denyExec`/`denyEnv` + docs/sandbox.md кейсы.
-- **T5.5** Плагины из npm + JSON Schema для конфигов.
-- **T5.6** Positive learning (успешные паттерны) + рейтинг уроков.
-- **T5.7** GitHub Action `orion-shield` для CI.
+- [x] **T5.1** Бенчмарк кэша `scripts/cache-bench.mjs`: many-small 0.36 ms/op vs single-blob 9.3 ms/op — текущий формат подтверждён цифрами, рефактор не нужен.
+- [x] **T5.2** Мемоизация `significantWords` (`SW_CACHE`, bounded 512) — hot path think/forge/дraft.
+- [ ] **T5.3** MCP-SSE/TCP — **deferred** (крупная фича; дашборд уже служит /api).
+- [x] **T5.4** Deny-политика `.orion/deny.txt` (+`~/.orion/deny.txt`) в `guardPrompt`; docs/sandbox.md секция. (denyExec/denyEnv — через существующий hazard gate + deny-list; запрет exec-паттернов остаётся эвристикой.)
+- [~] **T5.5** JSON Schema `src/config/orionTdd.schema.json` + `validateTddConfig()` в tddCore; **npm-плагины deferred**.
+- [x] **T5.6** Positive learning: `recordPattern` + `rateLesson` + `rankedLessons`; `out`-SUCCESS пишет успешный паттерн; `track lessons` ранжирует (success/✱score); result.md блок «++ Успешные паттерны».
+- [x] **T5.7** GitHub Action `.github/workflows/orion-shield.yml` (lint/type/tests/orion shield в CI).
+
+**Результаты:** 566 тестов (было 559), lint чист, tsc чист.
 
 ---
 

@@ -1,4 +1,4 @@
-import { lessonsStats, listLessons } from "../core/lessons.js";
+import { lessonsStats, listLessons, rankedLessons } from "../core/lessons.js";
 import { listDebt } from "../core/debt.js";
 import { formatBytes } from "../utils/format.js";
 import { OrionTrack } from "../core/track.js";
@@ -34,18 +34,27 @@ export async function trackCommand(
     }
     case "lessons": {
       const changeId = key?.trim() || undefined;
-      const rows = listLessons(changeId);
+      // Relevance order (v0.29, T5.6): success patterns first, then by
+      // score — what matters most appears on top.
+      const rows = rankedLessons().filter((l) =>
+        changeId ? l.changeId === changeId : true,
+      );
       const text = rows.length
         ? rows
-            .map(
-              (l) =>
-                `  [${l.ts.slice(0, 19)}] ${l.changeId} / ${l.step} — ${l.error.slice(0, 90)}${l.fix ? ` → ${l.fix.slice(0, 60)}` : ""}`,
-            )
+            .map((l) => {
+              const kind = l.kind === "success" ? "success" : "" ;
+              const tag = kind || (l.score ? `✱${l.score}` : "");
+              const label = tag ? ` [${tag}]` : "";
+              return `  [${l.ts.slice(0, 19)}]${label} ${l.changeId} / ${l.step} — ${(l.pattern ?? l.error).slice(0, 80)}${l.fix ? ` → ${l.fix.slice(0, 50)}` : ""}`;
+            })
             .join("\n")
         : changeId
           ? `no lessons for "${changeId}" — nothing has gone wrong (yet)`
           : "no lessons recorded — nothing has gone wrong (yet)";
-      printOut(opts, { lessons: rows }, text);
+      const payload = changeId
+        ? rows
+        : { lessons: listLessons() };
+      printOut(opts, { lessons: payload }, text);
       return 0;
     }
     case "prune": {

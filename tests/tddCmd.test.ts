@@ -72,3 +72,20 @@ describe("tdd CLI (v0.25 tests)", () => {
     mkdirSync(join(dir, "snippets"), { recursive: true });
   }, 120_000);
 });
+
+describe("tdd config validation (v0.29)", () => {
+  it("flags an out-of-range minCoverage and non-string fields", async () => {
+    const { validateTddConfig } = await import("../src/core/tddCore.js");
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    mkdirSync("src/config", { recursive: true });
+    writeFileSync(join("src/config/orionTdd.json"), JSON.stringify({ minCoverage: 150, command: 42 }), "utf8");
+    const issues = validateTddConfig();
+    expect(issues.some((i) => i.includes("minCoverage"))).toBe(true);
+    expect(issues.some((i) => i.includes("command"))).toBe(true);
+  });
+
+  it("returns [] when the config is absent (degrade, never crash)", async () => {
+    const { validateTddConfig } = await import("../src/core/tddCore.js");
+    expect(validateTddConfig()).toEqual([]);
+  });
+});

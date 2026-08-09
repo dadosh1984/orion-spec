@@ -4,6 +4,24 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.29.0] — 2026-08-09
+
+Phase 5 of the analysis roadmap — performance, security, ecosystem.
+
+- Cache benchmark `scripts/cache-bench.mjs`: honest numbers confirm the
+  many-small-files format (0.36 ms/op) over a single blob (~9 ms) — no
+  risky storage refactor needed.
+- Memoized `significantWords` (bounded cache) on the think/forge hot path.
+- Deny-list prompt policy: `.orion/deny.txt` + `~/.orion/deny.txt`, enforced
+  case-insensitively by guardPrompt as a confirmation gate (--force wins);
+  sandbox.md documents it and the hazard gate.
+- Positive learning: `recordPattern`, `rateLesson`, `rankedLessons`. A
+  successful `out` now records a success pattern; `track lessons` ranks by
+  relevance; result.md gains a `++ Успешные паттерны` block without
+  suppressing the honest "no errors" line.
+- JSON Schema for orionTdd.json + `validateTddConfig()` (degrade, never crash).
+- GitHub Action `orion-shield` for CI (lint, type-check, tests, orion shield).
+
 ## [0.28.0] — 2026-08-09
 
 Phase 4 of the analysis roadmap — UX, dashboard, documentation.

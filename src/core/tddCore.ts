@@ -60,6 +60,32 @@ export function loadTddConfig(): TddConfig {
 }
 
 /**
+ * Lightweight JSON-Schema-style validation of orionTdd.json (v0.29, T5.5).
+ * Zero dependency: hand-checked types + range against the DEFAULTS shape.
+ * Returns [] when the file is absent/invalid — the caller falls back to
+ * DEFAULTS, so a broken config degrades, never crashes.
+ */
+export function validateTddConfig(): string[] {
+  try {
+    const raw = JSON.parse(
+      readFileSync(resolveConfig("orionTdd.json"), "utf8"),
+    ) as Record<string, unknown>;
+    const issues: string[] = [];
+    if (typeof raw.minCoverage === "number" &&
+      (raw.minCoverage < 0 || raw.minCoverage > 100))
+      issues.push(`minCoverage ${raw.minCoverage} out of 0..100`);
+    for (const key of ["testTemplate", "testDir", "srcDir", "command", "testExt", "srcExt"] as const) {
+      if (raw[key] !== undefined && typeof raw[key] !== "string")
+        issues.push(`${key} must be a string`);
+    }
+    return issues;
+  } catch {
+    return [];
+  }
+}
+
+
+/**
  * TddEngine drives one task through RED → GREEN → REFACTOR → DONE.
  */
 export class TddEngine {

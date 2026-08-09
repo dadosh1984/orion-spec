@@ -97,3 +97,23 @@ describe("prompt-injection guard (v0.23)", () => {
     expect(v.ok).toBe(true);
   });
 });
+
+describe("deny-list policy (v0.28)", () => {
+  it("blocks a prompt that matches an injected deny pattern", () => {
+    const v = guardPrompt("run rm -rf ./cache", ["rm -rf"]);
+    expect(v.ok).toBe(false);
+    expect(
+      v.issues.some((i) => i.includes("deny-list") && i.includes("rm -rf")),
+    ).toBe(true);
+  });
+
+  it("match is case-insensitive and plain-substring", () => {
+    const v = guardPrompt("DEPLOY rm -RF ./prod", ["rm -rf"]);
+    expect(v.ok).toBe(false);
+  });
+
+  it("ignores blank lines and # comments, dedups", () => {
+    const v = guardPrompt("ok task", ["# comment", "", "eval(", "# ", "eval("]);
+    expect(v.ok).toBe(true); // deny patterns unrelated to the prompt
+  });
+});

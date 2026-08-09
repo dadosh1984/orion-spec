@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orion/schemas/orionTdd.json",
+  "title": "orionTdd.json",
+  "description": "Configuration for the Orion TDD engine (src/config/orionTdd.json). All fields are optional; TS defaults apply when omitted.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "testTemplate": { "type": "string", "description": "Test file template; {{task}} and {{testFile}} are placeholders." },
+    "testDir": { "type": "string", "description": "Directory for generated test files." },
+    "srcDir": { "type": "string", "description": "Directory for implementation units." },
+    "command": { "type": "string", "description": "Shell command run per step; {{testDir}}/{{testFile}} are placeholders." },
+    "minCoverage": { "type": "number", "minimum": 0, "maximum": 100, "description": "Guard-rail coverage floor." },
+    "testExt": { "type": "string", "description": "Test file suffix, e.g. .test.ts or _test.py (v0.24)." },
+    "srcExt": { "type": "string", "description": "Implementation file suffix, e.g. .ts or .py (v0.24)." }
+  }
+}

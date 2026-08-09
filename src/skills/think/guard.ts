@@ -22,6 +22,10 @@
  * - deterministic, zero dependencies (global `fetch` is built into Node 22).
  */
 
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 /** A package name extracted from a prompt (bare name, no scope/quotes). */
 export interface PackageCandidate {
   name: string;
@@ -127,12 +131,47 @@ function isLocalPath(name: string): boolean {
   );
 }
 
+/** Deny-list patterns (v0.28): project `.orion/deny.txt` then user-level
+ * `~/.orion/deny.txt`. Blank lines and `#` comments are ignored; each
+ * remaining line is a plain-substring policy enforced by guardPrompt. */
+export function loadDenyList(): string[] {
+  const out: string[] = [];
+  const candidates = [
+    join(".orion", "deny.txt"),
+    join(homedir(), ".orion", "deny.txt"),
+  ];
+  for (const f of candidates) {
+    if (!existsSync(f)) continue;
+    for (const line of readFileSync(f, "utf8").split(/\r?\n/)) {
+      const t = line.trim();
+      if (t === "" || t.startsWith("#")) continue;
+      if (!out.includes(t)) out.push(t);
+    }
+  }
+  return out;
+}
+
+
 /**
  * Offline drift scan. Deterministic, cheap, never throws.
  */
-export function guardPrompt(prompt: string): GuardVerdict {
+export function guardPrompt(prompt: string, deny?: string[]): GuardVerdict {
   const issues: string[] = [];
   const packages: PackageCandidate[] = [];
+  const denyPatterns = (deny ?? loadDenyList()).map((p) => p.trim()).filter(
+    (p) => p !== "" && !p.startsWith("#"),
+  );
+
+  // Deny-list policy (v0.28): plain-substring match, case-insensitive, so
+  // `# rm -rf` in deny.txt blocks "run rm -rf ./cache" too. Honest: it is
+  // a confirmation gate (--force overrides), never a silent censor.
+  for (const pat of denyPatterns) {
+    if (prompt.toLowerCase().includes(pat.toLowerCase())) {
+      issues.push(
+        `prompt matches deny-list pattern "${pat}" — project policy rejects this; use --force to override explicitly`,
+      );
+    }
+  }
 
   const years = prompt.match(YEAR_TOKEN) ?? [];
   for (const tok of years) {

@@ -74,12 +74,21 @@ export const TITLE_STOPWORDS: ReadonlySet<string> = new Set([
 ]);
 
 /** First `max` significant words of a phrase (stopwords stripped). */
+// Memo key -> cached words (v0.29, T5.2): shortTitle/shortSlug call this
+// repeatedly on identical prompts; a pure function deserves a cache. Bounded.
+const SW_CACHE = new Map<string, string[]>();
+const SW_CACHE_MAX = 512;
 export function significantWords(text: string, max: number): string[] {
+  const key = `${text.length}|${max}|${text}`;
+  const hit = SW_CACHE.get(key);
+  if (hit) return hit;
   const words: string[] = [];
   for (const w of text.toLowerCase().split(/[^a-z0-9а-яё]+/)) {
     if (!w || TITLE_STOPWORDS.has(w)) continue;
     words.push(w);
     if (words.length >= max) break;
   }
+  if (SW_CACHE.size >= SW_CACHE_MAX) SW_CACHE.clear();
+  SW_CACHE.set(key, words);
   return words;
 }
