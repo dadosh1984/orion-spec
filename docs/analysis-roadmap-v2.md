@@ -127,9 +127,10 @@
 5. (~) Sandbox forge без сети — вне рамок zero-dep CLI (docs/sandbox.md честно описывает границы; docker-опция есть).
 
 
-### Фаза 6 — Экосистема и метрики (0.35.0)
-1. self-audit + score (B2-34, C9-481).
-2. trend cache/tests/coverage (C3-298..300).
-3. backup/restore (C7-430..432).
-4. docs faq/troubleshooting/mcp (B10-145, 146, 148).
-5. release.mjs + автоматический changelog (B10-151).
+### Фаза 6 — Экосистема и метрики (0.35.0) ✅
+1. ✅ `orion self-audit` — consolidated health + score report (`selfauditCmd.ts`).
+2. (~) trend cache/tests/coverage — сводка статистики в self-audit покрывает суть; полноценный trend-график отложен (нет хранилища истории).
+3. ✅ `orion backup <f>` / `restore <f>` — one-file backup профиля + уроков (`backupCmd.ts`).
+4. (~) docs faq/troubleshooting/mcp — уже есть configuration/commands; полноценные faq/troubleshooting отложены (низкий приоритет против стабильности).
+5. (~) release.mjs — ручной цикл commit+push+publish работает стабильно; автоматизация отложена.
+

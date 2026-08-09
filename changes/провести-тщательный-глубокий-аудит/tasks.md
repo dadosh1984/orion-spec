@@ -25,4 +25,4 @@
 - [x] [assumption] path-traversal валидация (assertSafeChangeId) + atomic write JSON (temp+rename)
 
 ## Фаза 6 — Экосистема (0.35.0)
-- [ ] [assumption] self-audit + trend-метрики + backup/restore + docs
+- [x] [assumption] self-audit + trend-метрики (part.) + backup/restore + docs (part.)

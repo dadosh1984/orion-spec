@@ -33,6 +33,8 @@ import { archiveChange } from "../skills/archive/handler.js";
 import { scanChanges, listTable, projectStats } from "./overviewCmd.js";
 import { planCmd } from "./planCmd.js";
 import { compareCmd, assumptionsCmd } from "./compareCmd.js";
+import { selfAudit } from "./selfauditCmd.js";
+import { backupCmd, restoreCmd } from "./backupCmd.js";
 import { doctor } from "./doctorCmd.js";
 import { exportProfile, importProfile, resetProfile } from "../core/profile.js";
 import { initRepo } from "../skills/init/handler.js";
@@ -346,6 +348,28 @@ export async function main(argv: string[]): Promise<number> {
       const id = args[0];
       if (!id) return fail("assumptions requires a change id");
       const result = assumptionsCmd(id);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "self-audit": {
+      const result = selfAudit();
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "backup": {
+      const target = args[0];
+      if (!target) return fail("backup requires an output file, e.g. orion backup ./orion-backup.json");
+      const result = backupCmd(target);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "restore": {
+      const target = args[0];
+      if (!target) return fail("restore requires a backup file");
+      const result = restoreCmd(target);
       console.log(result.text);
       return result.ok ? 0 : 1;
     }

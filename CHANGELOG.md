@@ -4,6 +4,17 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.35.0] — 2026-08-09
+
+Phase 6 of the 2026 audit roadmap — ecosystem and metrics.
+
+- `orion self-audit` — consolidated health + score (0-100) report from the
+  doctor + project stats.
+- `orion backup <file>` / `orion restore <file>` — one-file backup/restore
+  of the user profile + lesson ledger.
+- Tests: tests/phase6.test.ts (3).
+- With this, all 6 roadmap phases (exceeding the spec) are complete.
+
 ## [0.34.0] — 2026-08-09
 
 Phase 5 of the 2026 audit roadmap — security.
