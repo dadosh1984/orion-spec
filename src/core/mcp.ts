@@ -22,6 +22,9 @@ import { learnFromSessions, sessionFiles } from "./sessions.js";
 import { listPlugins, installPlugin, removePlugin } from "./plugins.js";
 import { readVersion } from "../cli/serve.js";
 import { profileView } from "../tasks/profile_cli_view.js";
+import { changeStatus } from "./changeStatus.js";
+import { reviewChange } from "../skills/review/handler.js";
+import { scanChanges } from "../cli/overviewCmd.js";
 
 /**
  * Orion MCP server — a zero-dependency implementation of the Model Context
@@ -356,6 +359,30 @@ export function getMcpTools(): McpTool[] {
       handler: async () => profileView(),
     },
     {
+      name: "change_status",
+      description:
+        "Status of a change (v0.27): task progress, guard verdict and artifact completeness — the same signal `orion list`/`orion stats` aggregate.",
+      inputSchema: {
+        type: "object",
+        properties: { changeId: { type: "string" } },
+        required: ["changeId"],
+      },
+      handler: async (args: Record<string, unknown>) =>
+        JSON.stringify(changeStatus(String(args.changeId)), null, 2),
+    },
+    {
+      name: "review",
+      description:
+        "Deterministic review of a change between forge and shield (v0.27): checks proposal, tasks, snippets, test files for done tasks and drift (spec heading vs exported symbols). No LLM involved — pure file checks.",
+      inputSchema: {
+        type: "object",
+        properties: { changeId: { type: "string" } },
+        required: ["changeId"],
+      },
+      handler: async (args: Record<string, unknown>) =>
+        JSON.stringify(reviewChange(String(args.changeId)), null, 2),
+    },
+    {
       name: "lessons_list",
       description:
         "List recorded self-correction lessons (changeId optional). Lessons are what Orion learned from its own errors — read them before acting so the same mistake is not repeated. Empty list is honest: nothing went wrong (yet).",
@@ -613,10 +640,49 @@ export class McpServer {
           });
         }
       }
-      case "resources/list":
-        return result(id, { resources: [] });
+      case "resources/list": {
+        // One resource per change (v0.27): the MCP client can then
+        // read a change's full status without calling tools.
+        const rows = scanChanges();
+        return result(
+          id,
+          {
+            resources: rows.map((r) => ({
+              uri: `orion://change/${r.title}`,
+              name: r.title,
+              description: `${r.done}/${r.tasks} tasks — ${r.status}`,
+              mimeType: "text/markdown",
+            })),
+          },
+        );
+      }
       case "prompts/list":
-        return result(id, { prompts: [] });
+        return result(id, {
+          prompts: [
+            {
+              name: "review",
+              description: "Review a change between forge and shield",
+              arguments: [
+                {
+                  name: "changeId",
+                  description: "Change id under changes/",
+                  required: true,
+                },
+              ],
+            },
+            {
+              name: "resume",
+              description: "Continue an interrupted change workflow",
+              arguments: [
+                {
+                  name: "changeId",
+                  description: "Change id under changes/",
+                  required: true,
+                },
+              ],
+            },
+          ],
+        });
       default:
         if (!this.initialized && method.startsWith("tools/")) {
           return error(ERRORS.NOT_INITIALIZED, "Server not initialized", id);

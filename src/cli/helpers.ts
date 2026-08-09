@@ -20,6 +20,8 @@ export interface CliOptions {
   parallel?: number;
   /** Bearer token for `serve` (v0.19); auto-generated on non-loopback bind. */
   token?: string;
+  /** Template language override for `draft` (v0.27): "en" | "ru". */
+  lang?: "en" | "ru";
 }
 
 /** Print JSON or plain text depending on the --json flag. */

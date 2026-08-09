@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { writeFileSafe } from "../utils/file.js";
 import { parseArgs, HELP } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
@@ -25,6 +26,11 @@ import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { nextStep } from "../skills/next/handler.js";
 import { payDebt } from "../skills/pay-debt/handler.js";
+import { reviewChange } from "../skills/review/handler.js";
+import { archiveChange } from "../skills/archive/handler.js";
+import { scanChanges, listTable, projectStats } from "./overviewCmd.js";
+import { doctor } from "./doctorCmd.js";
+import { exportProfile, importProfile, resetProfile } from "../core/profile.js";
 import { resume } from "../skills/resume/handler.js";
 import { verifyChange, formatVerifyReport } from "../core/verify.js";
 import { guardPrompt, checkNpmPackages } from "../skills/think/guard.js";
@@ -105,7 +111,7 @@ export async function main(argv: string[]): Promise<number> {
       const title = args[0];
       if (!title)
         return fail("draft requires a title, e.g. orion draft my-csv-tool");
-      const artifacts = await draft(title, opts);
+      const artifacts = await draft(title, { noCache: opts.noCache, lang: opts.lang });
       printOut(
         opts,
         artifacts,
@@ -281,9 +287,96 @@ export async function main(argv: string[]): Promise<number> {
     case "profile": {
       // User adaptation (v0.26): show the memory.md analogue. Renders the
       // file as-is (it is already human-readable markdown) or an honest
-      // hint when it does not exist yet.
+      // hint when it does not exist yet. Sub-commands (v0.27):
+      //   orion profile --reset    clear auto-observed signals (keep notes)
+      //   orion profile export     print portable JSON to stdout
+      //   orion profile import <f> load a portable JSON profile
+      const sub = args[0];
+      if (sub === "--reset") {
+        resetProfile();
+        console.log("orion: profile auto-section reset (user notes kept)");
+        return 0;
+      }
+      if (sub === "export") {
+        console.log(JSON.stringify(exportProfile(), null, 2));
+        return 0;
+      }
+      if (sub === "import") {
+        const file = args[1];
+        if (!file) return fail("profile import requires a JSON file");
+        try {
+          const raw = readFileSync(file, "utf8");
+          const path = importProfile(raw);
+          console.log(`orion: profile imported from ${file} → ${path}`);
+          return 0;
+        } catch (err) {
+          return fail(`profile import failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
       printOut(opts, { path: profilePath() }, profileView());
       return 0;
+    }
+
+    case "list": {
+      printOut(opts, { changes: scanChanges() }, listTable(scanChanges()));
+      return 0;
+    }
+
+    case "stats": {
+      printOut(opts, { stats: projectStats() }, (() => {
+        const s = projectStats();
+        return [
+          `Changes: ${s.changes} (${s.done} done, ${s.open} open)`,
+          `Tasks: ${s.tasksDone}/${s.tasks} done`,
+          `Lessons: ${s.lessons}`,
+          `Cache: ${s.cacheEntries} entries, ${Math.round(Number(s.cacheBytes) / 1024)} KB`,
+        ].join("\n");
+      })());
+      return 0;
+    }
+
+    case "review": {
+      const title = args[0];
+      if (!title)
+        return fail("review requires a title, e.g. orion review my-csv-tool");
+      const report = reviewChange(title);
+      printOut(
+        opts,
+        { changeId: title, pass: report.pass, checks: report.checks },
+        [
+          `Review ${report.pass ? "✅ PASS" : "❌ issues found"} — ${title}`,
+          ...report.checks.map(
+            (c) => `  ${c.ok ? "✓" : "✗"} ${c.name}: ${c.detail}`,
+          ),
+        ].join("\n"),
+      );
+      return report.pass ? 0 : 1;
+    }
+
+    case "archive": {
+      const title = args[0];
+      if (!title)
+        return fail("archive requires a title, e.g. orion archive my-csv-tool");
+      try {
+        const moved = archiveChange(title);
+        console.log(
+          `orion: archived ${moved.from} → ${moved.to} (debt ledger self-heals on orphaned snippets)`,
+        );
+        return 0;
+      } catch (err) {
+        return fail(err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    case "doctor": {
+      const report = doctor();
+      console.log(
+        [
+          `Doctor ${report.pass ? "✅ all healthy" : "❌ issues found"}`,
+          ...report.checks.map((c) => `  ${c.ok ? "✓" : "✗"} ${c.name}: ${c.detail}`),
+        ].join("\n"),
+      );
+      return report.pass ? 0 : 1;
     }
 
     case "learn": {

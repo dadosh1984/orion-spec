@@ -6,7 +6,8 @@ import {
 } from "../../utils/file.js";
 import { existsSync } from "node:fs";
 import { OrionTrack } from "../../core/track.js";
-import { renderTemplate } from "../../core/templates.js";
+import { renderTemplate, TemplateLang } from "../../core/templates.js";
+import { readProfile } from "../../core/profile.js";
 import { extractCore, extractCoreClause } from "../think/refine.js";
 import type { ArtifactSet, Proposal } from "../../type.js";
 
@@ -242,7 +243,7 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
  */
 export async function draft(
   title: string,
-  opts?: { noCache?: boolean },
+  opts?: { noCache?: boolean; lang?: TemplateLang },
 ): Promise<ArtifactSet> {
   const track = OrionTrack.init();
   const proposal = await loadProposal(title, track);
@@ -256,6 +257,12 @@ export async function draft(
   const capability = toCapability(proposal.platform);
   const specsDir = `${dir}/specs/${capability}`;
   const skipped: string[] = [];
+
+  // Language: explicit --lang wins, then the profile's detected language,
+  // then English. Only the prose sections change; the `# Spec:` drift key
+  // and the task checklist format stay identical in both languages.
+  const lang: TemplateLang =
+    opts?.lang ?? (readProfile().language === "ru" ? "ru" : "en");
 
   // Idempotent writer: keeps the existing file, records it as skipped.
   const writeIfMissing = async (path: string, data: string): Promise<void> => {
@@ -279,12 +286,14 @@ export async function draft(
         : "",
     },
     title,
+    lang,
   );
 
   const specMd = renderTemplate(
     "spec",
     { capability, goal: proposal.goal },
     title,
+    lang,
   );
   const derived = deriveTasks(proposal);
   const assumptions = derived.filter((t) => t.mark === "assumption");
@@ -298,6 +307,7 @@ export async function draft(
           : "- none — everything below is stated in the proposal",
     },
     title,
+    lang,
   );
   const tasksMd = renderTemplate(
     "tasks",
@@ -306,6 +316,7 @@ export async function draft(
       tasks: derived.map((t) => `- [ ] [${t.mark}] ${t.text}`).join("\n"),
     },
     title,
+    lang,
   );
 
   const snippetsReadme = [

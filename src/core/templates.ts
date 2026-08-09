@@ -20,6 +20,8 @@ import { join } from "node:path";
 export type TemplateKind =
   "proposal" | "design" | "tasks" | "spec" | "questions";
 
+export type TemplateLang = "en" | "ru";
+
 const FILE_EXT: Record<TemplateKind, "md" | "json"> = {
   proposal: "md",
   design: "md",
@@ -118,6 +120,78 @@ bookkeeping is needed.
 `,
 };
 
+/** Russian skeletons (v0.27): selected via the profile language or --lang.
+ * The `# Spec: {{capability}}` heading stays English on purpose — the drift
+ * gate matches that literal key against exported symbols, so the machine
+ * key must not vary with the user's language. */
+const BUILTIN_RU: Record<TemplateKind, string> = {
+  proposal: `# Предложение — {{title}}
+
+## Цель
+{{goal}}
+
+## Контекст
+
+| Аспект | Значение |
+|--------|----------|
+| Платформа | {{platform}} |
+| Бюджет | {{budget}} |
+| Ограничения | {{constraints}} |
+
+{{lessons}}
+`,
+  design: `# Дизайн — {{title}}
+
+## Обзор
+Детерминированный план, выведенный из предложения. Реализация ведётся
+задачу за задачей через цикл RED-GREEN-REFACTOR; каждая задача из чеклиста
+в tasks.md становится одним тест-управляемым юнитом в \`src/tasks/*\`.
+
+## Модули
+
+- \`src/tasks/*\` — тест-управляемые юниты реализации (по одному на задачу)
+- \`tests/*\` — тест-файлы RED-GREEN-REFACTOR (пишутся первыми, RED)
+- \`changes/{{title}}/snippets/*\` — подсказки реализации по задачам
+
+## Допущения
+{{assumptions}}
+
+## Верификация
+Задача считается сданной, только когда проходят все гейты:
+
+- [ ] lint (pnpm lint)
+- [ ] проверка типов (tsc --noEmit)
+- [ ] юнит-тесты (pnpm test)
+`,
+  tasks: `# Задачи — {{title}}
+
+Легенда статусов: отмеченный квадрат означает готово, пустой —
+открыто; forge переключает каждый квадрат по мере выполнения задачи,
+так что ручная сверка не нужна.
+
+{{tasks}}
+`,
+  spec: `# Spec: {{capability}}
+
+## Назначение
+{{goal}}
+
+## Область
+
+- В области: указанная возможность, поставляется тест-первой.
+- Вне области: всё, что не заявлено в предложении.
+
+## Критерии приёмки
+- [ ] Заполнить в ходе реализации
+`,
+  questions: `[
+  { "key": "platform", "msg": "Платформа?" },
+  { "key": "constraints", "msg": "Ограничения?" },
+  { "key": "budget", "msg": "Бюджет?" }
+]
+`,
+};
+
 export interface RenderedTemplate {
   text: string;
   /** "builtin" or the filesystem path of the custom template. */
@@ -136,9 +210,10 @@ export function renderTemplate(
   kind: TemplateKind,
   vars: Record<string, string>,
   changeId?: string,
+  lang: TemplateLang = "en",
 ): RenderedTemplate {
   const custom = findTemplate(kind, changeId);
-  let text = custom ? readFileSync(custom, "utf8") : BUILTIN[kind];
+  let text = custom ? readFileSync(custom, "utf8") : (lang === "ru" ? BUILTIN_RU : BUILTIN)[kind];
   for (const [k, v] of Object.entries(vars)) {
     text = text.replaceAll(`{{${k}}}`, v);
   }

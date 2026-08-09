@@ -21,6 +21,14 @@ Commands:
   track prune             Remove expired / oversized cache entries
   track lessons [id]      List self-correction lessons (v0.12)
   profile                 Show the user profile (~/.orion/profile.md, v0.26)
+  profile --reset         Clear auto-observed signals, keep user notes (v0.27)
+  profile export          Print the profile as portable JSON (v0.27)
+  profile import <f>      Load a portable JSON profile (v0.27)
+  list                    Table of all changes with task progress (v0.27)
+  stats                   Aggregate project statistics (v0.27)
+  review <title>          Deterministic change review: snippets, tests, drift (v0.27)
+  archive <title>         Move a finished change to changes/archived (v0.27)
+  doctor                  Environment + repo health checks (v0.27)
   learn <file|dir>        Learn lessons from agent session JSONL (v0.13)
   lessons export <path>   Export the lesson ledger to a JSON file (v0.23)
   lessons import <path|url>  Merge lessons from a file or URL, deduped (v0.23)
@@ -51,6 +59,7 @@ Flags:
   --host H     Bind host for serve (default 127.0.0.1)
   --token T    Bearer token for serve (auto-generated when host is not loopback)
   --ui         Serve the HTML dashboard at / (default for serve)
+  --lang en|ru Template language override for draft (v0.27)
 `;
 
 /** Parse argv into a command plus options. */
@@ -124,6 +133,13 @@ export function parseArgs(argv: string[]): {
       i++;
     } else if (arg === "--ui") {
       opts.ui = true;
+    } else if (arg === "--lang") {
+      const value = argv[i + 1];
+      if (value !== "en" && value !== "ru") {
+        throw new Error("--lang requires \"en\" or \"ru\"");
+      }
+      opts.lang = value;
+      i++;
     } else {
       args.push(arg);
     }

@@ -4,6 +4,24 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.27.0] — 2026-08-09
+
+Phase 3 of the analysis roadmap — demand: language, overview, review.
+
+- Language-adaptive templates: Russian variants of proposal/design/tasks/
+  spec selected by the profile language or `draft --lang en|ru`. The
+  `# Spec:` drift key stays English so the drift gate keeps working.
+- `orion list` — table of all changes with task progress; `orion stats` —
+  aggregate project statistics.
+- New `review` skill: deterministic, zero-LLM change review (proposal,
+  tasks, snippets, test files for done tasks, spec-symbol drift).
+- MCP: real `resources/list` and `prompts/list`, plus `change_status` and
+  `review` tools.
+- `orion archive` — move a finished change to changes/archived (debt ledger
+  self-heals on orphaned snippets); `orion doctor` — environment + repo
+  health checks (cache, lessons, profile, git, dist freshness, changes/).
+- `orion profile --reset | export | import` — portable JSON round-trip.
+
 ## [0.26.0] — 2026-08-09
 
 Phase 2 of the analysis roadmap — test coverage and reliability.

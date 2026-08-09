@@ -223,3 +223,87 @@ export function updateProfile(signals: ProfileSignals): UserProfile {
     return readProfile();
   }
 }
+
+/** Portable JSON export of the profile (v0.27) — machine-readable, safe
+ * to commit or send between machines. */
+export function exportProfile(): Record<string, unknown> {
+  const p = readProfile();
+  return {
+    version: 1,
+    language: p.language,
+    platform: p.platform,
+    budget: p.budget,
+    topics: p.topics,
+    topicCounts: p.topicCounts,
+    notes: p.notes,
+  };
+}
+
+/** Import a profile export (v0.27): writes the Auto section from JSON and
+ * restores notes. Returns the file path written. */
+export function importProfile(raw: unknown): string {
+  const data =
+    typeof raw === "string" ? (JSON.parse(raw) as Record<string, unknown>) : (raw as Record<string, unknown>);
+  const language = data.language === "ru" ? "ru" : "en";
+  const platform = typeof data.platform === "string" ? data.platform : "";
+  const budget = typeof data.budget === "string" ? data.budget : "";
+  const topics = Array.isArray(data.topics)
+    ? data.topics.filter((t): t is string => typeof t === "string").slice(0, 8)
+    : [];
+  const notes = typeof data.notes === "string" ? data.notes : "";
+  const text = [
+    "# Orion user profile",
+    "",
+    "Auto-maintained by Orion. Edit any value; the `## User notes`",
+    "section is preserved verbatim on every update.",
+    "",
+    "## Auto (updated by Orion)",
+    `- Language: ${language}`,
+    platform ? `- Platform: ${platform}` : "- Platform: (not yet observed)",
+    budget ? `- Budget: ${budget}` : "- Budget: (not yet observed)",
+    topics.length > 0
+      ? `- Frequent topics: ${topics.join(", ")}`
+      : "- Frequent topics: (none yet)",
+    "",
+    NOTES_HEADING,
+    notes ? `\n${notes}\n` : "\n(anything you write below this heading is kept as-is)\n",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+  writeFileSync(profilePath(), text, "utf8");
+  return profilePath();
+}
+
+/** Reset the auto-maintained section (v0.27): keeps user notes verbatim,
+ * clears observed signals. Returns the fresh profile. */
+export function resetProfile(): UserProfile {
+  const prev = readProfile();
+  const next: UserProfile = {
+    exists: true,
+    language: "en",
+    platform: "",
+    budget: "",
+    topics: [],
+    topicCounts: {},
+    notes: prev.notes,
+  };
+  const text = [
+    "# Orion user profile",
+    "",
+    "Auto-maintained by Orion. Edit any value; the `## User notes`",
+    "section is preserved verbatim on every update.",
+    "",
+    "## Auto (updated by Orion)",
+    "- Language: en",
+    "- Platform: (not yet observed)",
+    "- Budget: (not yet observed)",
+    "- Frequent topics: (none yet)",
+    "",
+    NOTES_HEADING,
+    prev.notes ? `\n${prev.notes}\n` : "\n(anything you write below this heading is kept as-is)\n",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+  writeFileSync(profilePath(), text, "utf8");
+  return next;
+}

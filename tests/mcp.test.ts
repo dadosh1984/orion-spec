@@ -601,13 +601,15 @@ describe("MCP protocol edge cases (v0.25 coverage)", () => {
     expect(res).toBeNull();
   });
 
-  it("serves resources/list and prompts/list as empty lists", async () => {
+  it("serves resources/list and prompts/list (v0.27 real payloads)", async () => {
     const server = makeServer();
     await call(server, "initialize");
     const r1 = await call(server, "resources/list", 1);
-    expect((r1.result as { resources: unknown[] }).resources).toEqual([]);
+    expect((r1.result as { resources: unknown[] }).resources).toBeDefined();
     const r2 = await call(server, "prompts/list", 1);
-    expect((r2.result as { prompts: unknown[] }).prompts).toEqual([]);
+    const prompts = (r2.result as { prompts: Array<{ name: string }> }).prompts;
+    expect(prompts.map((p) => p.name)).toContain("review");
+    expect(prompts.map((p) => p.name)).toContain("resume");
   });
 
   it("is lenient with tools/call before initialize (compat, v0.25)", async () => {

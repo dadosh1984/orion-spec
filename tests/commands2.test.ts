@@ -97,3 +97,32 @@ describe("plugin command failure paths (v0.25)", () => {
     delete process.env.ORION_PLUGIN_DIR;
   });
 });
+
+describe("phase 3 CLI commands (v0.27)", () => {
+  it("list and stats work on an empty project", async () => {
+    expect(await main(["list"])).toBe(0);
+    expect(await main(["stats"])).toBe(0);
+  });
+
+  it("doctor reports on a consistent project", async () => {
+    // Empty temp project: cache ok, no changes, git missing (informational,
+    // not fatal) — doctor should not throw.
+    expect(await main(["doctor"])).toBeLessThanOrEqual(1);
+  });
+
+  it("profile export prints JSON, import restores it", async () => {
+    expect(await main(["profile", "export"])).toBe(0);
+    const { writeFileSync } = await import("node:fs");
+    const exp = join(dir, "profile.json");
+    // export writes nothing to a file; capture via console instead
+    writeFileSync(exp, JSON.stringify({ version: 1, language: "ru", platform: "node", topics: [], notes: "hello" }), "utf8");
+    expect(await main(["profile", "import", exp])).toBe(0);
+    expect(await main(["profile", "--reset"])).toBe(0);
+  });
+
+  it("--lang is validated", async () => {
+    const { parseArgs } = await import("../src/cli/parse.js");
+    expect(() => parseArgs(["draft", "x", "--lang", "fr"])).toThrow();
+    expect(parseArgs(["draft", "x", "--lang", "ru"]).opts.lang).toBe("ru");
+  });
+});

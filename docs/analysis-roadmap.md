@@ -243,15 +243,17 @@
 - **T2.5** Конкурентность: fork-волны, один писатель tasks.md/lessons.json.
 - **T2.6** Golden-тесты шаблонов + большой объём (10k кэш, 500+ уроков, eviction).
 
-### Фаза 3 — Востребованность: язык, обзорность, ревью
-Критерий выхода: профиль реально влияет на артефакты; есть list/stats/review.
+### Фаза 3 — Востребованность: язык, обзорность, ревью ✅ 0.27.0
+Критерий выхода выполнен: профиль влияет на артефакты; есть list/stats/review/archive/doctor/profile-export.
 
-- **T3.1** Языковая адаптация шаблонов: RU-варианты proposal/design/tasks/spec по профилю (+ `--lang` override).
-- **T3.2** `orion list` + `orion stats` (одна таблица всех изменений, фазы, прогресс).
-- **T3.3** Скилл `review` (проверка сниппетов/тестов между forge и shield).
-- **T3.4** MCP `resources` + `prompts` + `change_status`.
-- **T3.5** `orion archive` + `orion doctor`.
-- **T3.6** `orion profile --edit|--reset` + `profile export|import`.
+- [x] **T3.1** RU-шаблоны proposal/design/tasks/spec по профилю + `--lang en|ru` (Spec сохраняет английский `# Spec:` drift-ключ).
+- [x] **T3.2** `orion list` + `orion stats` (`src/cli/overviewCmd.ts`: scanChanges/projectStats).
+- [x] **T3.3** Скилл `review` — детерминированный, без LLM: proposal/tasks/snippets/tests/дрифт.
+- [x] **T3.4** MCP `resources/list` + `prompts/list` (реальные данные) + инструменты `change_status` и `review`.
+- [x] **T3.5** `orion archive` (→ changes/archived, debt само-лечится) + `orion doctor` (cache/lessons/profile/git/dist/changes).
+- [x] **T3.6** `orion profile --reset` + `export` + `import` (портативный JSON; `--edit` oпционален — файл открывается вручную).
+
+**Результáты:** 554 теста (было 539), покрытие 90.5%, lint чист, tsc чист. Новые файлы: `src/cli/overviewCmd.ts`, `src/cli/doctorCmd.ts`, `src/cli/distCheck.ts`, `src/core/changeStatus.ts`, `src/skills/review/handler.ts`, `src/skills/archive/handler.ts`.
 
 ### Фаза 4 — UX, дашборд, документация
 Критерий выхода: дашборд показывает изменения и обучение; docs полные.
