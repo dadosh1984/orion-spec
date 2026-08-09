@@ -71,10 +71,19 @@ export function validateTddConfig(): string[] {
       readFileSync(resolveConfig("orionTdd.json"), "utf8"),
     ) as Record<string, unknown>;
     const issues: string[] = [];
-    if (typeof raw.minCoverage === "number" &&
-      (raw.minCoverage < 0 || raw.minCoverage > 100))
+    if (
+      typeof raw.minCoverage === "number" &&
+      (raw.minCoverage < 0 || raw.minCoverage > 100)
+    )
       issues.push(`minCoverage ${raw.minCoverage} out of 0..100`);
-    for (const key of ["testTemplate", "testDir", "srcDir", "command", "testExt", "srcExt"] as const) {
+    for (const key of [
+      "testTemplate",
+      "testDir",
+      "srcDir",
+      "command",
+      "testExt",
+      "srcExt",
+    ] as const) {
       if (raw[key] !== undefined && typeof raw[key] !== "string")
         issues.push(`${key} must be a string`);
     }
@@ -83,7 +92,6 @@ export function validateTddConfig(): string[] {
     return [];
   }
 }
-
 
 /**
  * TddEngine drives one task through RED → GREEN → REFACTOR → DONE.

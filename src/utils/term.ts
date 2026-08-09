@@ -20,7 +20,15 @@ export type StatusEmoji = "done" | "open" | "error" | "warn" | "info";
 /** Status marker used before a line (monochrome-safe fallback under NO_COLOR). */
 export function statusMark(kind: StatusEmoji): string {
   if (!colorEnabled()) {
-    return kind === "done" ? "[+]" : kind === "error" ? "[x]" : kind === "warn" ? "[!]" : kind === "open" ? "[.]" : "[i]";
+    return kind === "done"
+      ? "[+]"
+      : kind === "error"
+        ? "[x]"
+        : kind === "warn"
+          ? "[!]"
+          : kind === "open"
+            ? "[.]"
+            : "[i]";
   }
   return PRETTY[kind];
 }

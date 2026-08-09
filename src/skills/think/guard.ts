@@ -167,16 +167,15 @@ export function loadDenyList(): string[] {
   return out;
 }
 
-
 /**
  * Offline drift scan. Deterministic, cheap, never throws.
  */
 export function guardPrompt(prompt: string, deny?: string[]): GuardVerdict {
   const issues: string[] = [];
   const packages: PackageCandidate[] = [];
-  const denyPatterns = (deny ?? loadDenyList()).map((p) => p.trim()).filter(
-    (p) => p !== "" && !p.startsWith("#"),
-  );
+  const denyPatterns = (deny ?? loadDenyList())
+    .map((p) => p.trim())
+    .filter((p) => p !== "" && !p.startsWith("#"));
 
   // Deny-list policy (v0.28): plain-substring match, case-insensitive, so
   // `# rm -rf` in deny.txt blocks "run rm -rf ./cache" too. Honest: it is

@@ -90,7 +90,7 @@ export function readProfile(): UserProfile {
       // Split on the heading as a full line — a code-span mention like
       // "`## User notes`" inside the header must never split here.
       const heading = text.match(/^## User notes$/m);
-      const notesIdx = heading ? heading.index ?? -1 : -1;
+      const notesIdx = heading ? (heading.index ?? -1) : -1;
       const auto = notesIdx >= 0 ? text.slice(0, notesIdx) : text;
       const notes =
         notesIdx >= 0 ? text.slice(notesIdx + NOTES_HEADING.length).trim() : "";
@@ -141,20 +141,94 @@ export function readProfile(): UserProfile {
  * that follow.
  */
 const ACTION_WORDS: ReadonlySet<string> = new Set([
-  "make", "build", "create", "implement", "write", "add", "develop",
-  "design", "need", "want", "improve", "enhance", "refactor", "update",
-  "upgrade", "fix", "repair", "maintain", "migrate", "convert", "generate",
-  "check", "test", "run", "use", "support", "handle", "allow", "prevent",
-  "ensure", "provide", "include", "remove", "change", "move", "copy",
-  "delete", "install", "setup", "configure", "deploy", "publish", "release",
-  "merge", "start", "stop", "restart", "сделай", "сделать", "создай",
-  "создать", "построй", "построить", "разработай", "разработать",
-  "реализуй", "реализовать", "напиши", "написать", "добавь", "добавить",
-  "почини", "починить", "исправь", "исправить", "улучшь", "улучшить",
-  "проверь", "проверить", "переведи", "перевести", "конвертируй",
-  "конвертировать", "собери", "собрать", "настрой", "настроить",
-  "интегрируй", "интегрировать", "перенеси", "перенести", "сгенерируй",
-  "сгенерировать", "обнови", "обновить", "удали", "удалить", "измени",
+  "make",
+  "build",
+  "create",
+  "implement",
+  "write",
+  "add",
+  "develop",
+  "design",
+  "need",
+  "want",
+  "improve",
+  "enhance",
+  "refactor",
+  "update",
+  "upgrade",
+  "fix",
+  "repair",
+  "maintain",
+  "migrate",
+  "convert",
+  "generate",
+  "check",
+  "test",
+  "run",
+  "use",
+  "support",
+  "handle",
+  "allow",
+  "prevent",
+  "ensure",
+  "provide",
+  "include",
+  "remove",
+  "change",
+  "move",
+  "copy",
+  "delete",
+  "install",
+  "setup",
+  "configure",
+  "deploy",
+  "publish",
+  "release",
+  "merge",
+  "start",
+  "stop",
+  "restart",
+  "сделай",
+  "сделать",
+  "создай",
+  "создать",
+  "построй",
+  "построить",
+  "разработай",
+  "разработать",
+  "реализуй",
+  "реализовать",
+  "напиши",
+  "написать",
+  "добавь",
+  "добавить",
+  "почини",
+  "починить",
+  "исправь",
+  "исправить",
+  "улучшь",
+  "улучшить",
+  "проверь",
+  "проверить",
+  "переведи",
+  "перевести",
+  "конвертируй",
+  "конвертировать",
+  "собери",
+  "собрать",
+  "настрой",
+  "настроить",
+  "интегрируй",
+  "интегрировать",
+  "перенеси",
+  "перенести",
+  "сгенерируй",
+  "сгенерировать",
+  "обнови",
+  "обновить",
+  "удали",
+  "удалить",
+  "измени",
   "изменить",
 ]);
 
@@ -261,7 +335,9 @@ export function exportProfile(): Record<string, unknown> {
  * restores notes. Returns the file path written. */
 export function importProfile(raw: unknown): string {
   const data =
-    typeof raw === "string" ? (JSON.parse(raw) as Record<string, unknown>) : (raw as Record<string, unknown>);
+    typeof raw === "string"
+      ? (JSON.parse(raw) as Record<string, unknown>)
+      : (raw as Record<string, unknown>);
   const language = data.language === "ru" ? "ru" : "en";
   const platform = typeof data.platform === "string" ? data.platform : "";
   const budget = typeof data.budget === "string" ? data.budget : "";
@@ -284,7 +360,9 @@ export function importProfile(raw: unknown): string {
       : "- Frequent topics: (none yet)",
     "",
     NOTES_HEADING,
-    notes ? `\n${notes}\n` : "\n(anything you write below this heading is kept as-is)\n",
+    notes
+      ? `\n${notes}\n`
+      : "\n(anything you write below this heading is kept as-is)\n",
   ]
     .filter((l) => l !== "")
     .join("\n");
@@ -318,7 +396,9 @@ export function resetProfile(): UserProfile {
     "- Frequent topics: (none yet)",
     "",
     NOTES_HEADING,
-    prev.notes ? `\n${prev.notes}\n` : "\n(anything you write below this heading is kept as-is)\n",
+    prev.notes
+      ? `\n${prev.notes}\n`
+      : "\n(anything you write below this heading is kept as-is)\n",
   ]
     .filter((l) => l !== "")
     .join("\n");

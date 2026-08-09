@@ -384,8 +384,7 @@ async function shellCheck(
     });
     const clean = stripOrionNoise(stdout + stderr);
     const r = compress(cmd, clean, "");
-    const detail =
-      (r.matched ? r.out : clean.slice(0, 200)) || "ok";
+    const detail = (r.matched ? r.out : clean.slice(0, 200)) || "ok";
     return {
       step,
       status: "PASS",

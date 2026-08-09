@@ -272,7 +272,10 @@ export function verifyChange(
   if (opts?.cache) {
     track = OrionTrack.init();
     const specDigest = specFiles
-      .map((f) => `${f.replace(/\\/g, "/")}:${hashText(readCapped(f, EVIDENCE_CAP))}`)
+      .map(
+        (f) =>
+          `${f.replace(/\\/g, "/")}:${hashText(readCapped(f, EVIDENCE_CAP))}`,
+      )
       .sort()
       .join("|");
     cacheKey = `verify:${hashText(specDigest)}:${treeFingerprint(join(projectRoot, "src"))}`;

@@ -213,7 +213,9 @@ export function renderTemplate(
   lang: TemplateLang = "en",
 ): RenderedTemplate {
   const custom = findTemplate(kind, changeId);
-  let text = custom ? readFileSync(custom, "utf8") : (lang === "ru" ? BUILTIN_RU : BUILTIN)[kind];
+  let text = custom
+    ? readFileSync(custom, "utf8")
+    : (lang === "ru" ? BUILTIN_RU : BUILTIN)[kind];
   for (const [k, v] of Object.entries(vars)) {
     text = text.replaceAll(`{{${k}}}`, v);
   }

@@ -4,7 +4,11 @@ import { writeFileSafe } from "../utils/file.js";
 import { DEFAULT_PORT } from "../constants.js";
 import { statusMark, paint } from "../utils/term.js";
 import { readVersionSafe } from "../utils/version.js";
-import { updateCheckEnabled, checkForUpdate, updateBanner } from "../core/updateCheck.js";
+import {
+  updateCheckEnabled,
+  checkForUpdate,
+  updateBanner,
+} from "../core/updateCheck.js";
 import { parseArgs, HELP } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
@@ -125,7 +129,10 @@ export async function main(argv: string[]): Promise<number> {
       const title = args[0];
       if (!title)
         return fail("draft requires a title, e.g. orion draft my-csv-tool");
-      const artifacts = await draft(title, { noCache: opts.noCache, lang: opts.lang });
+      const artifacts = await draft(title, {
+        noCache: opts.noCache,
+        lang: opts.lang,
+      });
       printOut(
         opts,
         artifacts,
@@ -324,7 +331,9 @@ export async function main(argv: string[]): Promise<number> {
           console.log(`orion: profile imported from ${file} → ${path}`);
           return 0;
         } catch (err) {
-          return fail(`profile import failed: ${err instanceof Error ? err.message : String(err)}`);
+          return fail(
+            `profile import failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
       }
       printOut(opts, { path: profilePath() }, profileView());
@@ -334,7 +343,9 @@ export async function main(argv: string[]): Promise<number> {
     case "plan": {
       const prompt = args.join(" ").trim();
       if (!prompt) {
-        return fail("plan requires a prompt, e.g. orion plan build a CLI converter");
+        return fail(
+          "plan requires a prompt, e.g. orion plan build a CLI converter",
+        );
       }
       const result = planCmd(prompt);
       console.log(result.text);
@@ -366,7 +377,10 @@ export async function main(argv: string[]): Promise<number> {
 
     case "backup": {
       const target = args[0];
-      if (!target) return fail("backup requires an output file, e.g. orion backup ./orion-backup.json");
+      if (!target)
+        return fail(
+          "backup requires an output file, e.g. orion backup ./orion-backup.json",
+        );
       const result = backupCmd(target);
       console.log(result.text);
       return result.ok ? 0 : 1;
@@ -386,15 +400,19 @@ export async function main(argv: string[]): Promise<number> {
     }
 
     case "stats": {
-      printOut(opts, { stats: projectStats() }, (() => {
-        const s = projectStats();
-        return [
-          `Changes: ${s.changes} (${s.done} done, ${s.open} open)`,
-          `Tasks: ${s.tasksDone}/${s.tasks} done`,
-          `Lessons: ${s.lessons}`,
-          `Cache: ${s.cacheEntries} entries, ${Math.round(Number(s.cacheBytes) / 1024)} KB`,
-        ].join("\n");
-      })());
+      printOut(
+        opts,
+        { stats: projectStats() },
+        (() => {
+          const s = projectStats();
+          return [
+            `Changes: ${s.changes} (${s.done} done, ${s.open} open)`,
+            `Tasks: ${s.tasksDone}/${s.tasks} done`,
+            `Lessons: ${s.lessons}`,
+            `Cache: ${s.cacheEntries} entries, ${Math.round(Number(s.cacheBytes) / 1024)} KB`,
+          ].join("\n");
+        })(),
+      );
       return 0;
     }
 
@@ -440,7 +458,10 @@ export async function main(argv: string[]): Promise<number> {
       console.log(
         [
           `Doctor ${statusMark(report.pass ? "done" : "error")} ${paint(report.pass ? "all healthy" : "issues found", report.pass ? "green" : "red")}`,
-          ...report.checks.map((c) => `  ${statusMark(c.ok ? "done" : "error")} ${c.name}: ${c.detail}`),
+          ...report.checks.map(
+            (c) =>
+              `  ${statusMark(c.ok ? "done" : "error")} ${c.name}: ${c.detail}`,
+          ),
         ].join("\n"),
       );
       return report.pass ? 0 : 1;
@@ -605,7 +626,9 @@ export async function main(argv: string[]): Promise<number> {
       });
       const addr = server.address();
       const port =
-        typeof addr === "object" && addr ? addr.port : opts.port || DEFAULT_PORT;
+        typeof addr === "object" && addr
+          ? addr.port
+          : opts.port || DEFAULT_PORT;
       const host = opts.host ?? "127.0.0.1";
       console.log(
         `orion: dashboard at http://${host}:${port} (Ctrl+C to stop)`,

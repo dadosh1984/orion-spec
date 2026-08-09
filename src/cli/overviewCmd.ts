@@ -19,7 +19,9 @@ export function scanChanges(): ChangeRow[] {
   const base = join(process.cwd(), "changes");
   if (!existsSync(base)) return [];
   return readdirSync(base, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && existsSync(join(base, d.name, "proposal.json")))
+    .filter(
+      (d) => d.isDirectory() && existsSync(join(base, d.name, "proposal.json")),
+    )
     .map((d) => {
       const dir = join(base, d.name);
       let tasks = 0;
@@ -54,7 +56,7 @@ export function scanChanges(): ChangeRow[] {
 
 /** Human table for `orion list`. */
 export function listTable(rows: ChangeRow[]): string {
-  if (rows.length === 0) return "No changes yet. Run: orion think \"...\"";
+  if (rows.length === 0) return 'No changes yet. Run: orion think "..."';
   const lines = rows.map((r) => {
     const ratio = r.tasks > 0 ? r.done / r.tasks : 0;
     const mark = statusMark(r.status === "DONE" ? "done" : "open");

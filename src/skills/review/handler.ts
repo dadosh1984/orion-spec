@@ -51,13 +51,23 @@ export function reviewChange(changeId: string): ReviewReport {
       return null;
     }
   })();
-  add("proposal", !!proposal, proposal ? "proposal.json present" : "proposal.json missing");
+  add(
+    "proposal",
+    !!proposal,
+    proposal ? "proposal.json present" : "proposal.json missing",
+  );
 
   const has = (rel: string) => existsSync(join(base, rel));
-  add("artifacts", has("tasks.md") && has("design.md"), [
-    !has("tasks.md") && "tasks.md missing",
-    !has("design.md") && "design.md missing",
-  ].filter(Boolean).join(", ") || "tasks.md + design.md present");
+  add(
+    "artifacts",
+    has("tasks.md") && has("design.md"),
+    [
+      !has("tasks.md") && "tasks.md missing",
+      !has("design.md") && "design.md missing",
+    ]
+      .filter(Boolean)
+      .join(", ") || "tasks.md + design.md present",
+  );
 
   const tasks = (() => {
     try {
@@ -66,34 +76,53 @@ export function reviewChange(changeId: string): ReviewReport {
       return [];
     }
   })();
-  add("tasks-parse", tasks.length > 0 || !has("tasks.md"), `${tasks.length} task(s) parsed`);
+  add(
+    "tasks-parse",
+    tasks.length > 0 || !has("tasks.md"),
+    `${tasks.length} task(s) parsed`,
+  );
 
   const snippets = existsSync(join(base, "snippets"))
     ? readdirSync(join(base, "snippets")).filter((f) => f.endsWith(".ts"))
     : [];
-  add("snippets", snippets.length >= tasks.length, `${snippets.length} snippet(s) for ${tasks.length} task(s)`);
+  add(
+    "snippets",
+    snippets.length >= tasks.length,
+    `${snippets.length} snippet(s) for ${tasks.length} task(s)`,
+  );
 
   const doneTasks = tasks.filter((t) => t.done);
   const missingTests = doneTasks
     .map((t) => {
       const slug = t.text.replace(/^\[(?:fact|assumption|risk)\]\s*/, "");
-      const id = slug.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, "_").replace(/^_+|_+$/g, "");
+      const id = slug
+        .toLowerCase()
+        .replace(/[^a-z0-9а-яё]+/gi, "_")
+        .replace(/^_+|_+$/g, "");
       return { id, slug };
     })
     .filter(({ id }) => id && !existsSync(join("tests", `${id}.test.ts`)))
     .map(({ id }) => id);
-  add("tests", missingTests.length === 0, missingTests.length
-    ? `no test file for: ${missingTests.join(", ")}`
-    : `${doneTasks.length} done task(s) have test files`);
+  add(
+    "tests",
+    missingTests.length === 0,
+    missingTests.length
+      ? `no test file for: ${missingTests.join(", ")}`
+      : `${doneTasks.length} done task(s) have test files`,
+  );
 
   const symbols = taskSymbols();
   const missingSym = doneTasks
     .map((t) => t.text.replace(/^\[(?:fact|assumption|risk)\]\s*/, ""))
     .filter((slug) => slug && !symbols.includes(slug))
     .slice(0, 5);
-  add("drift", missingSym.length === 0, missingSym.length
-    ? `no exported symbol for: ${missingSym.join(", ")}`
-    : "task slugs match exported symbols in src/tasks/*");
+  add(
+    "drift",
+    missingSym.length === 0,
+    missingSym.length
+      ? `no exported symbol for: ${missingSym.join(", ")}`
+      : "task slugs match exported symbols in src/tasks/*",
+  );
 
   return {
     changeId,

@@ -37,9 +37,7 @@ export interface SnippetResolution {
 const LEGACY_MARKER = /^(fact|assumption|risk|decision|spike)_/i;
 
 function basenameTokens(base: string): string[] {
-  return base
-    .split("_")
-    .filter((t) => t.length > 0 && !/^\d+$/.test(t));
+  return base.split("_").filter((t) => t.length > 0 && !/^\d+$/.test(t));
 }
 
 export function resolveSnippet(
@@ -48,7 +46,9 @@ export function resolveSnippet(
 ): SnippetResolution {
   let files: string[];
   try {
-    files = readdirSync(snippetsDir).filter((f) => f.endsWith(".ts")).sort();
+    files = readdirSync(snippetsDir)
+      .filter((f) => f.endsWith(".ts"))
+      .sort();
   } catch {
     files = [];
   }
@@ -70,10 +70,9 @@ export function resolveSnippet(
   let ties = false;
   for (const file of files) {
     const norm = file.slice(0, -3).replace(LEGACY_MARKER, "");
-    const score =
-      norm.startsWith(slug)
-        ? want.length + 1
-        : want.filter((t) => basenameTokens(norm).includes(t)).length;
+    const score = norm.startsWith(slug)
+      ? want.length + 1
+      : want.filter((t) => basenameTokens(norm).includes(t)).length;
     if (score < Math.min(2, want.length)) continue;
     if (!best || score > best.score) {
       best = { file, score };

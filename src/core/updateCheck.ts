@@ -59,7 +59,12 @@ export function readCachedUpdate(): UpdateInfo | null {
 export async function checkForUpdate(): Promise<UpdateInfo> {
   const installed = installedVersion();
   if (!updateCheckEnabled()) {
-    return { installed, latest: null, updateAvailable: false, status: "disabled" };
+    return {
+      installed,
+      latest: null,
+      updateAvailable: false,
+      status: "disabled",
+    };
   }
   const cached = readCachedUpdate();
   if (cached) return cached;
@@ -91,7 +96,12 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
       status: latest ? "ok" : "offline",
     };
   } catch {
-    return { installed, latest: null, updateAvailable: false, status: "offline" };
+    return {
+      installed,
+      latest: null,
+      updateAvailable: false,
+      status: "offline",
+    };
   }
 }
 
