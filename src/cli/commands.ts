@@ -31,6 +31,8 @@ import { archiveChange } from "../skills/archive/handler.js";
 import { scanChanges, listTable, projectStats } from "./overviewCmd.js";
 import { doctor } from "./doctorCmd.js";
 import { exportProfile, importProfile, resetProfile } from "../core/profile.js";
+import { initRepo } from "../skills/init/handler.js";
+import { changelogFor, changelogAll } from "./changelogCmd.js";
 import { resume } from "../skills/resume/handler.js";
 import { verifyChange, formatVerifyReport } from "../core/verify.js";
 import { guardPrompt, checkNpmPackages } from "../skills/think/guard.js";
@@ -377,6 +379,42 @@ export async function main(argv: string[]): Promise<number> {
         ].join("\n"),
       );
       return report.pass ? 0 : 1;
+    }
+
+    case "changelog": {
+      const title = args[0];
+      if (title) {
+        console.log(`## ${title}\n\n${changelogFor(title)}`);
+      } else {
+        const all = changelogAll();
+        printOut(
+          opts,
+          { entries: all.length },
+          all.length
+            ? all.join("\n\n---\n\n")
+            : "No changes with result.md yet — run orion out <title> first.",
+        );
+      }
+      return 0;
+    }
+
+    case "init": {
+      const res = initRepo();
+      printOut(
+        opts,
+        { created: res.created, existing: res.existing },
+        [
+          res.created.length
+            ? `Created:\n${res.created.map((f) => "  ✓ " + f).join("\n")}`
+            : "Nothing to create — all present",
+          res.existing.length
+            ? `Already present (kept): ${res.existing.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+      return 0;
     }
 
     case "learn": {

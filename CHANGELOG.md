@@ -4,6 +4,22 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.28.0] — 2026-08-09
+
+Phase 4 of the analysis roadmap — UX, dashboard, documentation.
+
+- Dashboard (orion serve): the changes list now shows each change's
+  deterministic phase (think→draft→forge→shield→out), guard PASS/FAIL and
+  drift ✓/✗ tags; `/api/status` includes the user profile block
+  (language/platform/budget/topics) from the memory.md analogue.
+- `orion init` — scaffold orionTdd.json, a guard deny-list template and a
+  pre-commit hook starter; idempotent, never overwrites.
+- `orion changelog [title]` — generate a CHANGELOG entry from result.md;
+  no title prints entries for every finished change.
+- Docs: new `docs/configuration.md` (all ORION_* env vars, templates,
+  language), commands.md and README updated.
+- `phaseOf()` shared by the dashboard, `orion list` and MCP change_status.
+
 ## [0.27.0] — 2026-08-09
 
 Phase 3 of the analysis roadmap — demand: language, overview, review.

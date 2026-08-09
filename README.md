@@ -268,7 +268,9 @@ CI runs exactly the same steps: install → lint → type-check → test (covera
 
 - [Quick Start](docs/quick-start.md)
 - [Architecture](docs/architecture.md)
+- [Configuration](docs/configuration.md) — every `ORION_*` env var, templates, language (v0.28)
 - [Commands Reference](docs/commands.md)
+- [Analysis & Roadmap](docs/analysis-roadmap.md) — found bugs, 112 improvement ideas, 5 phases
 - [Changelog](CHANGELOG.md) — dated semver release notes
 - [Contributing](CONTRIBUTING.md) — dev setup, style, tests, releases
 

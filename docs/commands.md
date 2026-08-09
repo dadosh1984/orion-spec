@@ -23,6 +23,14 @@
 | `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, yagni, economy, security scan (package-manager aware); yagni WARNs feed the debt registry (v0.18) |
 | `orion next`               | Decides the next action from context (draft → forge → shield → out); appends the token-economy footer; estimates calibrated by history + budget-zone WARN (v0.17–v0.18) |
 | `orion out <change-id>`    | Writes the final `result.md` (tasks + guard + artifacts + next steps)                  |
+| `orion draft <title> --lang en\|ru` | Templates in Russian or English (explicit; else from profile) (v0.27)                  |
+| `orion review <title>`     | Deterministic zero-LLM change review: proposal, tasks, snippets, tests for done tasks, spec↔symbol drift (v0.27) |
+| `orion archive <title>`    | Move a finished change to `changes/archived` (debt ledger self-heals) (v0.27)        |
+| `orion doctor`             | Environment + repo health: cache, lessons, profile, git, dist freshness, changes/ (v0.27) |
+| `orion list`               | Table of all changes with task progress, phase and status (v0.27)                     |
+| `orion stats`              | Aggregate statistics: changes, tasks, lessons, cache (v0.27)                          |
+| `orion init`               | Scaffold `orionTdd.json` + pre-commit hook + deny-list template, idempotent (v0.28)   |
+| `orion changelog [title]`  | Generate a CHANGELOG entry from `result.md` (all results when no title) (v0.28)       |
 
 ## Track (cache)
 
@@ -93,6 +101,8 @@ built-in one):
 | Command                                    | Description                                                            |
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
+| `orion profile`                            | Show the user profile (`~/.orion/profile.md`) (v0.26)                 |
+| `orion profile --reset \| export \| import <f>` | Clear auto signals / print portable JSON / load a profile (v0.27)      |
 | `orion verify <change-id> [--json]`        | Evidence pass: checks every spec criterion's terms exist in the code. A **signal, never a gate** — exits 0 even when criteria are missing/drifted (v0.19)    |
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
 | `orion metrics --session <file.jsonl>`     | Per-role token breakdown of a session (v0.15)                          |

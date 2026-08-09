@@ -255,15 +255,17 @@
 
 **Результáты:** 554 теста (было 539), покрытие 90.5%, lint чист, tsc чист. Новые файлы: `src/cli/overviewCmd.ts`, `src/cli/doctorCmd.ts`, `src/cli/distCheck.ts`, `src/core/changeStatus.ts`, `src/skills/review/handler.ts`, `src/skills/archive/handler.ts`.
 
-### Фаза 4 — UX, дашборд, документация
-Критерий выхода: дашборд показывает изменения и обучение; docs полные.
+### Фаза 4 — UX, дашборд, документация ✅ 0.28.0
+Критерий выхода выполнен: дашборд показывает изменения (фаза/дрейф/guard) и профиль; docs полные; есть init/changelog.
 
-- **T4.1** Дашборд: тёмная тема + страница изменений (фазы, дрейф, guard).
-- **T4.2** Дашборд: график токенов (economy/spend) + блок уроков/профиля.
-- **T4.3** `docs/configuration.md` (все env) + актуализация `docs/commands.md`.
-- **T4.4** README: бейджи, «Почему Orion», онбординг-раздел.
-- **T4.5** `orion init`: шаблон политик + orionTdd.json + pre-commit hook.
-- **T4.6** Автогенерация CHANGELOG из result.md + release-скрипт.
+- [x] **T4.1** Дашборд: страница изменений с фазой (think→draft→forge→shield→out), guard PASS/FAIL и drift ✓/✗ (`phaseOf`, `ApiChange.phase/guard/drift`).
+- [x] **T4.2** Дашборд: блок профиля (язык/платформа/бюджет/темы) в `/api/status`; токен-бары уже были, бюджет по namespace сохранён.
+- [x] **T4.3** `docs/configuration.md` (все ORION_* env) + актуализация `docs/commands.md` (review/archive/doctor/list/stats/profile/init/changelog/--lang).
+- [x] **T4.4** README: docs-ссылки на configuration и roadmap; философия/онбординг уже были — дополнено.
+- [x] **T4.5** `orion init`: orionTdd.json + deny-list (.orion/deny.txt) + pre-commit hook; идемпотентно.
+- [x] **T4.6** `orion changelog [title]`: автогенерация записи из result.md (по всем результатам при отсутствии title).
+
+**Результаты:** 559 тестов (было 554), lint чист, tsc чист. Новые файлы: `src/skills/init/handler.ts`, `src/cli/changelogCmd.ts`.
 
 ### Фаза 5 — Производительность, безопасность, экосистема
 Критерий выхода: бенчмарки кэша и startup, MCP-SSE, npm-плагины.

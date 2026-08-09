@@ -17,6 +17,8 @@ Commands:
   pay-debt <change-id>    Repay yagni debt: re-sync the ledger, report what closed (v0.22)
   resume <change-id>      Continue an interrupted workflow from its checkpoint (v0.22)
   next                    Decide the next action from context (draft → forge → shield → out)
+  init                    Scaffold orionTdd.json + pre-commit hook + deny-list (v0.28)
+  changelog [title]       Generate a CHANGELOG entry from result.md (v0.28)
   track status            Show cache statistics
   track prune             Remove expired / oversized cache entries
   track lessons [id]      List self-correction lessons (v0.12)

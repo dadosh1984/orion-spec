@@ -9,6 +9,9 @@ import { tokenBudget } from "../core/metrics.js";
 import { readDebt } from "../core/debt.js";
 import { lessonsStats } from "../core/lessons.js";
 import { readTasks } from "../skills/forge/handler.js";
+import { phaseOf } from "../core/changeStatus.js";
+import { reviewChange } from "../skills/review/handler.js";
+import { readProfile } from "../core/profile.js";
 
 /** Options for the `orion serve` web dashboard. */
 export interface ServeOptions {
@@ -82,6 +85,12 @@ interface ApiChange {
   title: string;
   goal: string | null;
   hasResult: boolean;
+  /** Deterministic workflow stage (think→draft→forge→shield→out), v0.28. */
+  phase: string;
+  /** guard PASS/FAIL from reports/<id>/guard-report.json, or null. */
+  guard: string | null;
+  /** drift check ok (spec heading ↔ exported symbol), or null when unknown. */
+  drift: boolean | null;
   /** Task checklist progress read from tasks.md, when one exists. */
   tasks: { done: number; total: number } | null;
 }
@@ -116,9 +125,28 @@ export function listChanges(): ApiChange[] {
         /* no proposal summary */
       }
       const tasks = readTasks(name);
+      let guard: string | null = null;
+      try {
+        const gr = JSON.parse(
+          readFileSync(join("reports", name, "guard-report.json"), "utf8"),
+        ) as { pass: boolean };
+        guard = gr.pass ? "pass" : "fail";
+      } catch {
+        /* no guard report yet */
+      }
+      // Drift is one review check; cheap enough to compute per change here.
+      let drift: boolean | null = null;
+      try {
+        drift = reviewChange(name).checks.find((c) => c.name === "drift")?.ok ?? null;
+      } catch {
+        drift = null;
+      }
       return {
         title: name,
         goal,
+        phase: phaseOf(name),
+        guard,
+        drift,
         hasResult: existsSync(join("changes", name, "result.md")),
         tasks:
           tasks.length > 0
@@ -262,6 +290,17 @@ async function refresh() {
       stat("last write", status.cache.lastPrune ?? "never") +
       stat("changes", status.changes);
 
+    // Profile block (v0.28): the memory.md analogue — what Orion knows
+    // about the user. Only what is actually observed is shown.
+    const prof = status.profile;
+    if (prof) {
+      cache.innerHTML += '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #232838"></div>' +
+        stat("language", prof.language) +
+        stat("platform", prof.platform) +
+        stat("budget", prof.budget) +
+        stat("topics", (prof.topics || []).join(", ") || "—");
+    }
+
     const economy = document.getElementById("economy");
     const eco = metrics.economy || {};
     let proj = (eco.byProject || []).slice(0, 5)
@@ -303,6 +342,11 @@ async function refresh() {
     listEl.innerHTML = ch.length
       ? ch.map(c => {
           let tags = '';
+          if (c.phase) tags += '<span class="tag">' + esc(c.phase) + '</span>';
+          if (c.guard === 'pass') tags += '<span class="tag done">guard ✓</span>';
+          else if (c.guard === 'fail') tags += '<span class="tag">guard ✗</span>';
+          if (c.drift === true) tags += '<span class="tag done">drift ✓</span>';
+          else if (c.drift === false) tags += '<span class="tag">drift ✗</span>';
           if (c.hasResult) tags += '<span class="tag done">result</span>';
           if (c.tasks) tags += '<span class="tag">' + c.tasks.done + '/' + c.tasks.total +
             ' tasks</span>';
@@ -381,6 +425,18 @@ export function startServer(
       }
       case "/api/status": {
         const stats = track.getStats();
+        let profile = null;
+        try {
+          const p = readProfile();
+          profile = {
+            language: p.language,
+            platform: p.platform || "(none)",
+            budget: p.budget || "(none)",
+            topics: p.topics.slice(0, 6),
+          };
+        } catch {
+          profile = null;
+        }
         sendJson(res, 200, {
           version: readVersion(),
           cache: {
@@ -390,6 +446,7 @@ export function startServer(
             lastPrune: stats.lastPrune,
           },
           changes: listChanges().length,
+          profile,
         });
         return;
       }

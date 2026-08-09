@@ -8,6 +8,25 @@ import { scanChanges } from "../cli/overviewCmd.js";
  * Shared by the MCP change_status tool and `orion list`. Throws when the
  * change does not exist — callers translate that into an honest error.
  */
+export function phaseOf(changeId: string): string {
+  const base = join("changes", changeId);
+  const has = (rel: string) => existsSync(join(base, rel));
+  if (has("result.md")) return "out";
+  const tasks = (() => {
+    try {
+      return readTasks(changeId);
+    } catch {
+      return [];
+    }
+  })();
+  if (tasks.length > 0 && tasks.filter((t) => t.done).length === tasks.length)
+    return "shield";
+  if (tasks.length > 0) return "forge";
+  if (has("tasks.md") || has("design.md")) return "draft";
+  return "think";
+}
+
+/** Single-change status (v0.27): task progress + artifact completeness. */
 export function changeStatus(changeId: string): Record<string, unknown> {
   const base = join("changes", changeId);
   if (!existsSync(join(base, "proposal.json"))) {
