@@ -4,6 +4,18 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.33.0] — 2026-08-09
+
+Phase 4 of the 2026 audit roadmap — functionality.
+
+- `orion plan <prompt>` — guarded dry-run plan (language, title, derived
+  tasks) WITHOUT writing any file.
+- `orion compare <a> <b>` — side-by-side status of two changes (phase,
+  tasks, guard, result).
+- `orion assumptions <change>` — list draft's [assumption] tasks so
+  inferred (not proposed) requirements are visible and verifiable.
+- Tests: tests/phase4v2.test.ts (7).
+
 ## [0.32.0] — 2026-08-09
 
 Phase 3 of the 2026 audit roadmap — performance.

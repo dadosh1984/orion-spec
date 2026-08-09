@@ -31,6 +31,8 @@ import { payDebt } from "../skills/pay-debt/handler.js";
 import { reviewChange } from "../skills/review/handler.js";
 import { archiveChange } from "../skills/archive/handler.js";
 import { scanChanges, listTable, projectStats } from "./overviewCmd.js";
+import { planCmd } from "./planCmd.js";
+import { compareCmd, assumptionsCmd } from "./compareCmd.js";
 import { doctor } from "./doctorCmd.js";
 import { exportProfile, importProfile, resetProfile } from "../core/profile.js";
 import { initRepo } from "../skills/init/handler.js";
@@ -319,6 +321,33 @@ export async function main(argv: string[]): Promise<number> {
       }
       printOut(opts, { path: profilePath() }, profileView());
       return 0;
+    }
+
+    case "plan": {
+      const prompt = args.join(" ").trim();
+      if (!prompt) {
+        return fail("plan requires a prompt, e.g. orion plan build a CLI converter");
+      }
+      const result = planCmd(prompt);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "compare": {
+      const a = args[0];
+      const b = args[1];
+      if (!a || !b) return fail("compare requires two change ids");
+      const result = compareCmd(a, b);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "assumptions": {
+      const id = args[0];
+      if (!id) return fail("assumptions requires a change id");
+      const result = assumptionsCmd(id);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
     }
 
     case "list": {

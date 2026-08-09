@@ -7,6 +7,7 @@ Usage:
 
 Commands:
   think <prompt>          Gather a proposal by asking guided questions
+  plan <prompt>           Dry-run plan: what think→draft would create (v0.33)
   draft <title>           Generate proposal.md, specs/, design.md, tasks.md
   forge <title>           Run the RED-GREEN-REFACTOR loop over tasks.md
   forge <title> --parallel <n>   Parallel forge waves via fork workers (v0.16)
@@ -27,6 +28,8 @@ Commands:
   profile export          Print the profile as portable JSON (v0.27)
   profile import <f>      Load a portable JSON profile (v0.27)
   list                    Table of all changes with task progress (v0.27)
+  compare <a> <b>         Side-by-side status of two changes (v0.33)
+  assumptions <change>    List draft's [assumption] tasks — verify them (v0.33)
   stats                   Aggregate project statistics (v0.27)
   review <title>          Deterministic change review: snippets, tests, drift (v0.27)
   archive <title>         Move a finished change to changes/archived (v0.27)

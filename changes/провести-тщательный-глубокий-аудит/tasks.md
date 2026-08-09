@@ -17,8 +17,8 @@
 - [x] [assumption] Мемоизация readProfile/loadDenyList по mtime (+scanChanges отложено)
 
 ## Фаза 4 — Функциональность (0.33.0)
-- [ ] [assumption] orion plan <prompt> (dry-run)
-- [ ] [assumption] orion compare <a> <b> + assumptions <change>
+- [x] [assumption] orion plan <prompt> (dry-run)
+- [x] [assumption] orion compare <a> <b> + assumptions <change>
 
 ## Фаза 5 — Безопасность (0.34.0)
 - [ ] [assumption] denyExec/denyEnv для сниппетов

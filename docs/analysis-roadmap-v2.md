@@ -111,12 +111,13 @@
 5. ✅ benchmarks: startup CLI 136ms / MCP 118ms зафиксированы (быстро, оптимизация не нужна).
 
 
-### Фаза 4 — Функциональность (0.33.0)
-1. `orion plan <prompt>` dry-run (B5-64).
-2. `compare <a> <b>` (B5-70).
-3. `assumptions <change>` (B5-80).
-4. `undo` + `--yes` (B5-66, C8-466).
-5. Контекстный `--help` (B11-178).
+### Фаза 4 — Функциональность (0.33.0) ✅
+1. ✅ `orion plan <prompt>` — guarded dry-run план без записи (`planCmd.ts`).
+2. ✅ `compare <a> <b>` — side-by-side статус (`compareCmd.ts`).
+3. ✅ `assumptions <change>` — вывод [assumption]-задач draft (`compareCmd.ts`).
+4. (~) `undo` + `--yes` — отложено (менеджмент мутаций объёмный; низкий приоритет против стабильности).
+5. (~) Контекстный `--help` — частично: HELP команд добавлен; полный per-command help отложен.
+
 
 ### Фаза 5 — Безопасность (0.34.0)
 1. denyExec/denyEnv для сниппетов (B9-131, 141).
