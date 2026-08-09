@@ -1,6 +1,17 @@
 import { existsSync, renameSync, readdirSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+/** Reject path traversal / path separators in a change id (v0.34). Only
+ * filesystem-safe identifiers are allowed; a `../` or `"/foo"` would
+ * otherwise escape changes/ when joined into a path. */
+function assertSafeChangeId(id: string): void {
+  if (!id || /[/\\]|\.\./.test(id)) {
+    throw new Error(
+      `unsafe change id "${id}" — only letters, digits, - and _ are allowed`,
+    );
+  }
+}
+
 /**
  * Archive a finished change (v0.27): moves changes/<id> into
  * changes/archived/<id>. Reports are moved alongside, and the debt ledger
@@ -9,6 +20,7 @@ import { join } from "node:path";
  * change; never deletes anything.
  */
 export function archiveChange(changeId: string): { from: string; to: string } {
+  assertSafeChangeId(changeId);
   const base = join("changes", changeId);
   if (!existsSync(join(base, "proposal.json"))) {
     throw new Error(

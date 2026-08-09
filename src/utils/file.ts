@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rename as renameFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -6,7 +6,12 @@ import { fileURLToPath } from "node:url";
 /** Write a text file, creating parent directories on demand. */
 export async function writeFileSafe(path: string, data: string): Promise<void> {
   await ensureDir(dirname(path));
-  await writeFile(path, data, "utf8");
+  // Atomic write (v0.34): write to a temp file in the same directory then
+  // rename, so a crash/power-loss between open and write never leaves a
+  // half-written artifact that parses as a corrupt ledger/json.
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile(tmp, data, "utf8");
+  await renameFile(tmp, path);
 }
 
 /** Recursively create a directory if it does not exist yet. */

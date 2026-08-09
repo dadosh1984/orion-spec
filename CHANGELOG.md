@@ -4,6 +4,19 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.34.0] — 2026-08-09
+
+Phase 5 of the 2026 audit roadmap — security.
+
+- denyEnv in the hazard gate: test snippets may not read credential-shaped
+  env vars (AWS_*/SECRET/API_KEY/TOKEN/PASSWORD). denyExec (exec/spawn/
+  child_process) was already covered; now env-reading is too.
+- Path-traversal guard assertSafeChangeId in archive: rejects /, \ and .. in
+  a change id so joins never escape changes/.
+- Atomic writes: writeFileSafe now writes to a temp file then renames, so a
+  crash never leaves a corrupt ledger/json artifact.
+- Tests: tests/hazards.test.ts (4).
+
 ## [0.33.0] — 2026-08-09
 
 Phase 4 of the 2026 audit roadmap — functionality.

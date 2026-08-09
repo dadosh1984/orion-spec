@@ -21,8 +21,8 @@
 - [x] [assumption] orion compare <a> <b> + assumptions <change>
 
 ## Фаза 5 — Безопасность (0.34.0)
-- [ ] [assumption] denyExec/denyEnv для сниппетов
-- [ ] [assumption] path-traversal валидация + atomic write JSON
+- [x] [assumption] denyExec/denyEnv для сниппетов (denyEnv в hazards; exec уже был)
+- [x] [assumption] path-traversal валидация (assertSafeChangeId) + atomic write JSON (temp+rename)
 
 ## Фаза 6 — Экосистема (0.35.0)
 - [ ] [assumption] self-audit + trend-метрики + backup/restore + docs

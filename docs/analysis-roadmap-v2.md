@@ -119,12 +119,13 @@
 5. (~) Контекстный `--help` — частично: HELP команд добавлен; полный per-command help отложен.
 
 
-### Фаза 5 — Безопасность (0.34.0)
-1. denyExec/denyEnv для сниппетов (B9-131, 141).
-2. path-traversal валидация (B9-135).
-3. Atomic write для всех JSON (C5-373).
-4. Тайм-аут на дочерние процессы (B9-138).
-5. Sandbox forge без сети (B9-133).
+### Фаза 5 — Безопасность (0.34.0) ✅ (по балансу)
+1. ✅ denyEnv в hazard-сканере: чтение секретных env (AWS_*/SECRET/API_KEY/TOKEN/PASSWORD) в сниппетах блокируется; denyExec уже был (`exec`/`spawn`/`child_process`).
+2. ✅ path-traversal валидация `assertSafeChangeId` в archiveChange (запрет `/`, `\\`, `..`).
+3. ✅ Atomic write (`writeFileSafe` → temp+rename) — защита JSON-артефактов от коррупции при крахе.
+4. (~) Тайм-аут на дочерние процессы — уже реализован в fork-worker timeouts (вторая линия защиты).
+5. (~) Sandbox forge без сети — вне рамок zero-dep CLI (docs/sandbox.md честно описывает границы; docker-опция есть).
+
 
 ### Фаза 6 — Экосистема и метрики (0.35.0)
 1. self-audit + score (B2-34, C9-481).
