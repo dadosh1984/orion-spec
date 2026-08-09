@@ -25,6 +25,8 @@ const machine =
   cmd === "help" ||
   cmd === "--help" ||
   cmd === "-h" ||
+  cmd === "version" ||
+  cmd === "--version" ||
   argv.includes("--json");
 
 function announce(line: string): void {

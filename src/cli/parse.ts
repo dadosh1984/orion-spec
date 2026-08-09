@@ -57,6 +57,8 @@ Commands:
   plugin list             List installed plugins
   plugin remove <name>    Uninstall a plugin
   help                    Show this help
+  version                 Show the installed Orion version (v0.36)
+  --version, -V           Same as version (v0.36)
 
 Flags:
   --no-cache   Skip all cache reads/writes
@@ -90,6 +92,10 @@ export function parseArgs(argv: string[]): {
   let cmd = "";
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+    if (arg === "--version" || arg === "-V") {
+      cmd = "version";
+      continue;
+    }
     if (cmd === "" && !arg.startsWith("-")) {
       cmd = arg;
     } else if (arg === "--no-cache") {

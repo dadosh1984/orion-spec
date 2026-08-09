@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { writeFileSafe } from "../utils/file.js";
 import { DEFAULT_PORT } from "../constants.js";
 import { statusMark, paint } from "../utils/term.js";
+import { readVersionSafe } from "../utils/version.js";
+import { updateCheckEnabled, checkForUpdate, updateBanner } from "../core/updateCheck.js";
 import { parseArgs, HELP } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
@@ -57,6 +59,10 @@ export async function main(argv: string[]): Promise<number> {
   const track = OrionTrack.init();
 
   switch (cmd) {
+    case "version": {
+      console.log(`orion ${readVersionSafe()}`);
+      return 0;
+    }
     case "":
     case "help":
     case "--help":
@@ -636,6 +642,13 @@ export async function main(argv: string[]): Promise<number> {
         return 0;
       }
       const server = new McpServer();
+      // Update banner (v0.36): non-blocking; the registry check has a 2.5s
+      // timeout and fails silently offline. stderr so stdio stays protocol-
+      // clean. Agents see the version + a heads-up when a release exists.
+      if (updateCheckEnabled()) {
+        const info = await checkForUpdate();
+        process.stderr.write(`\n${updateBanner(info)}\n`);
+      }
       await server.runStdio();
       return 0;
     }

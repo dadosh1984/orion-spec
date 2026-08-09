@@ -33,6 +33,7 @@ load by your agent.
 | `ORION_TOKEN_PRICES` | JSON token-price overrides | built-in prices |
 | `ORION_TELEMETRY` | Enable/disable traces | unset |
 | `ORION_DASHBOARD_TOKEN` | Auth token for `orion serve` | auto (non-loopback) |
+| `ORION_UPDATE_CHECK` | `0` disables the non-blocking update banner on `orion mcp` | `1` (on) |
 
 ## `orion init`
 

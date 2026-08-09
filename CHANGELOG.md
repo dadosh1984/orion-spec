@@ -4,6 +4,21 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.36.0] — 2026-08-09
+
+Visibility and update notifications.
+
+- CLI `orion version` and `--version`/`-V` now print the installed version
+  (was silently showing help). Version resolves against the module so it
+  works in any install (global pnpm/npm or source dist).
+- `orion mcp` prints a non-blocking stderr banner at startup with the
+  installed version and, when a newer release exists, `→ update available:
+  vX.Y.Z`. Offline-safe (2.5s timeout, silent on failure, cached for a
+  day); disable with ORION_UPDATE_CHECK=0.
+- MCP initialize already announced serverInfo {name,version}; clients get
+  the version at handshake and via the version tool.
+- Tests: tests/version.test.ts (5). 595 tests green.
+
 ## [0.35.0] — 2026-08-09
 
 Phase 6 of the 2026 audit roadmap — ecosystem and metrics.
