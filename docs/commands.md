@@ -23,6 +23,14 @@
 | `orion shield <change-id>` | Runs lint, type-check, tests, drift-check, yagni, economy, security scan (package-manager aware); yagni WARNs feed the debt registry (v0.18) |
 | `orion next`               | Decides the next action from context (draft → forge → shield → out); appends the token-economy footer; estimates calibrated by history + budget-zone WARN (v0.17–v0.18) |
 | `orion out <change-id>`    | Writes the final `result.md` (tasks + guard + artifacts + next steps)                  |
+| `orion draft <title> --lang en\|ru` | Templates in Russian or English (explicit; else from profile) (v0.27)                  |
+| `orion review <title>`     | Deterministic zero-LLM change review: proposal, tasks, snippets, tests for done tasks, spec↔symbol drift (v0.27) |
+| `orion archive <title>`    | Move a finished change to `changes/archived` (debt ledger self-heals) (v0.27)        |
+| `orion doctor`             | Environment + repo health: cache, lessons, profile, git, dist freshness, changes/ (v0.27) |
+| `orion list`               | Table of all changes with task progress, phase and status (v0.27)                     |
+| `orion stats`              | Aggregate statistics: changes, tasks, lessons, cache (v0.27)                          |
+| `orion init`               | Scaffold `orionTdd.json` + pre-commit hook + deny-list template, idempotent (v0.28)   |
+| `orion changelog [title]`  | Generate a CHANGELOG entry from `result.md` (all results when no title) (v0.28)       |
 
 ## Track (cache)
 
@@ -55,11 +63,46 @@
 | `orion tdd refactor <task>`                 | Run `eslint --fix` + Prettier                                 |
 | `orion tdd finalize <task>`                 | Mark the task DONE, cache `tdd:<task>=DONE`                   |
 
+### TDD configuration — framework-agnostic (v0.24)
+
+By default the TDD engine is TypeScript + vitest: it generates
+`tests/<task>.test.ts`, writes implementations to `src/tasks/<task>.ts` and
+runs `pnpm vitest run tests/{{testFile}}`. The MCP server itself is
+framework-agnostic (JSON-RPC over stdio) — the engine's *file suffixes* were
+the only hardcoded part, and they are now configurable. Override them in your
+project's own `src/config/orionTdd.json` (that file is resolved before the
+built-in one):
+
+```json
+{
+  "testTemplate": "from {{task}} import {{task}}\n\ndef test_works():\n    assert {{task}}() is not None\n",
+  "testDir": "tests",
+  "srcDir": "src",
+  "testExt": "_test.py",
+  "srcExt": ".py",
+  "command": "python -m pytest {{testDir}}/{{testFile}}",
+  "minCoverage": 70
+}
+```
+
+- `testExt` / `srcExt` replace the hardcoded `.test.ts` / `.ts` suffixes
+  (v0.24). `{{testFile}}` in the template and command follows the configured
+  `testExt`, so a Python project gets `tests/<task>_test.py` and
+  `src/<task>.py` through the same RED-GREEN loop.
+- The hazard gate (v0.23) scans exactly the files the runner will import —
+  now with the configured suffixes, so a Python project is gated too.
+- Honest limits: `tdd refactor` (eslint --fix + prettier) and `shield`'s
+  code scans (lint / type / drift / security / policy) remain
+  TypeScript-oriented. In a Python project they are no-ops or report
+  honestly — the RED-GREEN loop itself is what becomes framework-agnostic.
+
 ## Other
 
 | Command                                    | Description                                                            |
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion help`                               | Show the help text                                                     |
+| `orion profile`                            | Show the user profile (`~/.orion/profile.md`) (v0.26)                 |
+| `orion profile --reset \| export \| import <f>` | Clear auto signals / print portable JSON / load a profile (v0.27)      |
 | `orion verify <change-id> [--json]`        | Evidence pass: checks every spec criterion's terms exist in the code. A **signal, never a gate** — exits 0 even when criteria are missing/drifted (v0.19)    |
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
 | `orion metrics --session <file.jsonl>`     | Per-role token breakdown of a session (v0.15)                          |
@@ -127,6 +170,43 @@ orion forge my-csv-tool --parallel 4
   · (no snippet) write json
 forge paused: 2 done, 0 skipped, 1 pending across 1 wave(s) of 4
 ```
+
+### No-junk contract (v0.24.1)
+
+Forge never leaves broken files behind for unfinished tasks — the workspace
+must not be polluted with files that produce FALSE shield signals (`test: N
+failing` from orphaned tests, `drift: missing exported`):
+
+- The snippet is read **before** any file is written. A task waiting for its
+  snippet creates nothing at all (the old order wrote `tests/<slug>.test.ts`
+  first, so a missing snippet left an orphaned test importing a
+  `src/tasks/<slug>.ts` that never existed).
+- Files forge created are **rolled back** when a task ends RED or its snippet
+  is refused by the hazard gate. Files that existed before forge (your own
+  work) are restored to their original content, never deleted.
+- Completed tasks keep their test + implementation files (that is the point
+  of the loop) and the run is recorded in `forge-report.md` / `.json`.
+- Interactive `orion tdd start` is unaffected — it deliberately leaves the
+  RED test in place for you to work on.
+
+### Drift contract (v0.24.2)
+
+`shield`'s drift step checks that every capability named in
+`changes/<id>/specs/*/spec.md` is exported by `src/tasks/*.ts`. The exact
+contract:
+
+- Only the `# Spec: <name>` H1 heading counts — `## Purpose`,
+  acceptance criteria and prose are free-form documentation (drift never
+  parses them).
+- `<name>` must be a **valid JS identifier** matching a real exported
+  symbol (`export function <name>` / `export const <name>` / …).
+- A heading that is not a valid identifier (e.g. `read-only-mypy-…` with
+  hyphens — illegal in JS identifiers, so it can never be exported) is
+  reported with a rename hint instead of an unsatisfiable
+  "missing exported".
+- `draft` generates identifier-safe capability names (words joined with
+  `_`) from the platform answer, so a fresh change can never get an
+  impossible spec heading.
 
 ### Token-economy compress rules (v0.11, v0.14)
 

@@ -9,6 +9,8 @@ import { tokenBudget } from "../core/metrics.js";
 import { readDebt } from "../core/debt.js";
 import { lessonsStats } from "../core/lessons.js";
 import { readTasks } from "../skills/forge/handler.js";
+import { phaseOf } from "../core/changeStatus.js";
+import { readProfile } from "../core/profile.js";
 
 /** Options for the `orion serve` web dashboard. */
 export interface ServeOptions {
@@ -82,6 +84,12 @@ interface ApiChange {
   title: string;
   goal: string | null;
   hasResult: boolean;
+  /** Deterministic workflow stage (think→draft→forge→shield→out), v0.28. */
+  phase: string;
+  /** guard PASS/FAIL from reports/<id>/guard-report.json, or null. */
+  guard: string | null;
+  /** drift check ok (spec heading ↔ exported symbol), or null when unknown. */
+  drift: boolean | null;
   /** Task checklist progress read from tasks.md, when one exists. */
   tasks: { done: number; total: number } | null;
 }
@@ -100,6 +108,72 @@ export function readVersion(): string {
   }
 }
 
+/** One drift check memoized by the change directory's newest mtime.
+ * Unlike full reviewChange, it reads only the spec headings + exported
+ * symbols — the precise drift gate — and is order-of-magnitude cheaper,
+ * which matters because the dashboard re-renders on a 5s timer (v0.30). */
+const SYMBOL =
+  /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/m;
+const driftCache = new Map<string, { mtime: number; ok: boolean | null }>();
+function driftOf(changeId: string): boolean | null {
+  const base = join("changes", changeId, "specs");
+  if (!existsSync(base)) return null;
+  // Newest mtime of any file under the change dir (cheap stat, not full walk).
+  let mtime = 0;
+  const walk = (dir: string): void => {
+    let ents: string[] = [];
+    try {
+      ents = readdirSync(dir);
+    } catch {
+      return;
+    }
+    for (const e of ents) {
+      if (e === ".orion-cache") continue;
+      const p = join(dir, e);
+      try {
+        const st = statSync(p);
+        if (st.isDirectory()) walk(p);
+        else mtime = Math.max(mtime, st.mtimeMs);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+  walk(base);
+  const hit = driftCache.get(changeId);
+  if (hit && hit.mtime === mtime) return hit.ok;
+  // Recompute: expected capability names from spec.md headings, then check
+  // each is exported under src/tasks/*.
+  let ok: boolean | null = true;
+  const expected: string[] = [];
+  for (const d of readdirSync(base, { withFileTypes: true })) {
+    if (!d.isDirectory()) continue;
+    const specFile = join(base, d.name, "spec.md");
+    if (!existsSync(specFile)) continue;
+    const spec = readFileSync(specFile, "utf8");
+    for (const m of spec.matchAll(/^# Spec: (.+)$/gm))
+      expected.push(m[1].trim());
+  }
+  if (expected.length === 0) ok = null;
+  else if (expected.length && existsSync(join("src", "tasks"))) {
+    const exports = new Set<string>();
+    for (const f of readdirSync(join("src", "tasks")).filter((f) =>
+      f.endsWith(".ts"),
+    )) {
+      const code = readFileSync(join("src", "tasks", f), "utf8");
+      for (const sm of code.matchAll(SYMBOL)) exports.add(sm[1]);
+    }
+    for (const cap of expected) {
+      if (!exports.has(cap)) {
+        ok = false;
+        break;
+      }
+    }
+  }
+  driftCache.set(changeId, { mtime, ok: ok as boolean | null });
+  return ok;
+}
+
 /** List the change directories in ./changes with their proposal summaries. */
 export function listChanges(): ApiChange[] {
   if (!existsSync("changes")) return [];
@@ -116,9 +190,30 @@ export function listChanges(): ApiChange[] {
         /* no proposal summary */
       }
       const tasks = readTasks(name);
+      let guard: string | null = null;
+      try {
+        const gr = JSON.parse(
+          readFileSync(join("reports", name, "guard-report.json"), "utf8"),
+        ) as { pass: boolean };
+        guard = gr.pass ? "pass" : "fail";
+      } catch {
+        /* no guard report yet */
+      }
+      // Drift check (v0.30): computed by a focused read of spec + exported
+      // symbols, NOT the full reviewChange pass, and memoized by directory
+      // mtime so the 5s dashboard auto-refresh does not re-scan every change.
+      let drift: boolean | null = null;
+      try {
+        drift = driftOf(name);
+      } catch {
+        drift = null;
+      }
       return {
         title: name,
         goal,
+        phase: phaseOf(name),
+        guard,
+        drift,
         hasResult: existsSync(join("changes", name, "result.md")),
         tasks:
           tasks.length > 0
@@ -262,6 +357,17 @@ async function refresh() {
       stat("last write", status.cache.lastPrune ?? "never") +
       stat("changes", status.changes);
 
+    // Profile block (v0.28): the memory.md analogue — what Orion knows
+    // about the user. Only what is actually observed is shown.
+    const prof = status.profile;
+    if (prof) {
+      cache.innerHTML += '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #232838"></div>' +
+        stat("language", prof.language) +
+        stat("platform", prof.platform) +
+        stat("budget", prof.budget) +
+        stat("topics", (prof.topics || []).join(", ") || "—");
+    }
+
     const economy = document.getElementById("economy");
     const eco = metrics.economy || {};
     let proj = (eco.byProject || []).slice(0, 5)
@@ -303,6 +409,11 @@ async function refresh() {
     listEl.innerHTML = ch.length
       ? ch.map(c => {
           let tags = '';
+          if (c.phase) tags += '<span class="tag">' + esc(c.phase) + '</span>';
+          if (c.guard === 'pass') tags += '<span class="tag done">guard ✓</span>';
+          else if (c.guard === 'fail') tags += '<span class="tag">guard ✗</span>';
+          if (c.drift === true) tags += '<span class="tag done">drift ✓</span>';
+          else if (c.drift === false) tags += '<span class="tag">drift ✗</span>';
           if (c.hasResult) tags += '<span class="tag done">result</span>';
           if (c.tasks) tags += '<span class="tag">' + c.tasks.done + '/' + c.tasks.total +
             ' tasks</span>';
@@ -381,6 +492,18 @@ export function startServer(
       }
       case "/api/status": {
         const stats = track.getStats();
+        let profile = null;
+        try {
+          const p = readProfile();
+          profile = {
+            language: p.language,
+            platform: p.platform || "(none)",
+            budget: p.budget || "(none)",
+            topics: p.topics.slice(0, 6),
+          };
+        } catch {
+          profile = null;
+        }
         sendJson(res, 200, {
           version: readVersion(),
           cache: {
@@ -390,6 +513,7 @@ export function startServer(
             lastPrune: stats.lastPrune,
           },
           changes: listChanges().length,
+          profile,
         });
         return;
       }

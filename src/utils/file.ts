@@ -1,12 +1,22 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  writeFile,
+  rename as renameFile,
+} from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /** Write a text file, creating parent directories on demand. */
 export async function writeFileSafe(path: string, data: string): Promise<void> {
   await ensureDir(dirname(path));
-  await writeFile(path, data, "utf8");
+  // Atomic write (v0.34): write to a temp file in the same directory then
+  // rename, so a crash/power-loss between open and write never leaves a
+  // half-written artifact that parses as a corrupt ledger/json.
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile(tmp, data, "utf8");
+  await renameFile(tmp, path);
 }
 
 /** Recursively create a directory if it does not exist yet. */
@@ -46,4 +56,30 @@ export function resolveConfig(name: string): string {
   const local = join(process.cwd(), "src", "config", name);
   if (existsSync(local)) return local;
   return fileURLToPath(new URL(`../../src/config/${name}`, import.meta.url));
+}
+
+/** Max default bytes for `readCapped` evidence lookups. */
+export const READ_CAPPED_DEFAULT = 64 * 1024;
+
+/**
+ * Read a file but only the first `maxBytes` bytes (v0.30). Never lets a
+ * huge file stall an evidence scan. Fails safe: missing/unreadable → "".
+ */
+export function readCapped(
+  file: string,
+  maxBytes = READ_CAPPED_DEFAULT,
+): string {
+  try {
+    const buf = readFileSync(file);
+    return buf.subarray(0, maxBytes).toString("utf8");
+  } catch {
+    return "";
+  }
+}
+
+/** Human-readable byte size (123 B, 45.6 KB, 1.2 MB). */
+export function humanBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

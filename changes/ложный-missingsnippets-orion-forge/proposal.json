@@ -1,0 +1,16 @@
+{
+  "title": "ложный-missingsnippets-orion-forge",
+  "goal": "Исправить ложный missingSnippets в orion forge: файл сниппета существует, но имя не совпадает с детерминированным slug (после v0.24 shortSlug старые длинные имена типа fact_v77_reader_1cv77_dat_id_nnn_yyyymmdd.ts больше не находятся). Добавить: (1) fallback-резолв сниппета — точное имя сначала, затем однозначное префиксное/нормализованное совпадение (со снятием старого маркера fact_/assumption_/spike_), при неоднозначности — честный missing; (2) диагностику: в missingSnippets сообщении перечислять реальные файлы snippets/ и ближайшие кандидаты, чтобы агент мог переименовать; (3) тесты: точное совпадение побеждает, legacy-имя находится, неоднозначность и отсутствие — честный missing со списком файлов. — orion-dev (forge handler.ts, MCP forge)",
+  "platform": "Zero-dependency, детерминированно. Соблюдать no-junk contract: сниппет проверяется ДО любой записи. Fallback только при однозначном совпадении (ровно один кандидат), иначе честный missing + список кандидатов. Не ломать существующие тесты forge. Всё — кратко, по правилу экономии токенов.",
+  "constraints": "compact",
+  "budget": "compact",
+  "clarity": "clear",
+  "language": "ru",
+  "appliesLessons": [
+    "mcp-python-1-7:forge:e1866430f91d",
+    "mcp-python-1-7:forge:bd60f40cf8f7",
+    "mcp-python-1-7:forge:97cdce65563a",
+    "mcp-python-1-7:forge:2bb06542d5cd",
+    "mcp-python-1-7:forge:169143623325"
+  ]
+}

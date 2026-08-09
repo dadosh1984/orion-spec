@@ -18,10 +18,12 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-draft-"));
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
+  process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
 });
 
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
+  delete process.env.ORION_PROFILE_FILE;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });
@@ -254,5 +256,36 @@ describe("draft platform sanitization (v0.11 fix)", () => {
     }
     // The free-text answer is not used verbatim as a directory name.
     expect(artifacts.specs[0]).not.toContain("22.12");
+  });
+});
+
+describe("maintenance detection v0.25 (leading verb only)", () => {
+  it("does NOT trigger a fix plan when 'updates' is content of a feature", async () => {
+    const proposal = await think(
+      "Add a converter that updates CSV files with a history log",
+      { noCache: true },
+      async () => "",
+    );
+    await draft(proposal.title, { noCache: true });
+    const tasks = readFileSync(
+      join("changes", proposal.title, "tasks.md"),
+      "utf8",
+    );
+    expect(tasks).not.toContain("Reproduce the failure");
+    expect(tasks).toContain("Scaffold project structure");
+  });
+
+  it("triggers a fix plan when the goal starts with a maintenance verb", async () => {
+    const proposal = await think(
+      "update the csv parser to handle empty lines",
+      { noCache: true },
+      async () => "",
+    );
+    await draft(proposal.title, { noCache: true });
+    const tasks = readFileSync(
+      join("changes", proposal.title, "tasks.md"),
+      "utf8",
+    );
+    expect(tasks).toContain("Reproduce the failure");
   });
 });

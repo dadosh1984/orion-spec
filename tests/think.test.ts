@@ -16,10 +16,12 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-think-"));
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
+  process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
 });
 
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
+  delete process.env.ORION_PROFILE_FILE;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });

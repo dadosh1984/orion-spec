@@ -1,0 +1,43 @@
+# orion-shield — run Orion's deterministic gates (lint, type-check, tests,
+# drift, security) on every push/PR. Install the CLI, then shield the
+# newest open change. Exits non-zero on any failing gate, so CI turns red
+# honestly.
+name: orion-shield
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shield:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm run build
+      - name: Lint
+        run: pnpm lint
+        continue-on-error: false
+      - name: Type-check
+        run: pnpm exec tsc --noEmit
+        continue-on-error: false
+      - name: Tests
+        run: pnpm test
+        continue-on-error: false
+      - name: Install orion and shield the newest change
+        run: |
+          npm i -g orion-spec@latest
+          newest=$(ls changes | head -1)
+          if [ -n "$newest" ]; then
+            orion shield "$newest" --no-cache || exit 1
+          else
+            echo "no changes to shield"
+          fi

@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import { readdirSync, existsSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { OrionTrack } from "./track.js";
+import { readCapped } from "../utils/file.js";
+
+/** Evidence scan uses a wider cap than the default 64 KB (source files can
+ * be larger). */
+const EVIDENCE_CAP = 128 * 1024;
 
 /**
  * Whole-change spec→source evidence pass (idea from a sibling spec-driven
@@ -212,15 +217,6 @@ function termInSource(re: RegExp, source: string): boolean {
   return re.test(source);
 }
 
-function readCapped(file: string, maxBytes = 128 * 1024): string {
-  try {
-    const buf = readFileSync(file);
-    return buf.subarray(0, maxBytes).toString("utf8");
-  } catch {
-    return "";
-  }
-}
-
 /** Collect the spec.md paths under a change's specs/ directory. */
 export function discoverySpecFiles(base: string): string[] {
   const specsDir = join(base, "specs");
@@ -276,7 +272,10 @@ export function verifyChange(
   if (opts?.cache) {
     track = OrionTrack.init();
     const specDigest = specFiles
-      .map((f) => `${f.replace(/\\/g, "/")}:${hashText(readCapped(f))}`)
+      .map(
+        (f) =>
+          `${f.replace(/\\/g, "/")}:${hashText(readCapped(f, EVIDENCE_CAP))}`,
+      )
       .sort()
       .join("|");
     cacheKey = `verify:${hashText(specDigest)}:${treeFingerprint(join(projectRoot, "src"))}`;
@@ -290,7 +289,7 @@ export function verifyChange(
 
   const findings: CriterionFinding[] = [];
   for (const specFile of specFiles) {
-    const content = readCapped(specFile);
+    const content = readCapped(specFile, EVIDENCE_CAP);
     const spec = relative(join(base, "specs"), specFile);
     for (const criterion of extractCriteria(content)) {
       const terms = extractTerms(criterion);
@@ -319,7 +318,7 @@ export function verifyChange(
       const matchedTerms: string[] = [];
       const evidence: string[] = [];
       for (const file of sources) {
-        const source = readCapped(file);
+        const source = readCapped(file, EVIDENCE_CAP);
         for (const term of terms) {
           if (
             !matched.has(term) &&

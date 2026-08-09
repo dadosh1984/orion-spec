@@ -36,6 +36,12 @@ const HAZARDS: { re: RegExp; what: string }[] = [
   { re: /new\s+Function\s*\(/, what: "dynamic Function constructor" },
   { re: /\bprocess\.exit\s*\(/, what: "process termination" },
   { re: /fetch\s*\(\s*["']https?:/, what: "outbound network call" },
+  // denyEnv (v0.34): reading credential-shaped environment variables inside
+  // a test snippet is a privilege leak, not a bug. Conservative substring.
+  {
+    re: /process\.env\.(?:AWS_[A-Z_]*|.*(?:API_KEY|APISECRET|ACCESS_KEY|SECRET|PASSWORD|PRIVATE_KEY|TOKEN))/,
+    what: "reads a credential-shaped env var (denyEnv)",
+  },
 ];
 
 /** Scan source for destructive/escaping patterns; returns human-readable hits. */

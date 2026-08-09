@@ -21,12 +21,14 @@ beforeEach(() => {
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
   process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
+  process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
 });
 
 afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
   delete process.env.ORION_LESSONS_FILE;
   delete process.env.ORION_ECONOMY_FILE;
+  delete process.env.ORION_PROFILE_FILE;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });
@@ -353,5 +355,21 @@ describe("lessons export/import CLI (v0.23)", () => {
     expect(await main(["lessons", "import", dump])).toBe(0);
     expect(await main(["lessons", "bogus"])).toBe(1);
     expect(await main(["lessons", "import"])).toBe(1);
+  });
+});
+
+describe("profile CLI (v0.26)", () => {
+  it("returns an honest hint before any profile exists", async () => {
+    expect(await main(["profile"])).toBe(0);
+  });
+
+  it("writes the profile on think and serves it back", async () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((m) => logs.push(String(m)));
+    expect(await main(["build a csv converter"])).toBe(0); // shorthand think
+    expect(await main(["profile"])).toBe(0);
+    spy.mockRestore();
+    expect(logs.join("\n")).toContain("# Orion user profile");
+    expect(logs.join("\n")).toContain("## User notes");
   });
 });

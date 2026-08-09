@@ -107,3 +107,44 @@ Each key is a self-contained file, so a mounted/restored directory works as-is.
 A remote backend (S3/HTTP) is deliberately out of scope: it would add a
 network trust boundary and credentials handling for a benefit the
 mount-a-volume pattern already provides.
+
+## Framework-agnostic hazard gate (v0.24)
+
+The gate scans the two files the test runner is about to import before they
+execute. Before v0.24 those paths were hardcoded (`<task>.ts` /
+`<task>.test.ts`), so a Python/Go/… project was never scanned. Now the paths
+follow `srcExt` / `testExt` from `orionTdd.json` (defaults unchanged:
+`.ts` / `.test.ts`):
+
+```json
+{ "testExt": "_test.py", "srcExt": ".py", "command": "python -m pytest {{testDir}}/{{testFile}}" }
+```
+
+Same honesty contract: the scan is a heuristic, not a sandbox — a clean scan
+is not a guarantee, a blocked snippet is reported verbatim and can be
+reviewed. The patterns are language-agnostic (`eval(`, `exec(`, `spawn(`,
+`child_process`, `process.exit`, `fetch(http…)`, `rm*`/`unlink`/`fs.rm`,
+`new Function(`, `chmod 777`, `truncate`), so they fire on Python's `eval` /
+`exec` and `os.system`-adjacent calls too — but a Python-only pattern that is
+not listed will not be flagged (the same honest "heuristic, not safety
+claim" wording applies).
+
+## Prompt deny-list policy (v0.28)
+
+`think` enforces a **deny-list** on the raw prompt before a proposal exists.
+Patterns are plain substrings, matched case-insensitively, so `# rm -rf` in
+the deny list blocks `run rm -rf ./cache` too. A match is a confirmation
+gate, not a censor: the prompt is reported and the user must pass `--force`
+to proceed.
+
+Files (merged, project first):
+
+| File | Level |
+|------|-------|
+| `.orion/deny.txt` (scaffolded by `orion init`) | project |
+| `~/.orion/deny.txt` | user (all projects) |
+
+Format: one pattern per line; blank lines and `#` comments are ignored.
+Combine with the drift guard (hallucinated packages, placeholders) and the
+hazard gate above to cover prompt-, import-, and execution-level policy in
+one deterministic, zero-dependency layer.

@@ -42,6 +42,14 @@ jobs:
             echo "::notice::tag ${TAG} does not match package version v${PKG_VERSION} — skipping publish"
             exit 0
           fi
+          # A version may already be on npm (published earlier out-of-band).
+          # Re-publishing fails with E403 and would block the GH release,
+          # so treat that case as an idempotent no-op (exit 0). The GitHub
+          # Release job still runs because we never fail on a dup version.
+          if npm view "orion-spec@${PKG_VERSION}" version >/dev/null 2>&1; then
+            echo "::notice::orion-spec@${PKG_VERSION} already on npm — skipping publish"
+            exit 0
+          fi
           npm publish --provenance
 
   release:

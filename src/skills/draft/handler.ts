@@ -6,7 +6,8 @@ import {
 } from "../../utils/file.js";
 import { existsSync } from "node:fs";
 import { OrionTrack } from "../../core/track.js";
-import { renderTemplate } from "../../core/templates.js";
+import { renderTemplate, TemplateLang } from "../../core/templates.js";
+import { readProfile } from "../../core/profile.js";
 import { extractCore, extractCoreClause } from "../think/refine.js";
 import type { ArtifactSet, Proposal } from "../../type.js";
 
@@ -15,15 +16,22 @@ import type { ArtifactSet, Proposal } from "../../type.js";
  * Guided answers are free-form sentences ("node >= 22, CLI + MCP"), which
  * must never become filesystem paths. Identifiers are kept as-is; anything
  * else collapses to "core".
+ *
+ * The result is ALSO the spec's `# Spec:` heading, and drift (v0.20+)
+ * requires that heading to match an exported symbol in `src/tasks` — so it
+ * must be a valid JS identifier. v0.24.2: words join with `_` instead of
+ * `-` — a hyphenated name like `read-only-mypy-...` can NEVER be exported
+ * (hyphens are illegal in identifiers), which made drift unsatisfiable for
+ * any change whose platform answer slugged into multiple words.
  */
 export function toCapability(platform: string): string {
   const slug = platform
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
     .slice(0, 40);
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length >= 2
+  return /^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(slug) && slug.length >= 2
     ? slug
     : "core";
 }
@@ -149,11 +157,16 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
   // instead of build templates: "Scaffold project structure" and
   // "Document usage in README" are noise for a bug fix. Fires before the
   // feature categories so e.g. "fix the CLI parser" plans a fix, not a
-  // new CLI. English words get \b boundaries; Cyrillic is matched as a
-  // substring because JS \b is ASCII-only.
-  const maintenance =
+  // new CLI.
+  //
+  // v0.25: maintenance is decided by the LEADING action verb only, not by
+  // any keyword anywhere in the goal — "updates" inside a feature
+  // description is content, not a repair request. "Fix the CLI parser"
+  // → maintenance; "Add a converter that updates CSV files" → feature.
+  const MAINTENANCE_VERBS =
     /\b(fix(?:es|ed|ing)?|bug(?:s)?|broken|regression|upgrade(?:d|s)?|upgrading|update(?:d|s)?|refactor(?:ed|ing)?|polish|repair(?:s|ed)?|maintain(?:ing)?|maintenance)\b|ошибк|сломан|почин|исправ|обнов|регресс/i;
-  if (maintenance.test(goal)) {
+  const leadingVerb = goal.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
+  if (MAINTENANCE_VERBS.test(leadingVerb)) {
     tasks.push({
       text: "Reproduce the failure: write a test that fails on the current code (RED)",
       mark: "assumption",
@@ -229,7 +242,7 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
  */
 export async function draft(
   title: string,
-  opts?: { noCache?: boolean },
+  opts?: { noCache?: boolean; lang?: TemplateLang },
 ): Promise<ArtifactSet> {
   const track = OrionTrack.init();
   const proposal = await loadProposal(title, track);
@@ -243,6 +256,12 @@ export async function draft(
   const capability = toCapability(proposal.platform);
   const specsDir = `${dir}/specs/${capability}`;
   const skipped: string[] = [];
+
+  // Language: explicit --lang wins, then the profile's detected language,
+  // then English. Only the prose sections change; the `# Spec:` drift key
+  // and the task checklist format stay identical in both languages.
+  const lang: TemplateLang =
+    opts?.lang ?? (readProfile().language === "ru" ? "ru" : "en");
 
   // Idempotent writer: keeps the existing file, records it as skipped.
   const writeIfMissing = async (path: string, data: string): Promise<void> => {
@@ -266,12 +285,14 @@ export async function draft(
         : "",
     },
     title,
+    lang,
   );
 
   const specMd = renderTemplate(
     "spec",
     { capability, goal: proposal.goal },
     title,
+    lang,
   );
   const derived = deriveTasks(proposal);
   const assumptions = derived.filter((t) => t.mark === "assumption");
@@ -285,6 +306,7 @@ export async function draft(
           : "- none — everything below is stated in the proposal",
     },
     title,
+    lang,
   );
   const tasksMd = renderTemplate(
     "tasks",
@@ -293,6 +315,7 @@ export async function draft(
       tasks: derived.map((t) => `- [ ] [${t.mark}] ${t.text}`).join("\n"),
     },
     title,
+    lang,
   );
 
   const snippetsReadme = [

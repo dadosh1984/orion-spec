@@ -7,6 +7,7 @@ Usage:
 
 Commands:
   think <prompt>          Gather a proposal by asking guided questions
+  plan <prompt>           Dry-run plan: what think→draft would create (v0.33)
   draft <title>           Generate proposal.md, specs/, design.md, tasks.md
   forge <title>           Run the RED-GREEN-REFACTOR loop over tasks.md
   forge <title> --parallel <n>   Parallel forge waves via fork workers (v0.16)
@@ -17,9 +18,25 @@ Commands:
   pay-debt <change-id>    Repay yagni debt: re-sync the ledger, report what closed (v0.22)
   resume <change-id>      Continue an interrupted workflow from its checkpoint (v0.22)
   next                    Decide the next action from context (draft → forge → shield → out)
+  init                    Scaffold orionTdd.json + pre-commit hook + deny-list (v0.28)
+  changelog [title]       Generate a CHANGELOG entry from result.md (v0.28)
   track status            Show cache statistics
   track prune             Remove expired / oversized cache entries
   track lessons [id]      List self-correction lessons (v0.12)
+  profile                 Show the user profile (~/.orion/profile.md, v0.26)
+  profile --reset         Clear auto-observed signals, keep user notes (v0.27)
+  profile export          Print the profile as portable JSON (v0.27)
+  profile import <f>      Load a portable JSON profile (v0.27)
+  list                    Table of all changes with task progress (v0.27)
+  compare <a> <b>         Side-by-side status of two changes (v0.33)
+  assumptions <change>    List draft's [assumption] tasks — verify them (v0.33)
+  stats                   Aggregate project statistics (v0.27)
+  self-audit              Consolidated health + score report (v0.35)
+  backup <file>           One-file backup of profile + lessons (v0.35)
+  restore <file>          Restore a backup (profile) (v0.35)
+  review <title>          Deterministic change review: snippets, tests, drift (v0.27)
+  archive <title>         Move a finished change to changes/archived (v0.27)
+  doctor                  Environment + repo health checks (v0.27)
   learn <file|dir>        Learn lessons from agent session JSONL (v0.13)
   lessons export <path>   Export the lesson ledger to a JSON file (v0.23)
   lessons import <path|url>  Merge lessons from a file or URL, deduped (v0.23)
@@ -40,9 +57,12 @@ Commands:
   plugin list             List installed plugins
   plugin remove <name>    Uninstall a plugin
   help                    Show this help
+  version                 Show the installed Orion version (v0.36)
+  --version, -V           Same as version (v0.36)
 
 Flags:
   --no-cache   Skip all cache reads/writes
+  --no-color   Disable colored/emoji output (NO_COLOR is honoured too, v0.31)
   --dry        Preview instead of executing
   --watch      Re-run on file changes (tdd)
   --json       Machine-readable output
@@ -50,6 +70,7 @@ Flags:
   --host H     Bind host for serve (default 127.0.0.1)
   --token T    Bearer token for serve (auto-generated when host is not loopback)
   --ui         Serve the HTML dashboard at / (default for serve)
+  --lang en|ru Template language override for draft (v0.27)
 `;
 
 /** Parse argv into a command plus options. */
@@ -71,10 +92,16 @@ export function parseArgs(argv: string[]): {
   let cmd = "";
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+    if (arg === "--version" || arg === "-V") {
+      cmd = "version";
+      continue;
+    }
     if (cmd === "" && !arg.startsWith("-")) {
       cmd = arg;
     } else if (arg === "--no-cache") {
       opts.noCache = true;
+    } else if (arg === "--no-color") {
+      process.env.ORION_COLOR = "0";
     } else if (arg === "--dry") {
       opts.dry = true;
     } else if (arg === "--watch") {
@@ -123,6 +150,13 @@ export function parseArgs(argv: string[]): {
       i++;
     } else if (arg === "--ui") {
       opts.ui = true;
+    } else if (arg === "--lang") {
+      const value = argv[i + 1];
+      if (value !== "en" && value !== "ru") {
+        throw new Error('--lang requires "en" or "ru"');
+      }
+      opts.lang = value;
+      i++;
     } else {
       args.push(arg);
     }

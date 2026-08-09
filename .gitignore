@@ -22,3 +22,6 @@ Thumbs.db
 
 # Test artifacts
 coverage/
+.orion-vitest-cache/
+cwd/
+.pytest_cache/
