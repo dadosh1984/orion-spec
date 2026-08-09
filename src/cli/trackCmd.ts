@@ -42,7 +42,7 @@ export async function trackCommand(
       const text = rows.length
         ? rows
             .map((l) => {
-              const kind = l.kind === "success" ? "success" : "" ;
+              const kind = l.kind === "success" ? "success" : "";
               const tag = kind || (l.score ? `✱${l.score}` : "");
               const label = tag ? ` [${tag}]` : "";
               return `  [${l.ts.slice(0, 19)}]${label} ${l.changeId} / ${l.step} — ${(l.pattern ?? l.error).slice(0, 80)}${l.fix ? ` → ${l.fix.slice(0, 50)}` : ""}`;
@@ -51,9 +51,7 @@ export async function trackCommand(
         : changeId
           ? `no lessons for "${changeId}" — nothing has gone wrong (yet)`
           : "no lessons recorded — nothing has gone wrong (yet)";
-      const payload = changeId
-        ? rows
-        : { lessons: listLessons() };
+      const payload = changeId ? rows : { lessons: listLessons() };
       printOut(opts, { lessons: payload }, text);
       return 0;
     }

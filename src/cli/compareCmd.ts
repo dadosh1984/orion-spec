@@ -9,8 +9,13 @@ import { readTasks } from "../skills/forge/handler.js";
  * phase, task progress, guard verdict and artifact completeness. Deterministic
  * and zero-LLM; reads the same signals `list`/`status` use.
  */
-export function compareCmd(a: string, b: string): { ok: boolean; text: string } {
-  const missing = [a, b].filter((id) => !existsSync(join("changes", id, "proposal.json")));
+export function compareCmd(
+  a: string,
+  b: string,
+): { ok: boolean; text: string } {
+  const missing = [a, b].filter(
+    (id) => !existsSync(join("changes", id, "proposal.json")),
+  );
   if (missing.length > 0) {
     return {
       ok: false,
@@ -22,7 +27,8 @@ export function compareCmd(a: string, b: string): { ok: boolean; text: string } 
     const done = (st.done as number) ?? 0;
     const total = (st.tasks as number) ?? 0;
     const ratio = total > 0 ? done / total : 0;
-    const guard = st.artifacts && (st.artifacts as Record<string, boolean>).guard;
+    const guard =
+      st.artifacts && (st.artifacts as Record<string, boolean>).guard;
     const guardTxt = guard ? "run" : "none";
     return [
       `  ${id}`,
@@ -45,11 +51,12 @@ export function compareCmd(a: string, b: string): { ok: boolean; text: string } 
  * assumptions are guesses and must be visible, not silent. */
 export function assumptionsCmd(id: string): { ok: boolean; text: string } {
   if (!existsSync(join("changes", id, "proposal.json"))) {
-    return { ok: false, text: `${statusMark("error")} change "${id}" not found` };
+    return {
+      ok: false,
+      text: `${statusMark("error")} change "${id}" not found`,
+    };
   }
-  const tasks = readTasks(id).filter((t) =>
-    /^\[assumption\]/.test(t.text),
-  );
+  const tasks = readTasks(id).filter((t) => /^\[assumption\]/.test(t.text));
   if (tasks.length === 0) {
     return {
       ok: true,

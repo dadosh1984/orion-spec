@@ -52,7 +52,9 @@ export function archivedChanges(): string[] {
   const root = join("changes", "archived");
   if (!existsSync(root)) return [];
   return readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && existsSync(join(root, d.name, "proposal.json")))
+    .filter(
+      (d) => d.isDirectory() && existsSync(join(root, d.name, "proposal.json")),
+    )
     .map((d) => d.name)
     .sort();
 }

@@ -172,7 +172,6 @@ export function rankedLessons(): Lesson[] {
   });
 }
 
-
 /** Lessons for one change, or all lessons; newest first. */
 export function listLessons(changeId?: string): Lesson[] {
   const rows = changeId

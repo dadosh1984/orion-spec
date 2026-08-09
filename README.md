@@ -1,312 +1,185 @@
-# Orion – Self‑Contained AI‑Agent Toolkit
+# Orion — Self-Contained AI-Agent Toolkit
 
-![CI](https://img.shields.io/badge/CI-passing-brightgreen)
 [![npm](https://img.shields.io/npm/v/orion-spec.svg)](https://www.npmjs.com/package/orion-spec)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen)](https://github.com/dadosh1984/orion-spec/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Orion** is a zero‑dependency framework that turns a high‑level idea into production‑ready code **while guaranteeing minimal token usage, full test coverage, and deterministic quality gates**. Everything – the cache, the YAGNI ladder, the RED‑GREEN‑REFACTOR engine and the CLI – is written from scratch.
+**Orion** is a zero‑dependency framework that turns a high‑level idea into
+production‑ready code with deterministic, reproducible quality gates — and
+minimal token usage. Instead of trusting one model's next token, Orion runs
+every idea through a fixed state machine so the outcome is verifiable no
+matter which model (or agent) you attach.
 
-> **Status.** Honest about its age: the entire version history (v0.1 → v0.23) is
-> compressed into a short span (first release 2026‑08‑06), so treat it as a young,
-> fast‑moving project rather than a battle‑tested one. Releases are cut manually;
-> the CHANGELOG tracks every change since v0.1.
+- **Deterministic pipeline** — `think → draft → forge → shield → out`.
+- **Token economy built‑in** — every expensive command output is cached,
+  deduplicated and compressed; savings are measured, not guessed.
+- **Test‑first by construction** — every task runs the RED‑GREEN‑REFACTOR loop.
+- **Honest by default** — Orion never fabricates a result; stale or unknown
+  answers are labeled as such.
 
-## 🎯 Philosophy
+---
 
-1. **Deterministic Process, Not Guesswork** – the whole pipeline is a state machine: `think → draft → forge → shield → out`. Every non‑trivial step is verified locally.
-2. **Token‑Economy First** – all external command outputs (lint, type‑check, test, drift, security) are cached by **orion‑track**. A cached result is reused for the lifetime of the cache (default 30 days).
-3. **Minimalism by Design** – the **YAGNI ladder** (`orion‑scale`) automatically strips any code that isn't strictly required.
-4. **Test‑First, Always** – **orion‑tdd‑core** enforces the classic RED‑GREEN‑REFACTOR loop for _every_ task.
-5. **Transparency & Auditable Artifacts** – `proposal.md`, `specs/*.md`, `design.md`, `tasks.md`, `guard‑report.md`, `result.md` live in the repository, version‑controlled and human‑readable.
-6. **Open for Extension** – a plugin API, an off‑line Docker image and a benchmark module shipped in v0.3–v0.5; unknown CLI commands dispatch to installed plugins.
-7. **Honesty by Default (v0.10)** – Orion never fabricates a result: it says "I don't know" when the context is insufficient, marks stale guard verdicts instead of presenting them as fresh, labels cache hits with their date, and distinguishes what is stated in the proposal (`[fact]`) from what it inferred (`[assumption]`).
-8. **Companion, not Oracle (v0.10)** – the user is the guide (they have the idea), Orion is the companion (it has the knowledge to realise it). When the user is stuck or has no ideas, Orion proactively proposes alternative options — it never silently decides on the user's behalf in an interactive terminal.
+## Why process matters more than the model
 
-## 🏁 Why process matters more than the model
+The same idea, run through the same pipeline, produces the same verifiable
+outcome regardless of the model. A model can hallucinate an `eval()` call or
+an "operation history" the goal never mentioned — the pipeline catches it:
+`shield` scans the code, `drift` compares specs against the implementation,
+`out` refuses to trust a stale guard verdict, and `draft` labels its own
+inferences `[assumption]` so a wrong guess is visible instead of silent.
 
-> **The user wins with a clear logical sequence, not with a bigger model.**
+The logical sequence in which a problem is solved matters more than the model
+used to solve it.
 
-The same idea, run through the same deterministic pipeline, produces the
-same verifiable outcome no matter which model you attach. A model can
-hallucinate a `eval()` call or an "operation history" that the goal never
-mentioned — the pipeline catches it: `shield` security scans the code,
-`drift` compares specs vs `src/tasks`, `out` refuses to trust a stale guard
-verdict, and `draft` labels its own inferences as `[assumption]` so a wrong
-guess is visible instead of silent.
+---
 
-That is the point of Orion: **the logical sequence in which a problem is
-solved matters more than the model used to solve it.**
-
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-pnpm install
-pnpm run build
+npm i -g orion-spec       # adds the `orion` command to PATH
 
-orion think "Build a CLI utility that converts CSV to JSON"   # guided questions → proposal
-orion draft my-csv-tool                                        # artifacts: proposal.md, specs/, design.md, tasks.md
-orion forge my-csv-tool                                        # RED-GREEN-REFACTOR loop over tasks.md
-orion shield my-csv-tool                                       # lint, type-check, tests, drift, security
-orion out my-csv-tool                                          # final result.md summary
+orion think "Build a CLI utility that converts CSV to JSON"  # guided Qs -> proposal
+orion draft csv-tool      # generates proposal, specs/, design.md, tasks.md
+orion forge csv-tool      # RED-GREEN-REFACTOR loop over tasks.md
+orion shield csv-tool     # lint, type-check, tests, drift, security
+orion out csv-tool        # final result.md summary
 ```
 
-Or run the CLI directly from source: `node dist/cli/index.js think "…"`.
+Each step writes human‑readable, version‑controlled artifacts under
+`changes/<title>/`. See [Quick Start guide](docs/quick-start.md) for a
+walkthrough and [Commands Reference](docs/commands.md) for every command.
 
-## 📦 Installation
+---
+
+## The pipeline
+
+| Step     | What it does |
+| -------- | ------------ |
+| `think`  | Turns a raw idea into a proposal. Asks language‑aware clarifying questions (platform, constraints, budget), refines vague prompts and resolves them to `changes/<title>/proposal.json`. |
+| `draft`  | Generates `proposal.md`, `specs/<capability>/spec.md`, `design.md` and `tasks.md`. Never clobbers your hand edits; supports `--lang en\|ru` or auto‑picks from your profile. |
+| `forge`  | Drives every open `- [ ]` task in `tasks.md` through TDD, ticking each off live in the terminal. Optional `--parallel <n>` runs tasks in isolated worker waves. |
+| `shield` | Runs the guard‑rails: lint, type‑check, unit tests, drift‑check, YAGNI signal, cache‑economy budget, security scan and project policy gates. Each step caches `PASS`; a report lands in `reports/<id>/`. |
+| `out`    | Writes the final `result.md`: a verdict assembled from tasks, guard report and artifacts — including any lessons learned. |
+
+### Supporting commands
+
+| Command | Purpose |
+| ------- | ------- |
+| `orion review <id>` | Deterministic, zero‑LLM change review (proposal, tasks, snippets, tests, spec↔symbol drift). |
+| `orion next` | Decides the next action from context, ranks alternatives cheapest‑first, stops on budget‑exceeded or a detected toxic loop. |
+| `orion resume <id>` | Continues an interrupted workflow from its checkpoint. |
+| `orion pay-debt <id>` | Re‑syncs the YAGNI debt ledger and reports what closed. |
+| `orion track status\|prune\|get\|set\|clear` | Cache statistics and key/value access. |
+| `orion scale <file> [--dry]` | Applies the YAGNI ladder to a source file. |
+| `orion tdd start\|implement\|refactor\|finalize <task>` | The RED‑GREEN‑REFACTOR loop for a single task. |
+| `orion verify <id> [--json]` | Evidence pass — checks spec criteria exist in the code (a signal, never a gate). |
+| `orion metrics [--session <f>]` | Benchmark and token‑economy report. |
+| `orion serve [--port N] [--ui] [--token T]` | Zero‑dependency web dashboard. |
+| `orion profile` | Shows/edits your user‑adaptation profile. |
+
+Full details and flags are in [docs/commands.md](docs/commands.md).
+
+---
+
+## Installation
+
+Global CLI (recommended):
 
 ```bash
-npm i -g orion-spec     # adds `orion` to your PATH
-# or locally
+npm i -g orion-spec
+```
+
+Local dev dependency:
+
+```bash
 pnpm add -D orion-spec
 ```
 
-## 🔄 Updating
+Run from source instead:
 
 ```bash
-npm i -g orion-spec@latest      # update the global CLI (check: npm view orion-spec version)
-# or, from the source repo:
-git pull                        # fetch the latest source
-pnpm install && pnpm run build  # install + rebuild dist/
-pnpm update                     # dev deps within declared semver ranges (safe)
-pnpm update --latest            # allow major bumps — may be breaking, check CHANGELOG.md
+git clone https://github.com/dadosh1984/orion-spec.git
+cd orion-spec
+pnpm install && pnpm run build
+node dist/cli/index.js think "…"
 ```
 
-The installed version can be checked with `npm ls -g orion-spec`; the latest published one with `npm view orion-spec version`. Every release is dated and described in [CHANGELOG.md](CHANGELOG.md).
-
-## 🛠️ Components
-
-### Cache (`orion-track`)
-
-Stores stdout/stderr/artifacts of every expensive command in `~/.orion/cache` (override with `ORION_CACHE_DIR`). A cached result is reused for the lifetime of the cache (default 30 days, 100 MB budget — see `src/config/orionTrack.json`).
+## Updating
 
 ```bash
-orion track status            # entry count, size, last prune
-orion track prune             # drop expired / oversized entries
-orion track get <key>         # read a cache value
-orion track set <key> <val>   # write a cache value
-orion track clear             # delete the whole cache
+npm i -g orion-spec@latest     # global CLI
+npm view orion-spec version    # check the latest published version
+npm ls -g orion-spec           # check the installed version
 ```
 
-Use `--no-cache` on any command to skip cache reads/writes — handy for debugging.
+`orion version` (or `orion --version`/`-V`) prints the installed version, and
+`orion mcp` announces when a newer release is available. Every version is
+dated and described in [CHANGELOG.md](CHANGELOG.md).
 
-Cache keys are namespaced: `scale:<stage>:<hash>`, `tdd:<task>`, `shield:<step>`, `proposal:<title>`, `forge:<slug>`.
+---
 
-### Scale (`orion-scale`) — the YAGNI ladder
+## Core features
 
-`orion scale <file> [--dry]` applies the ladder in order. Each stage result is cached under `scale:<stage>:<hash>`.
+- **Deterministic workflow** — the whole pipeline is a state machine; every
+  non‑trivial step is verified locally with transparent, auditable artifacts.
+- **Token economy** — outputs of lint/type‑check/tests/drift/security are
+  cached by `orion-track` and compressed before an agent reads them
+  (`orion-compress`). Blocks and repeats are deduplicated, and `orion metrics`
+  reports the real bytes/tokens saved from `~/.orion/economy.json`.
+- **YAGNI ladder** (`orion-scale`) — strips only what is provably redundant
+  across a defined stage ladder, keeping code minimal without guesswork.
+- **RED‑GREEN‑REFACTOR** (`orion-tdd-core`) — a template generates a failing
+  test; your snippet is applied only if it makes the tests pass.
+- **Self‑correction** — when a step honestly fails, Orion records a lesson in
+  `~/.orion/lessons.json` and routes back to `think` with a corrected task, so
+  the same mistake is not repeated. Lessons carry across projects; `orion learn`
+  also reads real agent‑session JSONL.
+- **Framework‑agnostic TDD** (v0.24) — configure the engine for any language
+  (TypeScript + vitest by default; Python via `src/config/orionTdd.json`).
+- **Open templates** — proposal/design/tasks/spec skeletons and clarifying
+  questions are data, not code. Override per change or globally.
+- **Plugin API + agents** — unknown commands dispatch to installed plugins;
+  `orion mcp` exposes a JSON‑RPC 2.0 server (17 tools) that any MCP‑capable
+  agent can attach to.
 
-| Stage      | What it does                                                         |
-| ---------- | -------------------------------------------------------------------- |
-| `yagni`    | no‑op – never transform code without a reason                        |
-| `reuse`    | finds duplicate functions and replaces them with imports             |
-| `stdlib`   | adds the `node:` prefix to bare built‑in imports                     |
-| `native`   | rewrites `fs.readFileSync(...)` to `await fs.promises.readFile(...)` |
-| `dep`      | records missing external imports in `package.json`                   |
-| `oneLiner` | collapses long arrow functions into expression bodies                |
-| `minimum`  | strips `console.*`, `debugger`, comments and blank lines             |
+---
+
+## Development
 
 ```bash
-orion scale src/foo.ts        # writes src/foo.scaled.ts
-orion scale src/foo.ts --dry  # preview only
+pnpm run build          # tsc -> dist/
+pnpm run lint           # ESLint (flat config)
+pnpm run format         # Prettier --write
+pnpm test               # Vitest (unit + e2e)
+pnpm run test:coverage  # tests with coverage
+pnpm run ci             # lint + format:check + type-check + build + coverage
 ```
 
-### TDD engine (`orion-tdd-core`)
+CI runs the same steps across the OS matrix (ubuntu / macos / windows ×
+Node 22 / 24) and uploads build artifacts.
 
-Every task goes through RED → GREEN → REFACTOR → DONE. The engine generates a failing test from a template, runs it, applies your snippet, and cleans up with `lint --fix` + `format`.
+---
 
-```bash
-orion tdd start calcSum              # RED: failing test generated
-orion tdd implement calcSum snippet.ts  # GREEN when tests pass
-orion tdd refactor calcSum           # lint --fix + prettier
-```
+## Documentation
 
-The full cycle for a task:
+- [Quick Start](docs/quick-start.md) — step‑by‑step first run.
+- [Architecture](docs/architecture.md) — how the pieces fit together.
+- [Configuration](docs/configuration.md) — every `ORION_*` env var, templates, language.
+- [Commands Reference](docs/commands.md) — full command and flag reference.
+- [Agents](docs/agents.md) — connecting Orion to any MCP‑capable agent.
+- [Sandbox](docs/sandbox.md) — Docker trust‑model and sandboxed CI.
+- [Analysis & Roadmap](docs/analysis-roadmap.md) — self‑audit findings and planned phases.
+- [Changelog](CHANGELOG.md) — dated semver release notes.
+- [Contributing](CONTRIBUTING.md) — dev setup, style, tests, releases.
 
-```bash
-orion tdd start calcSum
-# → tests/calcSum.test.ts generated, state = RED
-orion tdd implement calcSum src/tasks/calcSum.ts
-# → tests pass, state = GREEN
-orion tdd refactor calcSum
-# → lint --fix + format applied
-# state = DONE, cached as tdd:calcSum
-```
+> **Security note.** The `shield` security scan is a best‑effort pattern lint
+> (`eval`, `new Function`, `process.env.*`, `child_process`, injection chains,
+> secrets) — it flags *obvious* issues and can both over‑ and under‑match.
+> Treat a PASS as "no obvious issues" and review security‑sensitive code by
+> hand. See [CONTRIBUTING.md](CONTRIBUTING.md#security).
 
-### Token economy (`orion-compress`) — own rtk-style output compression (v0.11)
+---
 
-Compresses command output **before an LLM agent reads it** — a zero-dependency,
-from-scratch take on the same idea as rtk, built into Orion's core:
+## License
 
-- **Agent-agnostic**: any MCP-capable agent calls the `compress` MCP tool with its
-  own bash output (`{command, output}` → compressed text + honest byte/token savings);
-  Orion's own surfaces (`shield`, `forge`) use the same library, so any MCP-capable agent gets
-  the savings with zero extra setup.
-- **Deterministic rules**: `vitest`/jest collapse to failures + a count, `eslint`/`tsc`
-  keep error lines only, `git status`/`diff`/`log` become compact, `ls`/`grep`/`pnpm install`
-  are reduced to the signal.
-- **Honest by construction**: fail-safe (a throwing/mismatching rule falls back to the
-  raw output, never fabricates), `matched=false` when no rule applied, token figures are
-  always labeled *≈ bytes/4 estimate (no tokenizer)*, repeated identical input is served
-  from the OrionTrack cache and labeled `cached=true`.
-- **Measured, not guessed**: every operation is appended to the ledger `~/.orion/economy.json`
-  (per project: package.json name, git-root dir, or cwd); `orion metrics` reports real
-  bytes/tokens saved with a per-project breakdown.
-- **Cost-aware companion**: `orion next` estimates the token cost of each alternative
-  (bytes/4 of the plan artifacts) and lists options cheapest-first.
-
-```bash
-# any agent: compress its own command output
-orion mcp   # → call the `compress` tool with {command, output}
-
-# see what has actually been saved
-orion metrics   # → Token economy (ledger ~/.orion/economy.json)
-```
-
-### Self-correction & learning (v0.12) — Orion fixes its own mistakes
-
-Orion is self-learning: when any step of the workflow (think → draft → forge →
-shield → out) honestly fails or doubts itself, it **records a lesson** and goes
-**back to `think` with a corrected task** instead of pushing blindly forward:
-
-- **Honest capture**: `shield` on a FAIL check, `out` on a STALE/INCOMPLETE verdict
-  and `forge` on a RED task each append `{changeId, step, error, cause, fix}` to the
-  ledger `~/.orion/lessons.json` (zero deps, fail-safe, cap 500, identical errors
-  recorded once — learning, not spamming).
-- **The loop you asked for**: when the earliest change carries a lesson, `orion next`
-  does not guess past the mistake — it returns a `selfCorrection` route:
-  `orion think "fix <changeId>: <error>"` with the corrected prompt derived from the
-  last lesson (`confidence: high`, honest summary: *"I recorded an error at step X —
-  going back to think with a corrected task"*).
-- **Learning across projects**: `orion think` attaches matching past lessons to a new
-  idea (`appliesLessons` in the proposal, rendered in proposal.md) — the same mistake
-  is not repeated in another change or another project.
-- **Readable by humans and agents**: `orion track lessons [changeId]` lists the ledger
-  (`orion track status` shows the count); MCP tool `lessons_list {changeId?}` gives
-  any MCP-capable agent the same view.
-
-```bash
-orion track status        # cache stats + lessons: N
-orion track lessons       # what Orion has learned so far
-orion next                # routes back to think when a lesson exists
-```
-
-### Session learning & open templates (v0.13)
-
-**Session learning** — Orion learns from the history it actually lived through.
-`orion learn <file|dir>` (and the MCP `lessons_learn` tool) reads agent-session
-JSONL in any shape (pi-style records, generic `{role, content}`), finds
-"failed → succeeded" pairs for the same action (word-bounded RU/EN error
-markers, signature = tool + first significant tokens), and records each
-unique pattern as a lesson in the same `~/.orion/lessons.json` that feeds
-`next`/`think` — so the next idea knows about the mistakes really made, not
-only workflow-step failures. Honest by construction: invalid lines are
-counted in `skipped`, an empty result is a valid answer (`no fake learning`),
-and identical patterns are recorded once.
-
-```bash
-orion learn ~/.pi/agent/sessions/my-session.jsonl   # file or directory
-orion track lessons                                  # see what was learned
-```
-
-**Open templates** — artifact skeletons and questions are data, not code.
-Draft renders proposal.md/design.md/tasks.md/spec.md from skeletons, think
-reads its clarifying questions from `questions.json`; a user can override any
-of them per change or globally, with a built-in fallback that never goes away:
-
-```
-changes/<id>/templates/<name>   ← per-change override (highest)
-~/.orion/templates/<name>       ← user-level override
-built-in skeleton               ← fallback
-```
-
-Placeholders are plain `{{title}}`/`{{goal}}`/… (zero dependencies, no template
-language). When an override is used the generated file carries an honest
-`<!-- orion: template=<path> (custom) -->` marker — custom output is never
-presented as the standard one.
-
-### Skills — the high-level workflow
-
-- **`think <prompt>`** – asks 3 guided questions (platform, constraints, budget) and persists `changes/<title>/proposal.json` + `proposal:<title>` cache entry.
-- **`draft <title>`** – generates `proposal.md`, `specs/<capability>/spec.md`, `design.md`, `tasks.md`.
-- **`forge <title>`** – walks every open `- [ ]` task in `tasks.md` and drives it through TDD. Snippets are read from `changes/<title>/snippets/<slug>.<ext>` where `<slug>` is a short 2–3-word identifier (`implement_calculator`, not the whole sentence) — unique within the change, Cyrillic-safe (v0.24). Completed tasks are marked `- [x]` and cached as `forge:<slug>=DONE` (skipped on re‑runs).
-- **`shield <change-id>`** – runs 8 guard‑rails: lint, type‑check (`tsc --noEmit`), unit tests, drift‑check (specs vs `src/tasks`), yagni (norm deviation), economy (cache budget), security scan (`eval`, `new Function`, `process.env.*`, `child_process`), and a project policy gate (`denyImport`/`denyPattern` from `.orion/policy.json`, v0.23). Each step caches its result as `shield:<step>=PASS`; reports go to `reports/<change-id>/guard-report.{md,json}`.
-- **`verify <change-id> [--json]`** – evidence pass: for every spec criterion, extracts distinctive terms from the change's `specs/*/spec.md` and checks whether the codebase actually contains them. A **signal, never a gate** — it exits 0 even when a criterion is missing or drifted, so you can read the report without a failing exit code.
-- **`out <change-id>`** – writes the final `changes/<change-id>/result.md` summary.
-- **`resume <change-id>`** – continues an interrupted workflow from its checkpoint (v0.22).
-- **`pay-debt <change-id>`** – re-syncs the YAGNI debt ledger and reports what closed (v0.22).
-- **`next`** – decides the next action from context, ranks alternatives cheapest‑first, stops on budget‑exceeded (v0.22) and on a detected toxic loop (v0.23).
-- **`track status|get|set|lessons`** – cache stats, key/value access (pipeline namespaces `shield:`/`tdd:`/`forge:` are write‑protected, v0.23).
-- **`learn <file|dir>` / `lessons export|import`** – self‑learning from agent sessions; share the lesson ledger across projects via file or URL (v0.13, v0.23).
-- **`profile`** – shows the user‑adaptation profile (`~/.orion/profile.md`): your preferred language, typical platform/budget and frequent topics, auto‑maintained by `think` and hand‑editable (v0.26).
-- **`scale <file>`** – apply the YAGNI ladder; **`tdd start|implement|refactor|finalize <task>`** – the RED‑GREEN loop (snippets pass a pre‑execution hazard gate, v0.23).
-- **`metrics`** – benchmark + token‑budget report, now with an estimated USD cost when `ORION_TOKEN_PRICES` is set (v0.23).
-- **`serve [--port N] [--host H] [--ui] [--token T]`** – starts the zero‑dependency web dashboard (v0.2): cache stats, key/value explorer, change list. Binds `127.0.0.1` by default. Auth: `--token T` (or `ORION_DASHBOARD_TOKEN`) turns auth on — every API call then requires `?token=…` (or `Authorization: Bearer` / `x-orion-token`). Without a token, loopback binds (`127.0.0.1`/`localhost`) run **without** auth (local machine, trusted); a non‑loopback bind auto‑generates a token and prints it to stdout, so an exposed dashboard is never unauthenticated.
-
-```bash
-orion think "Build a CSV-to-JSON tool"
-orion draft csv-tool
-orion forge csv-tool
-orion shield csv-tool
-orion verify csv-tool   # evidence pass — signal, never a gate
-orion out csv-tool
-orion serve           # dashboard at http://127.0.0.1:4780
-```
-
-## 🧪 Development
-
-```bash
-pnpm run build         # tsc → dist/
-pnpm run lint          # ESLint (flat config)
-pnpm run format        # Prettier --write
-pnpm test              # Vitest (unit + e2e)
-pnpm run test:coverage # with coverage
-pnpm run ci            # lint + format:check + type-check + coverage + build
-```
-
-CI runs exactly the same steps: install → lint → type-check → test (coverage ≥ 80 %) → `track prune` → build → upload artifacts.
-
-## 📚 Documentation
-
-- [Quick Start](docs/quick-start.md)
-- [Architecture](docs/architecture.md)
-- [Configuration](docs/configuration.md) — every `ORION_*` env var, templates, language (v0.28)
-- [Commands Reference](docs/commands.md)
-- [Analysis & Roadmap](docs/analysis-roadmap.md) — found bugs, 112 improvement ideas, 5 phases
-- [Changelog](CHANGELOG.md) — dated semver release notes
-- [Contributing](CONTRIBUTING.md) — dev setup, style, tests, releases
-
-> **Security scan is best‑effort.** The `shield` security step is a pattern
-> lint (eval/`new Function`/`process.env.*`/`child_process`/shell‑injection
-> chains/secrets), not a security gate — it flags *obvious* issues and can
-> both over‑ and under‑match. Treat a PASS as "no obvious issues", and review
-> security‑sensitive code by hand. See [CONTRIBUTING.md](CONTRIBUTING.md#security).
-
-## 🗺️ Roadmap
-
-- ✅ **v0.2** – Web UI (`orion serve --ui`) — _done_: dashboard with cache stats, key explorer and change list
-- ✅ **v0.3** – Plugin marketplace (`orion-plugin-*`) — _done_: `plugin new/install/list/remove`, unknown commands dispatch to installed plugins
-- ✅ **v0.4** – Docker image for sandboxed CI — _done_: multi‑stage `Dockerfile`, `docker compose` sandbox with `--network none` + persistent cache volume
-- ✅ **v0.5** – Benchmark module — _done_: `orion metrics` reports cold/hot ladder timings and per‑namespace token‑budget with ASCII graphs
-- ✅ **v0.6** – Security hardening — _done_: audit fixes (RCE guard, path traversal, stored XSS, configs resolve from the package, TDD RED rollback, string-safe YAGNI stages)
-- ✅ **v0.7** – Universal MCP server — _done_: `orion mcp` (JSON‑RPC 2.0 over stdio) exposes 13 tools; any MCP‑capable agent (Claude Code, Codex, opencode, Cursor, Cline, …) attaches via `orion mcp` — see `docs/agents.md`
-- ✅ **v0.8** – Context-driven workflow polish — _done_: `think` refines vague prompts (language‑aware clarifying questions, idempotent titles), `draft` never clobbers hand edits and derives tasks from the goal, `forge` ticks tasks off live in the terminal, `shield` detects the package manager + validates its cache by code hash + honest drift, `out` builds a full verdict from tasks/guard/artifacts; MCP activity indicator (`⚙ orion:think …` on stderr) and `orion tasks <title>` checklist command
-- ✅ **v0.8.1** – Quoted-prompt fix — _done_: `orion "multi word idea"` (single argv with spaces) reaches the think fallback instead of “unknown command”
-- ✅ **v0.8.2** – `orion next` — _done_: scans every change and decides the next action from context (`orion draft|forge|shield|out <id>`), picks the highest‑priority unfinished change, exposed to agents as MCP tool `next_step`
-- ✅ **v0.9** – Context depth — _done_: `draft` decomposes goals into concrete tasks (RU+EN: strips action verbs, transliterates known entities, sub‑entity details like “operation history: persistence/replay/undo”), `shield` security scan catches shell injection (`${}` in exec), `$(…)`/`|;&` chaining, `node:vm` escapes and hardcoded credentials — while staying green on legitimate template literals
-- 🔄 **v0.10** – Honesty & companion — _done_: `out` detects a stale guard report (context hash) instead of using it as-is; `track` labels cache hits with their date; `next` says "insufficient context" with ranked alternatives instead of guessing, and suggests starting ideas when nothing exists; `draft` marks tasks `[fact]` vs `[assumption]` (with an Assumptions section in design.md) and no longer false-positivizes on `logical`→history or "no new CLI commands"→CLI; `tdd` names the exact failing test; `mcp` never returns fake success; `shield`/`out` fail honestly when the change does not exist; README documents the process‑over‑model thesis
-- ✅ **v0.11** – Token economy — _done_: own rtk-style output compressor in the core (`compress` MCP tool, agent-agnostic for all MCP clients; compact shield/forge test rendering; honest bytes/4 savings notes; RU/EN-safe truncation), `orion metrics` reports real savings from the `~/.orion/economy.json` ledger, `next` ranks alternatives cheapest-first by estimated token cost, repeated outputs are cached by input hash and labeled `cached=true`; `draft` no longer crashes on free-text `platform` answers (path-safe capability names)
-- ✅ **v0.12** – Self-correction & learning — _done_: Orion records a lesson (`~/.orion/lessons.json`) whenever a step honestly fails (`shield` FAIL check, `out` STALE/INCOMPLETE, `forge` RED task) and routes back to `think` with a corrected task (`next` returns a `selfCorrection` route built from the last lesson); `think` attaches matching past lessons to new ideas (`appliesLessons`) so the same mistake is not repeated across projects; `orion track lessons [id]` and MCP `lessons_list` give CLI users and any MCP-capable agent read access to the ledger
-- 🚧 **v0.13** – Session learning & open templates — _in progress_: Orion reads real agent-session JSONL (any shape: pi-style, generic), detects "failed → succeeded" pairs for the same action and records them as lessons in the same ledger that feeds `next`/`think` (`orion learn <file|dir>`, MCP `lessons_learn`) — honest report, no fake learning; artifact skeletons (proposal/design/tasks/spec) and think questions became editable data (`~/.orion/templates/`, per-change `changes/<id>/templates/`, built-in fallback, honest `(custom)` marker in generated files)
-- ✅ **v0.14** – Lessons in results & more compress rules — _done_: `out` writes an honest «Уроки и решения» section into result.md on SUCCESS (the change's recorded lessons + relevant shared ones from the same ledger that powers `next`; explicit «нет уроков» when nothing happened); the token-economy compressor gained 9 high-value rules (docker ps/images/logs, pytest, cargo test, terraform plan, npm list, pip freeze, ps)
-- ✅ **v0.15** – YAGNI signal in shield + session metrics — _done_: `shield` measures each new snippet against the repo's own code norms (median LOC/imports) and reports outliers as **WARN** (a signal, never a gate — `allPass` stays green); `orion metrics --session <file.jsonl>` shows a per-role token breakdown (user/assistant/toolCall/toolResult/thinking) with the honest `≈ bytes/4` estimate
-- ✅ **v0.16** – Parallel forge waves — _done_: `orion forge <title> --parallel <n>` runs tasks in sequential waves, each task in its own forked worker (RED-GREEN only); all shared-file bookkeeping (tasks.md, lessons, forge cache) stays in the parent, applied after each wave — one writer per file; refactor runs once per wave
-- ✅ **v0.17** – Economy in the daily loop — _done_: shield runs a fresh read-only `economy` step (cache vs its 60% budget → WARN, never a gate); `orion next` appends the honest token-economy footer (≈ N tok saved across M compress ops)
-- ✅ **v0.18** – Calibration, debt & activity — _done_: `next` estimates calibrate against measured reality (median actual/estimate, honest `(uncalibrated)` otherwise); shield `yagni` WARNs feed an automatic debt registry (closed when the snippet is fixed); `next` warns when a candidate exceeds its proposal budget; every CLI run announces itself on stderr (`⚙ orion:<cmd> …` / `✅` / `❌` — same vocabulary as the MCP indicator)
-- ✅ **v0.19** – Cache schema versioning, dashboard token auth, OS-matrix CI + per-file coverage floors, verifiability-aware shield (v0.19)
-- ✅ **v0.20** – Runtime hardening — _done_: git-aware verify cache, measured per-stage YAGNI timings, fork-worker timeouts, working core-coverage gate, SECURITY.md
-- ✅ **v0.21** – Streaming whole-change verification (O(1) memory), security scan ignores comment/string literals, ranked lesson recall, sandbox trust-model docs
-- ✅ **v0.22** – Checkpoint-based `resume`, automatic `pay-debt`, short Cyrillic-safe change titles, MCP progress notifications, git-aware verify cache, hard token budget stop (`ORION_MAX_BUDGET_TOKENS`)
-- ✅ **v0.23** – Security & policy hardening — _done_: CSPRNG dashboard token + secret redaction in `/api/cache`, atomic cache writes, reserved pipeline cache namespaces, prompt-injection guard in `think`, project policy gates (`shield` `policy` step), pre-execution hazard gate for AI-generated code, toxic-loop guard in `next`, federated lessons (`lessons export/import`), AI cost center in `metrics` (ORION_TOKEN_PRICES), correct cross-directory reuse imports, Node 24 in CI, provenance + digest pinning + dependabot + Docker HEALTHCHECK
-
-## 📜 License
-
-MIT – see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

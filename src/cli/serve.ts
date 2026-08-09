@@ -112,7 +112,8 @@ export function readVersion(): string {
  * Unlike full reviewChange, it reads only the spec headings + exported
  * symbols — the precise drift gate — and is order-of-magnitude cheaper,
  * which matters because the dashboard re-renders on a 5s timer (v0.30). */
-const SYMBOL = /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/m;
+const SYMBOL =
+  /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/m;
 const driftCache = new Map<string, { mtime: number; ok: boolean | null }>();
 function driftOf(changeId: string): boolean | null {
   const base = join("changes", changeId, "specs");
@@ -150,12 +151,15 @@ function driftOf(changeId: string): boolean | null {
     const specFile = join(base, d.name, "spec.md");
     if (!existsSync(specFile)) continue;
     const spec = readFileSync(specFile, "utf8");
-    for (const m of spec.matchAll(/^# Spec: (.+)$/gm)) expected.push(m[1].trim());
+    for (const m of spec.matchAll(/^# Spec: (.+)$/gm))
+      expected.push(m[1].trim());
   }
   if (expected.length === 0) ok = null;
   else if (expected.length && existsSync(join("src", "tasks"))) {
     const exports = new Set<string>();
-    for (const f of readdirSync(join("src", "tasks")).filter((f) => f.endsWith(".ts"))) {
+    for (const f of readdirSync(join("src", "tasks")).filter((f) =>
+      f.endsWith(".ts"),
+    )) {
       const code = readFileSync(join("src", "tasks", f), "utf8");
       for (const sm of code.matchAll(SYMBOL)) exports.add(sm[1]);
     }

@@ -644,17 +644,14 @@ export class McpServer {
         // One resource per change (v0.27): the MCP client can then
         // read a change's full status without calling tools.
         const rows = scanChanges();
-        return result(
-          id,
-          {
-            resources: rows.map((r) => ({
-              uri: `orion://change/${r.title}`,
-              name: r.title,
-              description: `${r.done}/${r.tasks} tasks — ${r.status}`,
-              mimeType: "text/markdown",
-            })),
-          },
-        );
+        return result(id, {
+          resources: rows.map((r) => ({
+            uri: `orion://change/${r.title}`,
+            name: r.title,
+            description: `${r.done}/${r.tasks} tasks — ${r.status}`,
+            mimeType: "text/markdown",
+          })),
+        });
       }
       case "prompts/list":
         return result(id, {
@@ -697,9 +694,7 @@ export class McpServer {
 
   /** Drive the stdio loop until EOF. `input` defaults to stdin (overridable
    * for tests and embedded servers). */
-  async runStdio(
-    input: NodeJS.ReadableStream = processStdin,
-  ): Promise<void> {
+  async runStdio(input: NodeJS.ReadableStream = processStdin): Promise<void> {
     const rl = createInterface({
       input,
       crlfDelay: Infinity,

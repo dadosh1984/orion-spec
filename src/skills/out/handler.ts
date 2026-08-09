@@ -2,7 +2,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { writeFileSafe, readJson } from "../../utils/file.js";
 import { readTasks } from "../forge/handler.js";
 import { projectHash } from "../shield/handler.js";
-import { recordLesson, lessonsForChange, recordPattern } from "../../core/lessons.js";
+import {
+  recordLesson,
+  lessonsForChange,
+  recordPattern,
+} from "../../core/lessons.js";
 import { recordCalibration } from "../../core/calibration.js";
 import { estimateChangeCost } from "../next/handler.js";
 import type { GuardReport, Proposal } from "../../type.js";

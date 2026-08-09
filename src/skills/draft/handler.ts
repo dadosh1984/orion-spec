@@ -165,8 +165,7 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
   // → maintenance; "Add a converter that updates CSV files" → feature.
   const MAINTENANCE_VERBS =
     /\b(fix(?:es|ed|ing)?|bug(?:s)?|broken|regression|upgrade(?:d|s)?|upgrading|update(?:d|s)?|refactor(?:ed|ing)?|polish|repair(?:s|ed)?|maintain(?:ing)?|maintenance)\b|ошибк|сломан|почин|исправ|обнов|регресс/i;
-  const leadingVerb =
-    goal.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
+  const leadingVerb = goal.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
   if (MAINTENANCE_VERBS.test(leadingVerb)) {
     tasks.push({
       text: "Reproduce the failure: write a test that fails on the current code (RED)",

@@ -59,10 +59,16 @@ export function changelogAll(): string[] {
   const base = join("changes");
   if (!existsSync(base)) return [];
   return readdirSync(base, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && existsSync(join(base, d.name, "result.md")))
+    .filter(
+      (d) => d.isDirectory() && existsSync(join(base, d.name, "result.md")),
+    )
     .map((d) => {
       const p = join(base, d.name, "result.md");
-      return { name: d.name, mtime: statSync(p).mtimeMs, entry: entry(loadChange(d.name)) };
+      return {
+        name: d.name,
+        mtime: statSync(p).mtimeMs,
+        entry: entry(loadChange(d.name)),
+      };
     })
     .sort((a, b) => b.mtime - a.mtime)
     .map((x) => x.entry);

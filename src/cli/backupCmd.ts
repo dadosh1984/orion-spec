@@ -35,16 +35,25 @@ export function backupCmd(path: string): { ok: boolean; text: string } {
 
 export function restoreCmd(path: string): { ok: boolean; text: string } {
   if (!existsSync(path)) {
-    return { ok: false, text: `${statusMark("error")} backup file not found: ${path}` };
+    return {
+      ok: false,
+      text: `${statusMark("error")} backup file not found: ${path}`,
+    };
   }
   let data: BackupFile;
   try {
     data = JSON.parse(readFileSync(path, "utf8")) as BackupFile;
   } catch {
-    return { ok: false, text: `${statusMark("error")} not a valid backup JSON` };
+    return {
+      ok: false,
+      text: `${statusMark("error")} not a valid backup JSON`,
+    };
   }
   if (data.kind !== "orion-backup") {
-    return { ok: false, text: `${statusMark("error")} not an orion backup file` };
+    return {
+      ok: false,
+      text: `${statusMark("error")} not an orion backup file`,
+    };
   }
   importProfile(JSON.stringify(data.profile));
   return {

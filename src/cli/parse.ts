@@ -153,7 +153,7 @@ export function parseArgs(argv: string[]): {
     } else if (arg === "--lang") {
       const value = argv[i + 1];
       if (value !== "en" && value !== "ru") {
-        throw new Error("--lang requires \"en\" or \"ru\"");
+        throw new Error('--lang requires "en" or "ru"');
       }
       opts.lang = value;
       i++;

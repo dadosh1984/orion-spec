@@ -1,4 +1,9 @@
-import { mkdir, readFile, writeFile, rename as renameFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  writeFile,
+  rename as renameFile,
+} from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -60,7 +65,10 @@ export const READ_CAPPED_DEFAULT = 64 * 1024;
  * Read a file but only the first `maxBytes` bytes (v0.30). Never lets a
  * huge file stall an evidence scan. Fails safe: missing/unreadable → "".
  */
-export function readCapped(file: string, maxBytes = READ_CAPPED_DEFAULT): string {
+export function readCapped(
+  file: string,
+  maxBytes = READ_CAPPED_DEFAULT,
+): string {
   try {
     const buf = readFileSync(file);
     return buf.subarray(0, maxBytes).toString("utf8");
