@@ -350,6 +350,24 @@ export function verifiabilityCheck(): GuardCheckResult {
   };
 }
 
+/**
+ * Strip Orion's own stderr chatter (🧠 lesson markers, ⚙/✅/❌ tool
+ * announcements) from captured child output (v0.25) — the guard report
+ * must show the command's signal, not the toolkit's own noise. The
+ * lesson/announce lines are real events, but they are not test output.
+ */
+function stripOrionNoise(output: string): string {
+  return output
+    .split("\n")
+    .filter(
+      (l) =>
+        !/^[🧠⚙✅❌]\s*orion[:\s]/.test(l) &&
+        !/^\s*[✓·]\s*\[(assumption|fact|risk|decision)\]/.test(l) &&
+        !/^forge (paused|complete|starting)/.test(l),
+    )
+    .join("\n");
+}
+
 /** Run an external command and map exit status to PASS/FAIL. Output is
  * compressed through the token-economy engine (v0.11): test runners show
  * failures + a count, linters/tsc show error lines only — the agent reads
@@ -364,16 +382,19 @@ async function shellCheck(
       cwd: process.cwd(),
       timeout: 300_000,
     });
-    const r = compress(cmd, stdout, stderr);
+    const clean = stripOrionNoise(stdout + stderr);
+    const r = compress(cmd, clean, "");
     const detail =
-      (r.matched ? r.out : (stdout + stderr).slice(0, 200)) || "ok";
+      (r.matched ? r.out : clean.slice(0, 200)) || "ok";
     return {
       step,
       status: "PASS",
       detail: detail.slice(0, 500),
     };
   } catch (err) {
-    const raw = err instanceof Error ? err.message : "command failed";
+    const raw = stripOrionNoise(
+      err instanceof Error ? err.message : "command failed",
+    );
     const r = compress(cmd, raw, "");
     const detail = r.matched ? r.out.slice(0, 500) : raw.slice(0, 200);
     return { step, status: "FAIL", detail };
@@ -807,6 +828,14 @@ function securityScan(changeId: string): GuardCheckResult {
         let m: RegExpExecArray | null;
         while ((m = rx.exec(code)) !== null) {
           if (startsInLiteral(literals, m.index, kinds)) continue;
+          // v0.25: Orion's own configuration toggles (ORION_*) are not
+          // hazards — only non-ORION env access is flagged. Reading
+          // ORION_LESSON_NOTIFY is a feature, not an escape attempt.
+          if (label === "process.env.*") {
+            const rest = code.slice(m.index + "process.env.".length);
+            const name = rest.match(/^[A-Za-z_][A-Za-z0-9_]*/)?.[0] ?? "";
+            if (name.startsWith("ORION_")) continue;
+          }
           findings.push(`${file}: ${label}`);
           break; // one finding per pattern per file, as before
         }

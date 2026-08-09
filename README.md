@@ -236,6 +236,7 @@ presented as the standard one.
 - **`next`** – decides the next action from context, ranks alternatives cheapest‑first, stops on budget‑exceeded (v0.22) and on a detected toxic loop (v0.23).
 - **`track status|get|set|lessons`** – cache stats, key/value access (pipeline namespaces `shield:`/`tdd:`/`forge:` are write‑protected, v0.23).
 - **`learn <file|dir>` / `lessons export|import`** – self‑learning from agent sessions; share the lesson ledger across projects via file or URL (v0.13, v0.23).
+- **`profile`** – shows the user‑adaptation profile (`~/.orion/profile.md`): your preferred language, typical platform/budget and frequent topics, auto‑maintained by `think` and hand‑editable (v0.26).
 - **`scale <file>`** – apply the YAGNI ladder; **`tdd start|implement|refactor|finalize <task>`** – the RED‑GREEN loop (snippets pass a pre‑execution hazard gate, v0.23).
 - **`metrics`** – benchmark + token‑budget report, now with an estimated USD cost when `ORION_TOKEN_PRICES` is set (v0.23).
 - **`serve [--port N] [--host H] [--ui] [--token T]`** – starts the zero‑dependency web dashboard (v0.2): cache stats, key/value explorer, change list. Binds `127.0.0.1` by default. Auth: `--token T` (or `ORION_DASHBOARD_TOKEN`) turns auth on — every API call then requires `?token=…` (or `Authorization: Bearer` / `x-orion-token`). Without a token, loopback binds (`127.0.0.1`/`localhost`) run **without** auth (local machine, trusted); a non‑loopback bind auto‑generates a token and prints it to stdout, so an exposed dashboard is never unauthenticated.

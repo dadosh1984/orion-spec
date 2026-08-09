@@ -156,11 +156,17 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
   // instead of build templates: "Scaffold project structure" and
   // "Document usage in README" are noise for a bug fix. Fires before the
   // feature categories so e.g. "fix the CLI parser" plans a fix, not a
-  // new CLI. English words get \b boundaries; Cyrillic is matched as a
-  // substring because JS \b is ASCII-only.
-  const maintenance =
+  // new CLI.
+  //
+  // v0.25: maintenance is decided by the LEADING action verb only, not by
+  // any keyword anywhere in the goal — "updates" inside a feature
+  // description is content, not a repair request. "Fix the CLI parser"
+  // → maintenance; "Add a converter that updates CSV files" → feature.
+  const MAINTENANCE_VERBS =
     /\b(fix(?:es|ed|ing)?|bug(?:s)?|broken|regression|upgrade(?:d|s)?|upgrading|update(?:d|s)?|refactor(?:ed|ing)?|polish|repair(?:s|ed)?|maintain(?:ing)?|maintenance)\b|ошибк|сломан|почин|исправ|обнов|регресс/i;
-  if (maintenance.test(goal)) {
+  const leadingVerb =
+    goal.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
+  if (MAINTENANCE_VERBS.test(leadingVerb)) {
     tasks.push({
       text: "Reproduce the failure: write a test that fails on the current code (RED)",
       mark: "assumption",

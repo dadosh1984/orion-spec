@@ -53,31 +53,47 @@ export function findTemplate(
 const BUILTIN: Record<TemplateKind, string> = {
   proposal: `# Proposal — {{title}}
 
-**Goal:** {{goal}}
+## Goal
+{{goal}}
 
-- Platform: {{platform}}
-- Constraints: {{constraints}}
-- Budget: {{budget}}
+## Context
+
+| Aspect | Value |
+|--------|-------|
+| Platform | {{platform}} |
+| Budget | {{budget}} |
+| Constraints | {{constraints}} |
+
 {{lessons}}
 `,
   design: `# Design — {{title}}
 
 ## Overview
-Deterministic plan derived from the proposal.
+Deterministic plan derived from the proposal. Implementation is driven
+task-by-task through the RED-GREEN-REFACTOR loop; every task below the
+checklist in tasks.md becomes one test-driven unit in \`src/tasks/*\`.
 
 ## Modules
-- \`src/tasks/*\` — test-driven implementation units
-- \`tests/*\` — RED-GREEN-REFACTOR test files
+
+- \`src/tasks/*\` — test-driven implementation units (one per task)
+- \`tests/*\` — RED-GREEN-REFACTOR test files (written first, RED)
+- \`changes/{{title}}/snippets/*\` — per-task implementation hints
 
 ## Assumptions
 {{assumptions}}
 
 ## Verification
+Every task lands only when the gates pass:
+
 - [ ] lint (pnpm lint)
 - [ ] type-check (tsc --noEmit)
 - [ ] unit tests (pnpm test)
 `,
   tasks: `# Tasks — {{title}}
+
+Status legend: a checked box means done, an empty box means
+open — forge flips each box as its task completes, so no manual
+bookkeeping is needed.
 
 {{tasks}}
 `,
@@ -85,6 +101,11 @@ Deterministic plan derived from the proposal.
 
 ## Purpose
 {{goal}}
+
+## Scope
+
+- In scope: the capability above, delivered test-first.
+- Out of scope: anything not stated in the proposal.
 
 ## Acceptance criteria
 - [ ] Placeholder — refine during implementation

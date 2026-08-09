@@ -26,12 +26,14 @@ beforeEach(() => {
   process.env.ORION_TEMPLATES_DIR = join(dir, "templates-user");
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
+  process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
 });
 
 afterEach(() => {
   delete process.env.ORION_TEMPLATES_DIR;
   delete process.env.ORION_CACHE_DIR;
   delete process.env.ORION_LESSONS_FILE;
+  delete process.env.ORION_PROFILE_FILE;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
 });

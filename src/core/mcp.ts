@@ -21,6 +21,7 @@ import { listLessons } from "./lessons.js";
 import { learnFromSessions, sessionFiles } from "./sessions.js";
 import { listPlugins, installPlugin, removePlugin } from "./plugins.js";
 import { readVersion } from "../cli/serve.js";
+import { profileView } from "../tasks/profile_cli_view.js";
 
 /**
  * Orion MCP server — a zero-dependency implementation of the Model Context
@@ -263,7 +264,10 @@ export function getMcpTools(): McpTool[] {
       },
       handler: async (args) => {
         const r = await out(String(args.changeId));
-        return JSON.stringify(r, null, 2);
+        // Return the human-readable markdown summary, not the nested JSON
+        // record — the summary already carries status, checklist, guard
+        // verdict and artifacts.
+        return r.summary;
       },
     },
     {
@@ -343,6 +347,13 @@ export function getMcpTools(): McpTool[] {
         );
         return JSON.stringify(r, null, 2);
       },
+    },
+    {
+      name: "profile",
+      description:
+        "Read the user-adaptation profile (~/.orion/profile.md, the memory.md analogue): preferred language, typical platform/budget, frequent topics and the user's own notes. Auto-maintained by think, hand-editable; the CLI shows it via 'orion profile'.",
+      inputSchema: { type: "object", properties: {} },
+      handler: async () => profileView(),
     },
     {
       name: "lessons_list",

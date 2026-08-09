@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { notifyLesson } from "../tasks/lesson_notify_visible.js";
 
 /**
  * Orion self-correction & learning (v0.12).
@@ -100,6 +101,9 @@ export function recordLesson(lesson: NewLesson): Lesson {
       rows.push(entry);
       if (rows.length > MAX_LESSONS) rows.splice(0, rows.length - MAX_LESSONS);
       writeFileSync(lessonsPath(), JSON.stringify(rows), "utf8");
+      // Visible self-correction (v0.26): the terminal shows that a lesson
+      // was recorded (stderr — protocol-safe for CLI and MCP).
+      notifyLesson(entry.step, entry.error);
     }
     return entry;
   } catch {

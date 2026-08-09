@@ -15,6 +15,8 @@ import {
   sessionRoleBreakdown,
 } from "../core/sessions.js";
 import { exportLessons, importLessons } from "../core/lessons.js";
+import { profilePath } from "../core/profile.js";
+import { profileView } from "../tasks/profile_cli_view.js";
 import { applyScale, previewScale } from "../core/scale.js";
 import { think, askQuestion } from "../skills/think/handler.js";
 import { draft } from "../skills/draft/handler.js";
@@ -275,6 +277,14 @@ export async function main(argv: string[]): Promise<number> {
 
     case "track":
       return await trackCommand(args, opts, track);
+
+    case "profile": {
+      // User adaptation (v0.26): show the memory.md analogue. Renders the
+      // file as-is (it is already human-readable markdown) or an honest
+      // hint when it does not exist yet.
+      printOut(opts, { path: profilePath() }, profileView());
+      return 0;
+    }
 
     case "learn": {
       const target = args[0];

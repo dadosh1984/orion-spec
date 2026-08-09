@@ -321,3 +321,16 @@ describe("forge: short task slugs (v0.24)", () => {
     expect(shortSlug("The of a an", used)).toBe("the_of_a_an");
   });
 });
+
+describe("explicit task slugs (v0.25)", () => {
+  it("honours the {slug: name} marker over word derivation", () => {
+    const used = new Set<string>();
+    expect(shortSlug("[fact] Implement add {slug: my_adder}", used)).toBe(
+      "my_adder",
+    );
+    // Uniqueness still enforced on explicit slugs.
+    expect(shortSlug("[fact] Another one {slug: my_adder}", used)).toBe(
+      "my_adder_2",
+    );
+  });
+});

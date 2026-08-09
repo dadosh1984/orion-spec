@@ -5,11 +5,17 @@ import { significantWords } from "../../core/titles.js";
 import { OrionTrack } from "../../core/track.js";
 import { findLessons } from "../../core/lessons.js";
 import { loadQuestions } from "../../core/templates.js";
+import { updateProfile, readProfile, profilePath } from "../../core/profile.js";
+import {
+  notifyLessonsApplied,
+  notifyProfileCreated,
+} from "../../tasks/lesson_notify_visible.js";
 import type { Proposal } from "../../type.js";
 import {
   assessPrompt,
   clarifyingQuestions,
   composeGoal,
+  detectLanguage,
   extractCore,
   normalizePrompt,
   type PromptAssessment,
@@ -134,7 +140,23 @@ export async function think(
     proposal.appliesLessons = hits.map(
       (l) => `${l.changeId}:${l.step}:${l.id}`,
     );
+    // Visible self-correction (v0.26): tell the user the past lessons
+    // are being reused instead of silently attaching them.
+    notifyLessonsApplied(hits.length);
   }
+
+  // User adaptation (v0.26): remember the user's language, typical
+  // platform/budget and frequent topic words in ~/.orion/profile.md —
+  // the memory.md analogue. Created on first use (with a one-time
+  // notice), updated on every proposal, never clobbers user notes.
+  const created = !readProfile().exists;
+  updateProfile({
+    language: detectLanguage(proposal.goal),
+    platform: proposal.platform,
+    budget: proposal.budget,
+    words: proposal.goal.split(/\s+/),
+  });
+  if (created) notifyProfileCreated(profilePath());
 
   await writeJson(`changes/${proposal.title}/proposal.json`, proposal);
   if (!opts?.noCache) {

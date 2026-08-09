@@ -4,6 +4,26 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.25.0] — 2026-08-09
+
+Phase 1 (stabilization) of the analysis-driven roadmap (docs/analysis-roadmap.md):
+
+- `draft` decides maintenance vs feature plans by the **leading action verb**
+  of the goal — “updates” inside a feature description no longer produces a
+  fix plan (false positive reproduced on user-adaptation-memory-profile).
+- `tasks.md` supports an explicit per-task slug marker `{slug: name}` —
+  predictable file names, no guessing which significant words win.
+- `profile` filters action verbs (RU+EN) from frequent topics and persists
+  honest word frequencies (`Topic counts`).
+- `shield` strips Orion's own stderr chatter (🧠 lesson markers, ⚙/✅/❌
+  tool announcements, forge progress) from captured child output — the
+  guard report shows the command's signal, not the toolkit's noise.
+- `shield` security scan whitelists Orion's own `ORION_*` env toggles —
+  task code may read `process.env.ORION_…` without tripping the gate.
+- `tdd` CLI now has tests (start/implement/refactor/finalize, validation)
+  — coverage of tddCmd raised from 21% to ~70%.
+- Repo hygiene: `cwd/`, `.pytest_cache/` removed and git-ignored.
+
 ## [0.24.3] — 2026-08-08
 
 `orion forge` no longer reports a false `missingSnippets` when the snippet

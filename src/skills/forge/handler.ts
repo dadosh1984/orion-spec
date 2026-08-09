@@ -240,6 +240,13 @@ async function finishTask(
 const SLUG_MARKER = /^\[(fact|assumption|risk|decision)\]\s*/i;
 
 /**
+ * Explicit per-task slug marker: `- [ ] [fact] Implement add {slug: my_unit}`
+ * (v0.25). Lets the plan author pin the file name instead of guessing
+ * which 2–3 significant words `shortSlug` will pick.
+ */
+const EXPLICIT_SLUG = /\{\s*slug\s*:\s*([a-z0-9_-]+)\s*\}/i;
+
+/**
  * Short, identifier-safe task slug (2–3 significant words, v0.24).
  *
  * The old slug kept EVERY word of the task description (up to 64 chars,
@@ -253,12 +260,21 @@ const SLUG_MARKER = /^\[(fact|assumption|risk|decision)\]\s*/i;
  * appends `_2`, `_3`, … in tasks.md order. Cyrillic is kept — the same
  * promise as change titles. Falls back to `slugify` when nothing
  * significant survives.
+ *
+ * v0.25: an explicit `{slug: name}` marker in the description wins over
+ * the word derivation — predictable file names, no guessing.
  */
 export function shortSlug(desc: string, used: Set<string>): string {
   const cleaned = desc.replace(SLUG_MARKER, "");
-  const words = significantWords(cleaned, 3);
+  const explicit = cleaned.match(EXPLICIT_SLUG)?.[1]?.toLowerCase();
   const base =
-    words.length > 0 ? words.join("_") : slugify(cleaned).replace(/-/g, "_");
+    explicit ??
+    (() => {
+      const words = significantWords(cleaned, 3);
+      return words.length > 0
+        ? words.join("_")
+        : slugify(cleaned).replace(/-/g, "_");
+    })();
   const fallback = base || "untitled";
   let slug = fallback;
   let n = 2;

@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "done": 3,
+  "total": 3,
+  "skipped": 0,
+  "pending": [],
+  "missingSnippets": [],
+  "reportPath": "changes/user-adaptation-memory-profile/forge-report.md",
+  "message": "forge complete: 3 done, 0 skipped from cache"
+}

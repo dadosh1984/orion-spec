@@ -19,6 +19,7 @@ beforeEach(() => {
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
+  process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
   process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
 });
@@ -27,6 +28,7 @@ afterEach(() => {
   delete process.env.ORION_CACHE_DIR;
   delete process.env.ORION_LESSONS_FILE;
   delete process.env.ORION_ECONOMY_FILE;
+  delete process.env.ORION_PROFILE_FILE;
   delete process.env.ORION_SHIELD_SKIP_SHELL;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
@@ -214,6 +216,41 @@ describe("mcp: tool calls", () => {
     };
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("not found");
+  });
+
+  it("tools/call out returns the human-readable markdown summary (not JSON)", async () => {
+    mkdirSync(join(dir, "changes/demo"), { recursive: true });
+    writeFileSync(
+      join(dir, "changes/demo/proposal.json"),
+      JSON.stringify({ goal: "demo" }),
+    );
+    writeFileSync(join(dir, "changes/demo/tasks.md"), "");
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "out",
+      arguments: { changeId: "demo" },
+    });
+    const text = textOf(res);
+    expect(text).toContain("# Result — demo");
+    expect(text).not.toContain('"changeId"');
+  });
+
+  it("tools/call profile returns the user-adaptation profile (v0.26)", async () => {
+    writeFileSync(
+      join(dir, "profile.md"),
+      "# Orion user profile\n\n## Auto (updated by Orion)\n- Language: ru\n- Platform: (not yet observed)\n- Budget: (not yet observed)\n- Frequent topics: (none yet)\n\n## User notes\n\nПишите кратко.\n",
+    );
+    const server = makeServer();
+    await call(server, "initialize");
+    const res = await call(server, "tools/call", 1, {
+      name: "profile",
+      arguments: {},
+    });
+    const text = textOf(res);
+    expect(text).toContain("# Orion user profile");
+    expect(text).toContain("Language: ru");
+    expect(text).toContain("## User notes");
   });
 
   it("tools/call pay_debt fails honestly for a missing change (v0.22)", async () => {
