@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { OrionTrack } from "../core/track.js";
 import { readTasks } from "../skills/forge/handler.js";
 import { readLessons } from "../core/lessons.js";
+import { statusMark, bar } from "../utils/term.js";
 
 /** One change row for `orion list`. */
 export interface ChangeRow {
@@ -54,10 +55,11 @@ export function scanChanges(): ChangeRow[] {
 /** Human table for `orion list`. */
 export function listTable(rows: ChangeRow[]): string {
   if (rows.length === 0) return "No changes yet. Run: orion think \"...\"";
-  const lines = rows.map(
-    (r) =>
-      `  ${r.status === "DONE" ? "✅" : "🟡"} ${r.title}  —  ${r.done}/${r.tasks} tasks  (${r.changedAt.slice(0, 10)})`,
-  );
+  const lines = rows.map((r) => {
+    const ratio = r.tasks > 0 ? r.done / r.tasks : 0;
+    const mark = statusMark(r.status === "DONE" ? "done" : "open");
+    return `  ${mark} ${r.title.padEnd(28)} ${bar(ratio)}  ${r.done}/${r.tasks} tasks  (${r.changedAt.slice(0, 10)})`;
+  });
   return `Changes (${rows.length}):\n${lines.join("\n")}`;
 }
 

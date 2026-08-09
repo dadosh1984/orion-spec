@@ -7,10 +7,10 @@
 - [x] [fact] Тесты tests/utils.test.ts + контроль ORION_VITEST_MAX_WORKERS
 
 ## Фаза 2 — Интерактивность и терминал (0.31.0)
-- [ ] [assumption] src/utils/term.ts (цвета/иконки/бары) + единый render-helpers
-- [ ] [assumption] Единый язык сессии для вывода всех команд
-- [ ] [assumption] Summary после каждой команды + «что дальше»
-- [ ] [assumption] --no-color / NO_COLOR + консистентные эмодзи
+- [x] [assumption] src/utils/term.ts (цвета/иконки/бары) + единый render-helpers
+- [ ] [assumption] Единый язык сессии для вывода всех команд (шаблоны draft уже локальны; вывод оставлен EN — баланс)
+- [x] [assumption] Summary после каждой команды + «что дальше»
+- [x] [assumption] --no-color / NO_COLOR + консистентные эмодзи
 
 ## Фаза 3 — Производительность (0.32.0)
 - [ ] [assumption] Ленивые import() MCP-тулов — замер startup

@@ -4,6 +4,16 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.31.0] — 2026-08-09
+
+Phase 2 of the 2026 audit roadmap — terminal interactivity.
+
+- New src/utils/term.ts: colorEnabled, statusMark, paint, bar. Honours
+  NO_COLOR and ORION_COLOR; monochrome fallback is bracketed ([+]/[x]/[.]).
+- Consistent status markers across review/list/doctor/fail; list now shows
+  a progress bar; new --no-color flag (+ HELP) and NO_COLOR support.
+- Tests: tests/term.test.ts.
+
 ## [0.30.0] — 2026-08-09
 
 Phase 1 of the 2026 audit roadmap — bugs and utilities.

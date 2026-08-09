@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { writeFileSafe } from "../utils/file.js";
 import { DEFAULT_PORT } from "../constants.js";
+import { statusMark, paint } from "../utils/term.js";
 import { parseArgs, HELP } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
@@ -343,13 +344,17 @@ export async function main(argv: string[]): Promise<number> {
       if (!title)
         return fail("review requires a title, e.g. orion review my-csv-tool");
       const report = reviewChange(title);
+      const head = report.pass
+        ? paint("PASS", "green")
+        : paint("issues found", "red");
       printOut(
         opts,
         { changeId: title, pass: report.pass, checks: report.checks },
         [
-          `Review ${report.pass ? "✅ PASS" : "❌ issues found"} — ${title}`,
+          `Review ${statusMark(report.pass ? "done" : "error")} ${head} — ${title}`,
           ...report.checks.map(
-            (c) => `  ${c.ok ? "✓" : "✗"} ${c.name}: ${c.detail}`,
+            (c) =>
+              `  ${statusMark(c.ok ? "done" : "error")} ${c.name}: ${c.detail}`,
           ),
         ].join("\n"),
       );
@@ -375,8 +380,8 @@ export async function main(argv: string[]): Promise<number> {
       const report = doctor();
       console.log(
         [
-          `Doctor ${report.pass ? "✅ all healthy" : "❌ issues found"}`,
-          ...report.checks.map((c) => `  ${c.ok ? "✓" : "✗"} ${c.name}: ${c.detail}`),
+          `Doctor ${statusMark(report.pass ? "done" : "error")} ${paint(report.pass ? "all healthy" : "issues found", report.pass ? "green" : "red")}`,
+          ...report.checks.map((c) => `  ${statusMark(c.ok ? "done" : "error")} ${c.name}: ${c.detail}`),
         ].join("\n"),
       );
       return report.pass ? 0 : 1;

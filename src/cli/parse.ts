@@ -54,6 +54,7 @@ Commands:
 
 Flags:
   --no-cache   Skip all cache reads/writes
+  --no-color   Disable colored/emoji output (NO_COLOR is honoured too, v0.31)
   --dry        Preview instead of executing
   --watch      Re-run on file changes (tdd)
   --json       Machine-readable output
@@ -87,6 +88,8 @@ export function parseArgs(argv: string[]): {
       cmd = arg;
     } else if (arg === "--no-cache") {
       opts.noCache = true;
+    } else if (arg === "--no-color") {
+      process.env.ORION_COLOR = "0";
     } else if (arg === "--dry") {
       opts.dry = true;
     } else if (arg === "--watch") {

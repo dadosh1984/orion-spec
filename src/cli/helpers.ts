@@ -1,4 +1,5 @@
 /** Shared CLI helpers used by the dispatcher and sub-command modules. */
+import { statusMark } from "../utils/term.js";
 
 /** Global CLI flags shared by every command. */
 export interface CliOptions {
@@ -35,7 +36,7 @@ export function printOut(opts: CliOptions, obj: unknown, plain: string): void {
 
 /** Print an error to stderr and return a non-zero exit code. */
 export function fail(message: string): number {
-  console.error(`orion: ${message}`);
+  console.error(`orion: ${statusMark("error")} ${message}`);
   return 1;
 }
 
