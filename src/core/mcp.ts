@@ -629,10 +629,13 @@ export class McpServer {
     }
   }
 
-  /** Drive the stdio loop until EOF. */
-  async runStdio(): Promise<void> {
+  /** Drive the stdio loop until EOF. `input` defaults to stdin (overridable
+   * for tests and embedded servers). */
+  async runStdio(
+    input: NodeJS.ReadableStream = processStdin,
+  ): Promise<void> {
     const rl = createInterface({
-      input: processStdin,
+      input,
       crlfDelay: Infinity,
     });
     for await (const line of rl) {

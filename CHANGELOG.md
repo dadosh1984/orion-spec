@@ -4,6 +4,23 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.26.0] — 2026-08-09
+
+Phase 2 of the analysis roadmap — test coverage and reliability.
+
+- Coverage up to 90.3% overall (was 88.4); `commands.ts` 55.7% → 67%,
+  `mcp.ts` 68.4% → 70.4%, `tddCmd.ts` 21.6% → 75.7%.
+- New suites: `tests/commands2.test.ts` (guard-prompt, mcp --list, next,
+  verify, plugin lifecycle incl. a throwing plugin handler, scale, tdd,
+  tasks), `tests/robustness.test.ts` (slugify invariants, readTasks
+  junk/CRLF/emoji survival, deterministic topic counts, draft/out
+  idempotency, 10k-entry cache volume, template golden structure).
+- MCP: protocol edge cases covered (parse errors, notifications, unknown
+  methods, version negotiation, runStdio loop — now takes an injectable
+  input stream for embedded use).
+- Fix: `out` no longer lists its own `result.md` as an artifact (was
+  self-referential and broke idempotency of a second run).
+
 ## [0.25.0] — 2026-08-09
 
 Phase 1 (stabilization) of the analysis-driven roadmap (docs/analysis-roadmap.md):

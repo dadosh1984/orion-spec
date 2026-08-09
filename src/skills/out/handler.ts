@@ -226,7 +226,9 @@ function walkFiles(dir: string): string[] {
   return out;
 }
 
-/** Existing artifacts of a change, best-effort walk. */
+/** Existing artifacts of a change, best-effort walk. result.md is the
+ * output of `out` itself, not a source artifact — listing it would make
+ * the summary self-referential and the second run differ from the first. */
 function listArtifacts(changeId: string): string[] {
   const dir = `changes/${changeId}`;
   const candidates = [
@@ -234,7 +236,6 @@ function listArtifacts(changeId: string): string[] {
     `${dir}/design.md`,
     `${dir}/tasks.md`,
     `${dir}/forge-report.md`,
-    `${dir}/result.md`,
     `reports/${changeId}/guard-report.md`,
   ];
   const out = candidates.filter((p) => existsSync(p));
