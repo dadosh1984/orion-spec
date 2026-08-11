@@ -58,7 +58,7 @@ import { diffCmd } from "./diffCmd.js";
 import { envCmd } from "./envCmd.js";
 import { historyCmd } from "./historyCmd.js";
 import { runDispatch } from "./runCmd.js";
-import { createScript, scriptPath } from "../core/runtime.js";
+import { createScript, scriptPath, writeManifest } from "../core/runtime.js";
 import {
   metricsReport,
   formatMetricsReport,
@@ -180,26 +180,24 @@ export async function main(argv: string[]): Promise<number> {
               onTask,
             });
       printOut(opts, summary, summary.message);
-      // --save-as: сохранить результат как runnable script (v0.39)
+      // --save-as: сохранить результат как runnable script (v0.39.1)
       if (opts.saveAs && summary.ok) {
+        const saveName = opts.saveAs;
         try {
-          createScript(opts.saveAs, "node", `Forge result for change: ${title}`);
-          // Попытаться найти точку входа в изменениях и скопировать код
+          // Конвенция: точка входа — changes/<title>/entry.js или entry.ts.
+          // Если её нет — forge правил существующие файлы, автономного скрипта
+          // не получилось. Честный отказ лучше молчаливой пустышки.
           const entryCandidates = [
             `changes/${title}/entry.js`,
             `changes/${title}/entry.ts`,
           ];
-          let entryFound = false;
+          let entryPath: string | null = null;
           for (const ec of entryCandidates) {
-            if (existsSync(ec)) {
-              writeFileSync(scriptPath(opts.saveAs), readFileSync(ec, "utf8"), "utf8");
-              entryFound = true;
-              break;
-            }
+            if (existsSync(ec)) { entryPath = ec; break; }
           }
-          if (!entryFound) {
-            // Нет точки входа — копируем все task-файлы из src/tasks/,
-            // которые были изменены во время forge (смотрим по git diff)
+
+          if (!entryPath) {
+            // Второй шанс: git diff src/tasks/ — forge мог создать новые файлы
             const { execSync } = await import("node:child_process");
             try {
               const changed = execSync(
@@ -209,24 +207,41 @@ export async function main(argv: string[]): Promise<number> {
                 .trim()
                 .split("\n")
                 .filter((f) => f.endsWith(".ts") && existsSync(f));
-              if (changed.length > 0) {
-                const entryCode = changed
-                  .map((f) => `// from ${f}\n${readFileSync(f, "utf8")}`)
-                  .join("\n\n");
-                writeFileSync(scriptPath(opts.saveAs), entryCode, "utf8");
-                entryFound = true;
+              if (changed.length === 1) {
+                // Ровно один новый файл — используем как точку входа
+                entryPath = changed[0];
               }
             } catch {
-              // not a git repo or no changes — leave the template
+              // not a git repo — ok
             }
           }
-          const note = entryFound ? "" : " (template — edit with: orion run edit " + opts.saveAs + ")";
-          console.log(`\n${statusMark("done")} Saved as runnable script: ${opts.saveAs}${note}`);
-          console.log(`  Run anytime with: orion run ${opts.saveAs}`);
+
+          if (!entryPath) {
+            // Честный отказ: нечего сохранять как автономный скрипт
+            console.error(
+              `\n${statusMark("error")} --save-as failed: change "${title}" не содержит автономной точки входа.`,
+            );
+            console.error(
+              `  Создайте changes/${title}/entry.js с финальным кодом и повторите forge --save-as.`,
+            );
+            return 1;
+          }
+
+          // Создаём скрипт и копируем реальный код
+          const m = createScript(saveName, "node", `Forge result for change: ${title}`);
+          const entryCode = readFileSync(entryPath, "utf8");
+          writeFileSync(scriptPath(saveName), entryCode, "utf8");
+          // Записываем sourceChange для трассируемости
+          m.sourceChange = title;
+          writeManifest(m);
+          console.log(`\n${statusMark("done")} Saved as runnable script: ${saveName}`);
+          console.log(`  Source: changes/${title}/${entryPath}`);
+          console.log(`  Run anytime with: orion run ${saveName}`);
         } catch (err) {
           console.error(
-            `orion: --save-as failed: ${err instanceof Error ? err.message : String(err)}`,
+            `\n${statusMark("error")} --save-as failed: ${err instanceof Error ? err.message : String(err)}`,
           );
+          return 1;
         }
       }
       return summary.ok ? 0 : 1;

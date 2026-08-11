@@ -21,6 +21,7 @@ import {
   type PromptAssessment,
 } from "./refine.js";
 import { guardPrompt } from "./guard.js";
+import { classifyTask, formatClassifyResult } from "../../core/classify.js";
 
 /** One guided question in the `think` flow. */
 export interface Question {
@@ -129,6 +130,14 @@ export async function think(
         proposal[q.key] = answer;
       }
     }
+  }
+
+  // Task category classification (v0.40): recommend skill vs direct AI.
+  // Writes a recommendation to stderr so the agent/user sees it immediately.
+  const classResult = classifyTask(proposal.goal);
+  const skillHint = formatClassifyResult(classResult, proposal.goal);
+  if (skillHint && process.stderr.isTTY) {
+    process.stderr.write(skillHint + "\n");
   }
 
   // Self-learning (v0.12): attach past self-correction lessons this idea

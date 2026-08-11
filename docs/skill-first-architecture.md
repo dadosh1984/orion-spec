@@ -147,8 +147,10 @@ Orion — единственная система, где ИИ **создаёт 
 ## Дорожная карта
 
 - [x] v0.39 — `orion run` (создание, запуск, список, cron)
-- [x] v0.39 — `--save-as` интеграция с forge
-- [ ] v0.40 — классификатор задач в `orion think` (авто-определение категории)
+- [x] v0.39 — `--save-as` интеграция с forge (entry.js конвенция, честный отказ)
+- [x] v0.39.1 — spec-driven валидация + hazard gate + spec cache
+- [x] v0.39.2 — hazard gate per-runtime + --force + lastForceRun
+- [x] v0.40 — классификатор задач в `orion think` (авто-определение категории)
 - [ ] v0.40 — `orion run test <name>` — запуск тестов навыка
 - [ ] v0.41 — `orion metrics --skills` — ROI по каждому навыку
 - [ ] v0.42 — `orion run repair <name>` — авто-починка сломавшегося навыка

@@ -20,7 +20,8 @@
  * docs/sandbox.md keeps saying exactly that.
  */
 
-const HAZARDS: { re: RegExp; what: string }[] = [
+// JavaScript/Node.js hazards — for AI-generated snippets (forge/shield)
+const HAZARDS_JS: { re: RegExp; what: string }[] = [
   {
     re: /\brm(?:Sync|dirSync|dirsSync)\s*\(/,
     what: "destructive fs deletion (rm*)",
@@ -36,28 +37,70 @@ const HAZARDS: { re: RegExp; what: string }[] = [
   { re: /new\s+Function\s*\(/, what: "dynamic Function constructor" },
   { re: /\bprocess\.exit\s*\(/, what: "process termination" },
   { re: /fetch\s*\(\s*["']https?:/, what: "outbound network call" },
-  // denyEnv (v0.34): reading credential-shaped environment variables inside
-  // a test snippet is a privilege leak, not a bug. Conservative substring.
   {
     re: /process\.env\.(?:AWS_[A-Z_]*|.*(?:API_KEY|APISECRET|ACCESS_KEY|SECRET|PASSWORD|PRIVATE_KEY|TOKEN))/,
     what: "reads a credential-shaped env var (denyEnv)",
   },
-  // Bash-specific hazards (v0.39): scan shell scripts before execution.
-  // Deliberately conservative — false positives are safer.
+];
+
+// Bash/shell hazards (v0.39) — for `orion run` scripts before execSync
+const HAZARDS_BASH: { re: RegExp; what: string }[] = [
   { re: /\brm\s+(-[rRf]+\s+)*[/~]/, what: "destructive rm in shell" },
   { re: /\bsudo\b/, what: "sudo elevation" },
   { re: />\s*\/dev\/sd[a-z]/, what: "raw disk write" },
+  { re: />\s*\/dev\/nvme/, what: "raw NVMe disk write" },
   { re: /\bdd\s+if=/, what: "dd disk copy" },
   { re: /\bmkfs\./, what: "filesystem format" },
   { re: /\bchmod\s+[-+]?[rwsx]*7/, what: "world-writable chmod" },
   { re: /\bcurl\s+.*\|\s*(ba)?sh/, what: "curl-pipe-shell" },
   { re: /\bwget\s+.*\|\s*(ba)?sh/, what: "wget-pipe-shell" },
+  { re: /:\(\)\s*\{\s*:\|:&\s*\}\s*;:/, what: "fork bomb" },
+  { re: />\s*\/etc\/passwd/, what: "overwrite /etc/passwd" },
+  { re: />\s*\/etc\/shadow/, what: "overwrite /etc/shadow" },
 ];
+
+// Python hazards (v0.39.2) — for .py scripts
+const HAZARDS_PYTHON: { re: RegExp; what: string }[] = [
+  { re: /\bos\.system\s*\(/, what: "os.system call" },
+  { re: /\bsubprocess\.(?:call|run|Popen)\s*\(/, what: "subprocess execution" },
+  { re: /shell\s*=\s*True/, what: "subprocess with shell=True" },
+  { re: /\beval\s*\(/, what: "dynamic eval" },
+  { re: /\bexec\s*\(/, what: "dynamic exec" },
+  { re: /\b__import__\s*\(/, what: "dynamic import" },
+  { re: /\bcompile\s*\(/, what: "dynamic compile" },
+  { re: /\bctypes\b/, what: "ctypes FFI" },
+  { re: /\bshutil\.rmtree\s*\(/, what: "recursive delete (rmtree)" },
+  { re: /\bos\.remove\s*\(/, what: "os.remove" },
+  { re: /\bos\.rmdir\s*\(/, what: "os.rmdir" },
+  { re: /\bopen\s*\([^)]*["']w["']/, what: "file write mode" },
+];
+
+// Legacy: used by forge/shield (JS-only)
+const HAZARDS = HAZARDS_JS;
 
 /** Scan source for destructive/escaping patterns; returns human-readable hits. */
 export function scanHazards(source: string): string[] {
   const found: string[] = [];
   for (const { re, what } of HAZARDS) {
+    const m = source.match(re);
+    if (m) found.push(`${what} ("${m[0].slice(0, 40)}")`);
+  }
+  return found;
+}
+
+/** Scan source with runtime-specific patterns (v0.39.2). */
+export function scanHazardsForRuntime(
+  source: string,
+  runtime: "bash" | "node" | "python",
+): string[] {
+  const patterns =
+    runtime === "bash"
+      ? [...HAZARDS_BASH]
+      : runtime === "python"
+        ? [...HAZARDS_PYTHON]
+        : [...HAZARDS_JS];
+  const found: string[] = [];
+  for (const { re, what } of patterns) {
     const m = source.match(re);
     if (m) found.push(`${what} ("${m[0].slice(0, 40)}")`);
   }

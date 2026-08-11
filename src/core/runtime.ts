@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, chmodS
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { scanHazards } from "./hazards.js";
+import { scanHazardsForRuntime } from "./hazards.js";
 import { validateOutput } from "./specValidator.js";
 
 /**
@@ -34,6 +34,8 @@ export interface RunManifest {
   };
   /** Входные параметры (ключи из INPUT_JSON, которые скрипт ожидает). */
   inputs?: string[];
+  /** Timestamp последнего запуска с --force (обход hazard gate). */
+  lastForceRun?: string;
 }
 
 export function scriptsDir(): string {
@@ -125,7 +127,10 @@ export function createScript(
 }
 
 /** Запустить скрипт и вернуть stdout + время выполнения. */
-export function runScript(name: string): { ok: boolean; output: string; durationMs: number } {
+export function runScript(
+  name: string,
+  opts?: { force?: boolean },
+): { ok: boolean; output: string; durationMs: number } {
   const m = readManifest(name);
   if (!m) {
     return { ok: false, output: `script "${name}" not found`, durationMs: 0 };
@@ -136,18 +141,25 @@ export function runScript(name: string): { ok: boolean; output: string; duration
     return { ok: false, output: `script file not found: ${scriptFile}`, durationMs: 0 };
   }
 
-  // Hazard gate (v0.39): scan script for destructive patterns BEFORE execution.
-  // Skip with ORION_RUN_NO_HAZARDS=1 or --force via env.
-  if (process.env.ORION_RUN_NO_HAZARDS !== "1") {
+  // Hazard gate (v0.39.2): scan script for destructive patterns BEFORE execution.
+  // Skip with --force or ORION_RUN_NO_HAZARDS=1.
+  const force = opts?.force || process.env.ORION_RUN_NO_HAZARDS === "1";
+  if (!force) {
     const code = readFileSync(scriptFile, "utf8");
-    const hits = scanHazards(code);
+    const hits = scanHazardsForRuntime(code, m.runtime);
     if (hits.length > 0) {
       return {
         ok: false,
-        output: `[hazard gate] script "${name}" blocked — ${hits.length} hazard(s):\n  - ${hits.join("\n  - ")}\nRe-run with ORION_RUN_NO_HAZARDS=1 to override.`,
+        output: `[hazard gate] script "${name}" blocked — ${hits.length} hazard(s):\n  - ${hits.join("\n  - ")}\nRe-run with --force to override.`,
         durationMs: 0,
       };
     }
+  }
+
+  // Log force override (v0.39.2) — visible in `orion run show`
+  if (force) {
+    m.lastForceRun = new Date().toISOString();
+    writeManifest(m);
   }
 
   const start = Date.now();

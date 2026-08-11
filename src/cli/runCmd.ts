@@ -111,8 +111,9 @@ export function runDispatch(args: string[]): number {
 
     default: {
       const m = readManifest(sub);
-      if (!m) return fail(`unknown subcommand or script "${sub}" not found.\n  Usage: orion run [list|new|show|edit|delete|schedule|unschedule|scheduled|<name>]`);
-      const result = runScriptCore(sub);
+      if (!m) return fail(`unknown subcommand or script "${sub}" not found.\n  Usage: orion run [list|new|show|edit|delete|schedule|unschedule|scheduled|cache|<name>]`);
+      const force = rest.includes("--force");
+      const result = runScriptCore(sub, { force });
       if (result.ok) {
         process.stdout.write(result.output);
         console.error(`\n${paint(`✓ ${sub} — ${result.durationMs}ms`, "dim")}`);

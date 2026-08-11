@@ -4,6 +4,48 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.40.0] — 2026-08-12
+
+Task category classifier v0.40: `orion think` now recommends whether a task
+should be automated as a script (categories 1-4) or solved directly via AI
+(category 5). Based on keyword patterns (RU + EN), no ML, offline-first.
+
+- New: `src/core/classify.ts` — 5-category classifier from skill-first-architecture
+- Integrated into `orion think` — prints recommendation to stderr
+- Tests: tests/classify.test.ts (19)
+
+Hazard gate v2: runtime-specific patterns (JS/Bash/Python), `--force` flag,
+and `lastForceRun` audit trail in script manifest.
+
+- `scanHazardsForRuntime(source, runtime)` — separate hazard sets per language
+- Python hazards: os.system, subprocess(shell=True), eval, exec, ctypes, shutil.rmtree
+- Bash hazards: added fork-bomb, /etc/passwd, /etc/shadow, /dev/nvme patterns
+- `orion run <name> --force` bypasses the gate and logs to manifest
+- `--save-as` now requires entry point (honest failure instead of empty template)
+- Tests: tests/hazard-gate.test.ts (12), tests/save-as.test.ts (5)
+
+## [0.39.1] — 2026-08-12
+
+Spec-driven validation (`specValidator.ts`), semantic spec cache (`specCache.ts`),
+and bash hazard patterns added to the execution gate in `runScript()`.
+
+- New: `src/core/specValidator.ts`, `src/core/specCache.ts`
+- Hazard gate: bash patterns (rm -rf, sudo, curl-pipe-shell, dd, chmod 777)
+  now checked before `execSync` in `runScript()`
+- `orion run cache` — list spec-driven cache entries
+
+## [0.39.0] — 2026-08-11
+
+Skill-First Architecture: `orion run` — autonomous local scripts that run
+without tokens, internet, or AI after creation.
+
+- `orion run` — list, new, show, edit, delete, schedule, unschedule, scheduled
+- `--save-as` integration with forge
+- New: `src/core/runtime.ts`, `src/cli/runCmd.ts`
+- Docs: `docs/skill-first-architecture.md`
+
+---
+
 ## [0.36.0] — 2026-08-09
 
 Visibility and update notifications.
