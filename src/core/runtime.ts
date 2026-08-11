@@ -6,6 +6,7 @@ import { scanHazardsForRuntime } from "./hazards.js";
 import { validateOutput } from "./specValidator.js";
 import { recordTokenEvent, updateSkillMetrics, estimateBaselineTokens } from "./tokenLedger.js";
 import { recordRepairAttempt, policyCheck, sandboxEnv } from "./repair.js";
+import { runInDocker, sandboxLevel } from "./docker.js";
 
 /**
  * `orion run` runtime (v0.39) — локальные автономные скрипты.
@@ -180,6 +181,24 @@ export function runScript(
 
   // Hazard gate + policy: skip with --force or ORION_RUN_NO_HAZARDS=1.
   const force = opts?.force || process.env.ORION_RUN_NO_HAZARDS === "1";
+
+  // Docker sandbox (v0.45): execute in container if ORION_SANDBOX=docker
+  if (sandboxLevel() === "docker") {
+    const result = runInDocker(name, scriptFile, m);
+    if (result.ok) {
+      m.lastRun = new Date().toISOString();
+      m.runCount = (m.runCount ?? 0) + 1;
+      writeManifest(m);
+      recordTokenEvent({
+        skillName: name, mode: "run", tokensIn: 0,
+        tokensSaved: estimateBaselineTokens(m.description?.length ?? 0),
+        baselineTokens: estimateBaselineTokens(m.description?.length ?? 0),
+        status: "success", durationMs: result.durationMs,
+      });
+      updateSkillMetrics(name, { success: true, tokensSaved: estimateBaselineTokens(m.description?.length ?? 0), durationMs: result.durationMs, mode: "run", tokensIn: 0 });
+    }
+    return result;
+  }
 
   // Policy check (v0.42): risk_level, requires_confirmation
   const policyError = policyCheck(m);
