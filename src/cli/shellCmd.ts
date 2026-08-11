@@ -1,6 +1,8 @@
 import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import { main } from "./commands.js";
+import { ORION_COMMANDS } from "./commands-list.js";
+import { appendHistory } from "./historyCmd.js";
 import { readVersionSafe } from "../utils/version.js";
 
 /**
@@ -9,14 +11,7 @@ import { readVersionSafe } from "../utils/version.js";
  * completer. Type `help` or `exit`/`quit`/Ctrl+D.
  */
 export async function shell(): Promise<void> {
-  const commands = [
-    "think", "plan", "draft", "forge", "tasks", "shield", "verify",
-    "out", "pay-debt", "resume", "next", "init", "changelog", "list",
-    "status", "compare", "assumptions", "stats", "self-audit",
-    "backup", "restore", "review", "archive", "doctor", "learn",
-    "track", "scale", "tdd", "metrics", "mcp", "serve", "plugin",
-    "config", "clean", "profile", "help", "version", "exit", "quit",
-  ];
+  const commands = [...ORION_COMMANDS, "exit", "quit"];
 
   const completer = (line: string): [string[], string] => {
     const words = line.split(/\s+/);
@@ -44,6 +39,7 @@ export async function shell(): Promise<void> {
 
   rl.on("line", async (line: string) => {
     const trimmed = line.trim();
+    appendHistory(trimmed);
     if (!trimmed) {
       rl.prompt();
       return;

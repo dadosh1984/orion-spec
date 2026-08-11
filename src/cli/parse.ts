@@ -60,6 +60,10 @@ Commands:
   mcp                     MCP server for AI agents (v0.7) — any MCP client
   serve [--port N] [--host H] [--ui] Start the web dashboard (v0.2)
   shell                   Interactive REPL with tab-completion and history (v0.37)
+  diff <change>           Show current state of a change (v0.38)
+  env                     Show all ORION_* environment variables (v0.38)
+  history [n]             Show shell command history (v0.38)
+  history clear           Clear shell command history (v0.38)
   plugin new <name>       Scaffold a plugin skeleton (v0.3)
   plugin install <dir>    Copy a plugin into ~/.orion/plugins
   plugin list             List installed plugins

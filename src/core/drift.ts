@@ -8,7 +8,7 @@ import { join } from "node:path";
  */
 
 const SYMBOL =
-  /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/m;
+  /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/gm;
 
 const driftCache = new Map<
   string,

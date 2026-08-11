@@ -1,23 +1,13 @@
+import { ORION_COMMANDS, ORION_FLAGS } from "./commands-list.js";
+
 /**
  * `orion completion bash|zsh|powershell` (v0.37) — generate shell
  * autocomplete scripts. Zero-dependency: static command list, no
  * runtime resolution needed.
  */
 
-const COMMANDS = [
-  "think", "plan", "draft", "forge", "tasks", "shield", "verify",
-  "out", "pay-debt", "resume", "next", "init", "changelog", "list",
-  "status", "compare", "assumptions", "stats", "self-audit",
-  "backup", "restore", "review", "archive", "doctor", "learn",
-  "track", "scale", "tdd", "metrics", "mcp", "serve", "plugin",
-  "config", "clean", "profile", "help", "version",
-];
-
-const FLAGS = [
-  "--no-cache", "--no-color", "--dry", "--watch", "--json",
-  "--npm", "--port", "--host", "--session", "--parallel",
-  "--token", "--ui", "--lang", "--version", "-V", "--help", "-h",
-];
+const COMMANDS = [...ORION_COMMANDS];
+const FLAGS = [...ORION_FLAGS];
 
 export function completionScript(shell: string): string {
   switch (shell) {

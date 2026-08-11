@@ -54,6 +54,9 @@ import { cleanCmd } from "./cleanCmd.js";
 import { statusWatch } from "./statusWatchCmd.js";
 import { completionScript } from "./completionCmd.js";
 import { shell } from "./shellCmd.js";
+import { diffCmd } from "./diffCmd.js";
+import { envCmd } from "./envCmd.js";
+import { historyCmd } from "./historyCmd.js";
 import {
   metricsReport,
   formatMetricsReport,
@@ -686,6 +689,26 @@ export async function main(argv: string[]): Promise<number> {
     case "shell": {
       await shell();
       return 0;
+    }
+
+    case "env": {
+      const envResult = envCmd();
+      console.log(envResult.text);
+      return envResult.ok ? 0 : 1;
+    }
+
+    case "history": {
+      const histResult = historyCmd(args);
+      console.log(histResult.text);
+      return histResult.ok ? 0 : 1;
+    }
+
+    case "diff": {
+      const diffId = args[0];
+      if (!diffId) return fail("diff requires a change id");
+      const diffResult = diffCmd(diffId);
+      console.log(diffResult.text);
+      return diffResult.ok ? 0 : 1;
     }
 
     case "completion": {
