@@ -59,6 +59,7 @@ import { envCmd } from "./envCmd.js";
 import { historyCmd } from "./historyCmd.js";
 import { runDispatch } from "./runCmd.js";
 import { tokensDispatch } from "./tokensCmd.js";
+import { routeDispatch } from "./routeCmd.js";
 import { createScript, scriptPath, writeManifest } from "../core/runtime.js";
 import {
   metricsReport,
@@ -752,6 +753,9 @@ export async function main(argv: string[]): Promise<number> {
       console.log(result.text);
       return result.ok ? 0 : 1;
     }
+
+    case "route":
+      return routeDispatch(args);
 
     case "tokens":
       return tokensDispatch(args);

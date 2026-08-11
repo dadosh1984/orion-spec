@@ -13,6 +13,7 @@ import {
 } from "../core/runtime.js";
 import { listCacheEntries } from "../core/specCache.js";
 import { canAttemptRepair, markRepairFixed } from "../core/repair.js";
+import { addFileWatcher, removeFileWatcher, listWatchers } from "../core/router.js";
 
 /**
  * `orion run` (v0.39) — автономные локальные скрипты.
@@ -25,6 +26,41 @@ export function runDispatch(args: string[]): number {
   if (!sub) return runList();
 
   switch (sub) {
+    case "watch": {
+      if (!name) return fail("run watch requires: orion run watch <name> <dir> <pattern>");
+      const watchDir = rest[0];
+      const pattern = rest[1] || "*";
+      if (!watchDir) return fail("run watch requires a directory to watch");
+      try {
+        addFileWatcher(name, watchDir, pattern, name);
+        console.log(`${statusMark("done")} Watcher "${name}" added: ${watchDir} (${pattern}) → orion run ${name}`);
+      } catch (err) {
+        console.error(`orion: ${statusMark("error")} ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
+      }
+      return 0;
+    }
+
+    case "unwatch": {
+      if (!name) return fail("run unwatch requires a watcher name");
+      removeFileWatcher(name);
+      console.log(`${statusMark("done")} Watcher "${name}" removed.`);
+      return 0;
+    }
+
+    case "watchers": {
+      const all = listWatchers();
+      if (all.length === 0) {
+        console.log(`${statusMark("info")} No file watchers registered.`);
+      } else {
+        console.log(`${statusMark("info")} File watchers (${all.length}):`);
+        for (const w of all) {
+          console.log(`  ${w.name.padEnd(16)} ${w.watchDir.padEnd(24)} ${w.pattern} → ${w.skillName}`);
+        }
+      }
+      return 0;
+    }
+
     case "repair": {
       if (!name) return fail("run repair requires a script name");
       const m = readManifest(name);
