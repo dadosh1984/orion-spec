@@ -63,6 +63,7 @@ Commands:
   run                     List saved offline scripts (v0.39)
   run new <name>          Create a new offline script (v0.39)
   run <name>              Execute a saved offline script (v0.39)
+  run cache               Show spec-driven script cache (v0.39)
   run show|edit|delete|schedule|unschedule <name>  Manage scripts (v0.39)
   env                     Show all ORION_* environment variables (v0.38)
   history [n]             Show shell command history (v0.38)

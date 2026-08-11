@@ -42,6 +42,16 @@ const HAZARDS: { re: RegExp; what: string }[] = [
     re: /process\.env\.(?:AWS_[A-Z_]*|.*(?:API_KEY|APISECRET|ACCESS_KEY|SECRET|PASSWORD|PRIVATE_KEY|TOKEN))/,
     what: "reads a credential-shaped env var (denyEnv)",
   },
+  // Bash-specific hazards (v0.39): scan shell scripts before execution.
+  // Deliberately conservative — false positives are safer.
+  { re: /\brm\s+(-[rRf]+\s+)*[/~]/, what: "destructive rm in shell" },
+  { re: /\bsudo\b/, what: "sudo elevation" },
+  { re: />\s*\/dev\/sd[a-z]/, what: "raw disk write" },
+  { re: /\bdd\s+if=/, what: "dd disk copy" },
+  { re: /\bmkfs\./, what: "filesystem format" },
+  { re: /\bchmod\s+[-+]?[rwsx]*7/, what: "world-writable chmod" },
+  { re: /\bcurl\s+.*\|\s*(ba)?sh/, what: "curl-pipe-shell" },
+  { re: /\bwget\s+.*\|\s*(ba)?sh/, what: "wget-pipe-shell" },
 ];
 
 /** Scan source for destructive/escaping patterns; returns human-readable hits. */

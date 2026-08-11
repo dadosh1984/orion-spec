@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { writeFileSafe } from "../utils/file.js";
 import { DEFAULT_PORT } from "../constants.js";
 import { statusMark, paint } from "../utils/term.js";
@@ -58,7 +58,7 @@ import { diffCmd } from "./diffCmd.js";
 import { envCmd } from "./envCmd.js";
 import { historyCmd } from "./historyCmd.js";
 import { runDispatch } from "./runCmd.js";
-import { createScript } from "../core/runtime.js";
+import { createScript, scriptPath } from "../core/runtime.js";
 import {
   metricsReport,
   formatMetricsReport,
@@ -184,7 +184,44 @@ export async function main(argv: string[]): Promise<number> {
       if (opts.saveAs && summary.ok) {
         try {
           createScript(opts.saveAs, "node", `Forge result for change: ${title}`);
-          console.log(`\n${statusMark("done")} Saved as runnable script: ${opts.saveAs}`);
+          // Попытаться найти точку входа в изменениях и скопировать код
+          const entryCandidates = [
+            `changes/${title}/entry.js`,
+            `changes/${title}/entry.ts`,
+          ];
+          let entryFound = false;
+          for (const ec of entryCandidates) {
+            if (existsSync(ec)) {
+              writeFileSync(scriptPath(opts.saveAs), readFileSync(ec, "utf8"), "utf8");
+              entryFound = true;
+              break;
+            }
+          }
+          if (!entryFound) {
+            // Нет точки входа — копируем все task-файлы из src/tasks/,
+            // которые были изменены во время forge (смотрим по git diff)
+            const { execSync } = await import("node:child_process");
+            try {
+              const changed = execSync(
+                "git diff --name-only HEAD -- src/tasks/",
+                { encoding: "utf8" },
+              )
+                .trim()
+                .split("\n")
+                .filter((f) => f.endsWith(".ts") && existsSync(f));
+              if (changed.length > 0) {
+                const entryCode = changed
+                  .map((f) => `// from ${f}\n${readFileSync(f, "utf8")}`)
+                  .join("\n\n");
+                writeFileSync(scriptPath(opts.saveAs), entryCode, "utf8");
+                entryFound = true;
+              }
+            } catch {
+              // not a git repo or no changes — leave the template
+            }
+          }
+          const note = entryFound ? "" : " (template — edit with: orion run edit " + opts.saveAs + ")";
+          console.log(`\n${statusMark("done")} Saved as runnable script: ${opts.saveAs}${note}`);
           console.log(`  Run anytime with: orion run ${opts.saveAs}`);
         } catch (err) {
           console.error(

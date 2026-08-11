@@ -10,6 +10,7 @@ import {
   readManifest,
   scriptPath,
 } from "../core/runtime.js";
+import { listCacheEntries } from "../core/specCache.js";
 
 /**
  * `orion run` (v0.39) — автономные локальные скрипты.
@@ -24,6 +25,19 @@ export function runDispatch(args: string[]): number {
   switch (sub) {
     case "list":
       return runList();
+
+    case "cache": {
+      const entries = listCacheEntries();
+      if (entries.length === 0) {
+        console.log(`${statusMark("info")} Spec cache is empty.`);
+      } else {
+        console.log(`${statusMark("info")} Spec cache (${entries.length} entries):`);
+        for (const e of entries) {
+          console.log(`  ${e.key.padEnd(18)} → ${e.scriptName.padEnd(20)} ×${e.hitCount}  last: ${new Date(e.lastHit).toLocaleDateString()}`);
+        }
+      }
+      return 0;
+    }
 
     case "new": {
       if (!name) return fail("usage: orion run new <name>");

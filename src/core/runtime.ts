@@ -2,6 +2,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, chmodS
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
+import { scanHazards } from "./hazards.js";
+import { validateOutput } from "./specValidator.js";
 
 /**
  * `orion run` runtime (v0.39) — локальные автономные скрипты.
@@ -25,6 +27,13 @@ export interface RunManifest {
   schedule: string | null;
   /** Source change id if created via `forge --save-as`. */
   sourceChange?: string;
+  /** Spec-driven output validation schema (v0.39). */
+  outputSchema?: {
+    required?: string[];
+    properties?: Record<string, { type: string }>;
+  };
+  /** Входные параметры (ключи из INPUT_JSON, которые скрипт ожидает). */
+  inputs?: string[];
 }
 
 export function scriptsDir(): string {
@@ -127,6 +136,20 @@ export function runScript(name: string): { ok: boolean; output: string; duration
     return { ok: false, output: `script file not found: ${scriptFile}`, durationMs: 0 };
   }
 
+  // Hazard gate (v0.39): scan script for destructive patterns BEFORE execution.
+  // Skip with ORION_RUN_NO_HAZARDS=1 or --force via env.
+  if (process.env.ORION_RUN_NO_HAZARDS !== "1") {
+    const code = readFileSync(scriptFile, "utf8");
+    const hits = scanHazards(code);
+    if (hits.length > 0) {
+      return {
+        ok: false,
+        output: `[hazard gate] script "${name}" blocked — ${hits.length} hazard(s):\n  - ${hits.join("\n  - ")}\nRe-run with ORION_RUN_NO_HAZARDS=1 to override.`,
+        durationMs: 0,
+      };
+    }
+  }
+
   const start = Date.now();
   try {
     let cmd: string;
@@ -149,6 +172,16 @@ export function runScript(name: string): { ok: boolean; output: string; duration
     m.lastRun = new Date().toISOString();
     m.runCount = (m.runCount ?? 0) + 1;
     writeManifest(m);
+
+    // Spec-driven validation (v0.39): проверить stdout по outputSchema
+    const validation = validateOutput(output.trim(), m.outputSchema);
+    if (!validation.ok) {
+      return {
+        ok: false,
+        output: `[validation] script ran (${durationMs}ms) but output failed spec check:\n  - ${validation.errors.join("\n  - ")}\nstdout: ${output.slice(0, 500)}`,
+        durationMs,
+      };
+    }
 
     return { ok: true, output, durationMs };
   } catch (err) {
