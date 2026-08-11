@@ -14,6 +14,7 @@ import {
 import { listCacheEntries } from "../core/specCache.js";
 import { canAttemptRepair, markRepairFixed } from "../core/repair.js";
 import { addFileWatcher, removeFileWatcher, listWatchers } from "../core/router.js";
+import { generateSkill } from "../core/generator.js";
 
 /**
  * `orion run` (v0.39) — автономные локальные скрипты.
@@ -57,6 +58,26 @@ export function runDispatch(args: string[]): number {
         for (const w of all) {
           console.log(`  ${w.name.padEnd(16)} ${w.watchDir.padEnd(24)} ${w.pattern} → ${w.skillName}`);
         }
+      }
+      return 0;
+    }
+
+    case "generate": {
+      if (!name) return fail("run generate requires: orion run generate <name> --from \"<prompt>\"");
+      const fromIdx = rest.indexOf("--from");
+      const prompt = fromIdx >= 0 ? rest.slice(fromIdx + 1).join(" ") : name;
+      try {
+        const runtime = rest.includes("--node") ? "node" : rest.includes("--python") ? "python" : "bash";
+        const result = generateSkill(name, prompt, runtime);
+        console.log(`${statusMark("done")} Skill "${name}" generated:`);
+        for (const f of result.files) console.log(`  ✓ ${f}`);
+        console.log(`  Risk level: ${result.manifest.risk_level}`);
+        console.log(`  Network:    ${result.manifest.sandbox?.network ?? "denied"}`);
+        console.log(`\n  Preview:  orion run ${name} --dry-run`);
+        console.log(`  Run:      orion run ${name}`);
+      } catch (err) {
+        console.error(`orion: ${statusMark("error")} ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
       }
       return 0;
     }

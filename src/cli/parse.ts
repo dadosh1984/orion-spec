@@ -66,6 +66,7 @@ Commands:
   tokens events           Recent token events (v0.41)
   run                     List saved offline scripts (v0.39)
   run new <name>          Create a new offline script (v0.39)
+  run generate <name> --from "<prompt>"  Generate full skill: manifest+tests+README (v0.44)
   run <name>              Execute a saved offline script (v0.39)
   run cache               Show spec-driven script cache (v0.39)
   run watch <name> <dir>  Watch directory and run skill on changes (v0.43)
