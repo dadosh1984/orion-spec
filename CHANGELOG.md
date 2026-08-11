@@ -4,6 +4,23 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.44.0] — 2026-08-12
+
+Skill generator: `orion run generate` creates full skill scaffold
+(manifest + tests + README) with auto-classification.
+
+- New: `src/core/generator.ts` — generateSkill()
+- `orion run generate <name> --from "<prompt>" [--node|--python]`
+
+## [0.43.0] — 2026-08-12
+
+Router v2 + Verifier v2 + Scheduler v2.
+
+- New: `src/core/router.ts` — findExistingSkill, routeRequest, verifyRun,
+  file watchers (addFileWatcher/removeFileWatcher/listWatchers)
+- `orion route <prompt>`, `orion route search <query>`
+- `orion run watch <name> <dir> [pattern]`, `orion run watchers/unwatch`
+
 ## [0.42.0] — 2026-08-12
 
 Repair loop + policy engine + sandbox environment.
