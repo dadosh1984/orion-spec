@@ -4,6 +4,18 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.42.0] — 2026-08-12
+
+Repair loop + policy engine + sandbox environment.
+
+- New: `src/core/repair.ts` — RepairEntry log, recordRepairAttempt, markRepairFixed,
+  canAttemptRepair (max 2), policyCheck (risk_level gating), sandboxEnv
+- `RunManifest` extended: risk_level, requires_confirmation, irreversible,
+  sandbox (network, timeout_sec, max_memory_mb), status (active/broken/needs_repair)
+- `orion run repair <name>` — mark script for repair, auto-clear on success
+- Policy: critical skills blocked without --force, high-risk require confirmation
+- Sandbox: ORION_SANDBOX_NETWORK=0 by default, restricted PATH
+
 ## [0.41.0] — 2026-08-12
 
 Token ledger + dry-run support.
