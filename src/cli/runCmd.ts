@@ -8,9 +8,11 @@ import {
   deleteScript,
   setSchedule,
   readManifest,
+  writeManifest,
   scriptPath,
 } from "../core/runtime.js";
 import { listCacheEntries } from "../core/specCache.js";
+import { canAttemptRepair, markRepairFixed } from "../core/repair.js";
 
 /**
  * `orion run` (v0.39) — автономные локальные скрипты.
@@ -23,6 +25,25 @@ export function runDispatch(args: string[]): number {
   if (!sub) return runList();
 
   switch (sub) {
+    case "repair": {
+      if (!name) return fail("run repair requires a script name");
+      const m = readManifest(name);
+      if (!m) { console.error(`orion: script "${name}" not found`); return 1; }
+      if (!canAttemptRepair(name)) {
+        console.log(`${statusMark("error")} Too many repair attempts for "${name}". Manual fix required.`);
+        return 1;
+      }
+      // Repair: mark needs_repair, let LLM fix it (or user edits manually)
+      m.status = "needs_repair";
+      writeManifest(m);
+      console.log(`${statusMark("info")} "${name}" marked as needs_repair.`);
+      console.log(`  Edit the script: orion run edit ${name}`);
+      console.log(`  Then test:        orion run ${name} --dry-run`);
+      console.log(`  Then run:         orion run ${name}`);
+      console.log(`  On success, status auto-clears.`);
+      return 0;
+    }
+
     case "list":
       return runList();
 
@@ -118,6 +139,12 @@ export function runDispatch(args: string[]): number {
       const dryRun = origArgs.includes("--dry-run");
       const result = runScriptCore(sub, { force, dryRun });
       if (result.ok) {
+        // Auto-clear needs_repair on success (v0.42)
+        if (m.status === "needs_repair") {
+          m.status = "active";
+          writeManifest(m);
+          markRepairFixed(sub);
+        }
         process.stdout.write(result.output);
         console.error(`\n${paint(`✓ ${sub} — ${result.durationMs}ms`, "dim")}`);
       } else {

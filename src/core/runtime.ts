@@ -5,6 +5,7 @@ import { execSync } from "node:child_process";
 import { scanHazardsForRuntime } from "./hazards.js";
 import { validateOutput } from "./specValidator.js";
 import { recordTokenEvent, updateSkillMetrics, estimateBaselineTokens } from "./tokenLedger.js";
+import { recordRepairAttempt, policyCheck, sandboxEnv } from "./repair.js";
 
 /**
  * `orion run` runtime (v0.39) — локальные автономные скрипты.
@@ -37,6 +38,21 @@ export interface RunManifest {
   inputs?: string[];
   /** Timestamp последнего запуска с --force (обход hazard gate). */
   lastForceRun?: string;
+  /** Risk level: low | medium | high | critical (v0.42). */
+  risk_level?: "low" | "medium" | "high" | "critical";
+  /** Требуется подтверждение перед запуском (v0.42). */
+  requires_confirmation?: boolean;
+  /** Необратимая операция (v0.42). */
+  irreversible?: boolean;
+  /** Sandbox configuration (v0.42). */
+  sandbox?: {
+    network?: "allowed" | "denied";
+    timeout_sec?: number;
+    max_memory_mb?: number;
+    max_cpu_percent?: number;
+  };
+  /** Состояние навыка: active | broken | needs_repair (v0.42). */
+  status?: "active" | "broken" | "needs_repair";
 }
 
 export function scriptsDir(): string {
@@ -162,9 +178,16 @@ export function runScript(
     };
   }
 
-  // Hazard gate (v0.39.2): scan script for destructive patterns BEFORE execution.
-  // Skip with --force or ORION_RUN_NO_HAZARDS=1.
+  // Hazard gate + policy: skip with --force or ORION_RUN_NO_HAZARDS=1.
   const force = opts?.force || process.env.ORION_RUN_NO_HAZARDS === "1";
+
+  // Policy check (v0.42): risk_level, requires_confirmation
+  const policyError = policyCheck(m);
+  if (policyError && !force) {
+    return { ok: false, output: policyError, durationMs: 0 };
+  }
+
+  // Hazard gate (v0.39.2): scan script for destructive patterns BEFORE execution.
   if (!force) {
     const code = readFileSync(scriptFile, "utf8");
     const hits = scanHazardsForRuntime(code, m.runtime);
@@ -195,9 +218,9 @@ export function runScript(
     }
     const output = execSync(cmd, {
       encoding: "utf8",
-      timeout: 30_000,
+      timeout: m.sandbox?.timeout_sec ? m.sandbox.timeout_sec * 1000 : 30_000,
       cwd: join(scriptsDir(), name),
-      env: { ...process.env, ORION_RUN_NAME: name },
+      env: { ...process.env, ...sandboxEnv(m), ORION_RUN_NAME: name },
     });
     const durationMs = Date.now() - start;
 
@@ -240,11 +263,14 @@ export function runScript(
     return { ok: true, output, durationMs };
   } catch (err) {
     const durationMs = Date.now() - start;
-    return {
-      ok: false,
-      output: err instanceof Error ? err.message : String(err),
-      durationMs,
-    };
+    const errMsg = err instanceof Error ? err.message : String(err);
+    // Repair log (v0.42): записать ошибку для будущего авто-ремонта
+    const attempts = recordRepairAttempt(name, errMsg);
+    const repairNote =
+      attempts >= 2
+        ? `\n[repair] ${attempts} failed attempts — run "orion run repair ${name}" to attempt auto-fix.`
+        : "";
+    return { ok: false, output: errMsg + repairNote, durationMs };
   }
 }
 
