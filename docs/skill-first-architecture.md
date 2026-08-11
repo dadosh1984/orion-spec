@@ -155,7 +155,7 @@ Orion — единственная система, где ИИ **создаёт 
 - [x] v0.42 — repair loop + policy engine + sandbox env
 - [x] v0.43 — router v2 + verifier v2 + scheduler v2 (file watchers)
 - [x] v0.44 — skill generator (manifest + tests + README)
-- [ ] v0.45 — контейнерная изоляция (Docker sandbox)
+- [x] v0.45 — Docker sandbox + тесты generator/router (644 tests)
 
 ## См. также
 
