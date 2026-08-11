@@ -57,6 +57,8 @@ import { shell } from "./shellCmd.js";
 import { diffCmd } from "./diffCmd.js";
 import { envCmd } from "./envCmd.js";
 import { historyCmd } from "./historyCmd.js";
+import { runDispatch } from "./runCmd.js";
+import { createScript } from "../core/runtime.js";
 import {
   metricsReport,
   formatMetricsReport,
@@ -178,6 +180,18 @@ export async function main(argv: string[]): Promise<number> {
               onTask,
             });
       printOut(opts, summary, summary.message);
+      // --save-as: сохранить результат как runnable script (v0.39)
+      if (opts.saveAs && summary.ok) {
+        try {
+          createScript(opts.saveAs, "node", `Forge result for change: ${title}`);
+          console.log(`\n${statusMark("done")} Saved as runnable script: ${opts.saveAs}`);
+          console.log(`  Run anytime with: orion run ${opts.saveAs}`);
+        } catch (err) {
+          console.error(
+            `orion: --save-as failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
       return summary.ok ? 0 : 1;
     }
 
@@ -685,6 +699,9 @@ export async function main(argv: string[]): Promise<number> {
       console.log(result.text);
       return result.ok ? 0 : 1;
     }
+
+    case "run":
+      return runDispatch(args);
 
     case "shell": {
       await shell();

@@ -60,7 +60,10 @@ Commands:
   mcp                     MCP server for AI agents (v0.7) — any MCP client
   serve [--port N] [--host H] [--ui] Start the web dashboard (v0.2)
   shell                   Interactive REPL with tab-completion and history (v0.37)
-  diff <change>           Show current state of a change (v0.38)
+  run                     List saved offline scripts (v0.39)
+  run new <name>          Create a new offline script (v0.39)
+  run <name>              Execute a saved offline script (v0.39)
+  run show|edit|delete|schedule|unschedule <name>  Manage scripts (v0.39)
   env                     Show all ORION_* environment variables (v0.38)
   history [n]             Show shell command history (v0.38)
   history clear           Clear shell command history (v0.38)
@@ -168,6 +171,13 @@ export function parseArgs(argv: string[]): {
         throw new Error('--lang requires "en" or "ru"');
       }
       opts.lang = value;
+      i++;
+    } else if (arg === "--save-as") {
+      const value = argv[i + 1];
+      if (!value || value.startsWith("-")) {
+        throw new Error("--save-as requires a script name");
+      }
+      opts.saveAs = value;
       i++;
     } else {
       args.push(arg);

@@ -23,6 +23,8 @@ export interface CliOptions {
   token?: string;
   /** Template language override for `draft` (v0.27): "en" | "ru". */
   lang?: "en" | "ru";
+  /** Save forge result as a runnable script (v0.39). */
+  saveAs?: string;
 }
 
 /** Print JSON or plain text depending on the --json flag. */
