@@ -1,0 +1,14 @@
+# Предложение — провести-глубокий-аудит-проекта
+
+## Цель
+Провести глубокий аудит проекта Orion v0.36 и реализовать 15-20 кардинальных улучшений по 6 фазам: (1) покрытие тестами слабых модулей (updateCheck 27%, review 66%, mcp 74%), (2) устранение дублирования кода (humanBytes, driftOf), (3) новые команды CLI (config, clean, completion, export-report, status --watch), (4) модернизация dashboard (WebSocket live-update, тёмная/светлая тема, графики), (5) интерактивный shell-режим (orion shell), (6) производительность и DX (асинхронные файловые операции, progress bar для forge, цветовая дифференциация severity в выводе) — Node.js >=22.12.0, TypeScript 6, zero-dependency, CLI + MCP
+
+## Контекст
+
+| Аспект | Значение |
+|--------|----------|
+| Платформа | zero external dependencies, backward compatible, все тесты должны остаться зелёными, покрытие не ниже текущего |
+| Бюджет | compact |
+| Ограничения | compact |
+
+- **Lessons applied (v0.12):** ложный-missingsnippets-orion-forge:shield:c770341feb96, провести-глубокий-честный-аудит:out:5fc52cc8dc7c, mcp-сервер-cli-onec:shield:fd51e5a0ce4b, довести-фазу-29-аудит:forge:43357f71fefd, onec-converter-новый-режим:forge:3768931c4fb3

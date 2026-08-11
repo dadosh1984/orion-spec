@@ -76,6 +76,10 @@ walkthrough and [Commands Reference](docs/commands.md) for every command.
 | `orion metrics [--session <f>]` | Benchmark and token‑economy report. |
 | `orion serve [--port N] [--ui] [--token T]` | Zero‑dependency web dashboard. |
 | `orion profile` | Shows/edits your user‑adaptation profile. |
+| `orion profile set <k> <v>` | Set a profile field manually (language/platform/budget, v0.37). |
+| `orion config [show\|set]` | View or edit orionTdd.json/orionTrack.json (v0.37). |
+| `orion clean [cache\|reports\|dist\|coverage\|all]` | Remove cache and temporary artifacts (v0.37). |
+| `orion status [--watch]` | Live table of all changes, 2s refresh (v0.37). |
 
 Full details and flags are in [docs/commands.md](docs/commands.md).
 

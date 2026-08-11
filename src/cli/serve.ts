@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { OrionTrack } from "../core/track.js";
+import { humanBytes } from "../utils/file.js";
 import { economyStats } from "../core/compress.js";
 import { tokenBudget } from "../core/metrics.js";
 import { readDebt } from "../core/debt.js";
@@ -11,6 +12,7 @@ import { lessonsStats } from "../core/lessons.js";
 import { readTasks } from "../skills/forge/handler.js";
 import { phaseOf } from "../core/changeStatus.js";
 import { readProfile } from "../core/profile.js";
+import { driftOf } from "../core/drift.js";
 
 /** Options for the `orion serve` web dashboard. */
 export interface ServeOptions {
@@ -108,72 +110,6 @@ export function readVersion(): string {
   }
 }
 
-/** One drift check memoized by the change directory's newest mtime.
- * Unlike full reviewChange, it reads only the spec headings + exported
- * symbols — the precise drift gate — and is order-of-magnitude cheaper,
- * which matters because the dashboard re-renders on a 5s timer (v0.30). */
-const SYMBOL =
-  /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/m;
-const driftCache = new Map<string, { mtime: number; ok: boolean | null }>();
-function driftOf(changeId: string): boolean | null {
-  const base = join("changes", changeId, "specs");
-  if (!existsSync(base)) return null;
-  // Newest mtime of any file under the change dir (cheap stat, not full walk).
-  let mtime = 0;
-  const walk = (dir: string): void => {
-    let ents: string[] = [];
-    try {
-      ents = readdirSync(dir);
-    } catch {
-      return;
-    }
-    for (const e of ents) {
-      if (e === ".orion-cache") continue;
-      const p = join(dir, e);
-      try {
-        const st = statSync(p);
-        if (st.isDirectory()) walk(p);
-        else mtime = Math.max(mtime, st.mtimeMs);
-      } catch {
-        /* ignore */
-      }
-    }
-  };
-  walk(base);
-  const hit = driftCache.get(changeId);
-  if (hit && hit.mtime === mtime) return hit.ok;
-  // Recompute: expected capability names from spec.md headings, then check
-  // each is exported under src/tasks/*.
-  let ok: boolean | null = true;
-  const expected: string[] = [];
-  for (const d of readdirSync(base, { withFileTypes: true })) {
-    if (!d.isDirectory()) continue;
-    const specFile = join(base, d.name, "spec.md");
-    if (!existsSync(specFile)) continue;
-    const spec = readFileSync(specFile, "utf8");
-    for (const m of spec.matchAll(/^# Spec: (.+)$/gm))
-      expected.push(m[1].trim());
-  }
-  if (expected.length === 0) ok = null;
-  else if (expected.length && existsSync(join("src", "tasks"))) {
-    const exports = new Set<string>();
-    for (const f of readdirSync(join("src", "tasks")).filter((f) =>
-      f.endsWith(".ts"),
-    )) {
-      const code = readFileSync(join("src", "tasks", f), "utf8");
-      for (const sm of code.matchAll(SYMBOL)) exports.add(sm[1]);
-    }
-    for (const cap of expected) {
-      if (!exports.has(cap)) {
-        ok = false;
-        break;
-      }
-    }
-  }
-  driftCache.set(changeId, { mtime, ok: ok as boolean | null });
-  return ok;
-}
-
 /** List the change directories in ./changes with their proposal summaries. */
 export function listChanges(): ApiChange[] {
   if (!existsSync("changes")) return [];
@@ -226,13 +162,6 @@ export function listChanges(): ApiChange[] {
     });
 }
 
-/** Readable size helper for the dashboard. */
-function humanBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
 /** Escape HTML metacharacters — prevents stored XSS via change titles/goals. */
 export function escapeHtml(input: string): string {
   return input
@@ -266,45 +195,61 @@ export function dashboardHtml(version: string): string {
 <title>Orion dashboard</title>
 <style>
   :root { color-scheme: dark; }
+  :root, [data-theme="dark"] {
+    --bg: #0f1117; --fg: #d7dae2; --card: #161a23;
+    --border: #262a36; --dim: #5b6270; --label: #8b93a7;
+    --accent: #7ee2a8; --accent-bg: #12301f;
+    --err: #ff7b72; --h1: #fff;
+  }
+  [data-theme="light"] {
+    --bg: #ffffff; --fg: #1a1a2e; --card: #f4f4f9;
+    --border: #d4d4d8; --dim: #8e8e93; --label: #555;
+    --accent: #2e7d32; --accent-bg: #e8f5e9;
+    --err: #c62828; --h1: #111;
+  }
   body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-         margin: 0; background: #0f1117; color: #d7dae2; }
-  header { padding: 18px 24px; border-bottom: 1px solid #262a36;
-           display: flex; align-items: baseline; gap: 14px; }
-  header h1 { font-size: 18px; margin: 0; color: #fff; }
-  header span { color: #6b7280; font-size: 12px; }
+         margin: 0; background: var(--bg); color: var(--fg); transition: background 0.3s, color 0.3s; }
+  header { padding: 18px 24px; border-bottom: 1px solid var(--border);
+           display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; color: var(--h1); }
+  header span { color: var(--dim); font-size: 12px; }
+  header .theme-btn { margin-left: auto; background: var(--card); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+    cursor: pointer; font-size: 12px; }
   main { padding: 24px; display: grid;
          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
-  section { background: #161a23; border: 1px solid #262a36; border-radius: 8px;
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
             padding: 16px; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
-       color: #8b93a7; margin: 0 0 12px; }
+       color: var(--label); margin: 0 0 12px; }
   .stat { display: flex; justify-content: space-between; padding: 6px 0;
-          border-bottom: 1px dashed #232838; }
+          border-bottom: 1px dashed var(--border); }
   .stat:last-child { border-bottom: none; }
-  .stat b { color: #e2e6ef; }
+  .stat b { color: var(--fg); }
   .bar-row { display: flex; align-items: center; gap: 8px; padding: 4px 0;
              font-size: 12px; }
   .bar-row .lbl { width: 96px; overflow: hidden; text-overflow: ellipsis;
-                  white-space: nowrap; color: #93a1c1; }
-  .bar-row .fill { color: #7ee2a8; letter-spacing: 0; }
-  .bar-row .val { color: #8b93a7; }
+                  white-space: nowrap; color: var(--label); }
+  .bar-row .fill { color: var(--accent); letter-spacing: 0; }
+  .bar-row .val { color: var(--label); }
   ul { list-style: none; padding: 0; margin: 0; }
-  li { padding: 8px 0; border-bottom: 1px dashed #232838; }
+  li { padding: 8px 0; border-bottom: 1px dashed var(--border); }
   li:last-child { border-bottom: none; }
   .tag { font-size: 11px; border-radius: 4px; padding: 2px 6px;
-         background: #1d2332; color: #93a1c1; margin-left: 8px; }
-  .done { background: #12301f; color: #7ee2a8; }
-  button { background: #1e2534; color: #d7dae2; border: 1px solid #2e3548;
-           border-radius: 6px; padding: 6px 14px; cursor: pointer; }
-  button:hover { background: #262e40; }
-  .err { color: #ff7b72; }
-  .foot { color: #5b6270; font-size: 11px; margin-top: 12px; }
+         background: var(--card); color: var(--label); margin-left: 8px; }
+  .done { background: var(--accent-bg); color: var(--accent); }
+  button { background: var(--card); color: var(--fg); border: 1px solid var(--border);
+           border-radius: 6px; padding: 6px 14px; cursor: pointer; filter: brightness(1.2); }
+  button:hover { filter: brightness(1.5); }
+  .err { color: var(--err); }
+  .foot { color: var(--dim); font-size: 11px; margin-top: 12px; }
 </style>
 </head>
 <body>
 <header>
   <h1>🪐 Orion</h1>
   <span>v${version} · token-economy cache · live dashboard</span>
+  <button class="theme-btn" onclick="toggleTheme()" title="Toggle light/dark theme">☀/🌙</button>
 </header>
 <main>
   <section>
@@ -331,6 +276,17 @@ export function dashboardHtml(version: string): string {
   </section>
 </main>
 <script>
+// Theme toggle (v0.37): persist in localStorage, default to dark.
+(function() {
+  const t = localStorage.getItem('orion-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('orion-theme', next);
+}
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
   c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function rows(items) { return items.map(i => i).join(""); }
@@ -441,7 +397,19 @@ function bar(v, m) {
   return "█".repeat(filled) + "░".repeat(Math.max(0, w - filled));
 }
 refresh();
-setInterval(refresh, 5000);
+// SSE live refresh (v0.37): push updates instead of 5s poll.
+// Falls back to setInterval if EventSource is not available.
+if (typeof EventSource !== 'undefined') {
+  const es = new EventSource('/api/events' + (t ? '?token=' + t : ''));
+  es.onmessage = function() { refresh(); };
+  es.onerror = function() {
+    // SSE failed — fall back to polling silently.
+    es.close();
+    setInterval(refresh, 5000);
+  };
+} else {
+  setInterval(refresh, 5000);
+}
 </script>
 </body>
 </html>`;
@@ -477,6 +445,24 @@ export function startServer(
       }
     }
     switch (url.pathname) {
+      case "/api/events": {
+        // SSE live-refresh (v0.37): push on every change, fallback to 2s heartbeat.
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        });
+        res.write("data: {}\n\n");
+        const sseTimer = setInterval(() => {
+          try {
+            res.write("data: {}\n\n");
+          } catch {
+            clearInterval(sseTimer);
+          }
+        }, 2000);
+        req.on("close", () => clearInterval(sseTimer));
+        return;
+      }
       case "/": {
         if (opts.ui) {
           res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });

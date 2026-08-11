@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { readTasks } from "../forge/handler.js";
+import { taskSymbols } from "../../core/drift.js";
 
 /**
  * Review a change between forge and shield (v0.27): a deterministic,
@@ -19,21 +20,6 @@ export interface ReviewReport {
   changeId: string;
   checks: ReviewCheck[];
   pass: boolean;
-}
-
-const SYMBOL = /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)/m;
-
-/** Symbols exported from src/tasks/*.ts — what the drift gate matches. */
-export function taskSymbols(): string[] {
-  const dir = join(process.cwd(), "src", "tasks");
-  if (!existsSync(dir)) return [];
-  const out: string[] = [];
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith(".ts")) continue;
-    const code = readFileSync(join(dir, f), "utf8");
-    for (const m of code.matchAll(SYMBOL)) out.push(m[1]);
-  }
-  return out;
 }
 
 export function reviewChange(changeId: string): ReviewReport {

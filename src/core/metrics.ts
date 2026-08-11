@@ -151,7 +151,19 @@ export function tokenBudget(track: OrionTrack): NamespaceBudget[] {
   return budget;
 }
 
-/** Render a single ASCII bar (proportional to max). */
+/** Render a tiny sparkline for a list of recent economy values (v0.37). */
+export function sparkline(values: number[], width = 12): string {
+  if (values.length === 0) return "(no data)";
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (max === min) return "▁".repeat(Math.min(width, values.length));
+  const chars = "▁▂▃▄▅▆▇█";
+  const step = (max - min) / (chars.length - 1);
+  return values
+    .slice(-width)
+    .map((v) => chars[Math.min(chars.length - 1, Math.floor((v - min) / step))])
+    .join("");
+}
 export function asciiBar(value: number, max: number, width = 20): string {
   if (max <= 0) return "".padEnd(width, "░");
   const filled = Math.round((value / max) * width);

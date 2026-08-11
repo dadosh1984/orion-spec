@@ -53,3 +53,23 @@ export function bar(ratio: number, width = 14): string {
   if (!colorEnabled()) return `${Math.round(r * 100)}%`;
   return "\u2588".repeat(filled) + "\u2591".repeat(Math.max(0, width - filled));
 }
+
+/** Progress bar line for multi-step operations (v0.37).
+ *  Renders: [████████░░░░] 8/10 lint PASS */
+export function progressBar(
+  done: number,
+  total: number,
+  label: string,
+  status?: string,
+  width = 20,
+): string {
+  const ratio = total > 0 ? done / total : 0;
+  const filled = Math.round(ratio * width);
+  const barStr = colorEnabled()
+    ? "\u2588".repeat(filled) + "\u2591".repeat(Math.max(0, width - filled))
+    : `[${Math.round(ratio * 100)}%]`;
+  const statusStr = status
+    ? ` ${status}`
+    : "";
+  return `${barStr} ${done}/${total} ${label}${statusStr}`;
+}

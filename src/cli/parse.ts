@@ -24,10 +24,18 @@ Commands:
   track prune             Remove expired / oversized cache entries
   track lessons [id]      List self-correction lessons (v0.12)
   profile                 Show the user profile (~/.orion/profile.md, v0.26)
-  profile --reset         Clear auto-observed signals, keep user notes (v0.27)
+  config                   Show orionTdd.json/orionTrack.json summary (v0.37)
+  config show tdd|track    Print the full config file (v0.37)
+  config set tdd|track k v Set a config key (v0.37)
+  clean [what]             Remove cache/reports/dist/coverage or all (v0.37)
+  completion bash|zsh|pwsh Generate shell autocomplete script (v0.37)
   profile export          Print the profile as portable JSON (v0.27)
   profile import <f>      Load a portable JSON profile (v0.27)
+  profile set <k> <v>     Set a profile field manually (language/platform/budget, v0.37)
   list                    Table of all changes with task progress (v0.27)
+  list --watch            Live table, refreshed every 2s (v0.37)
+  status                  Same as list (v0.37)
+  status --watch          Live table, refreshed every 2s (v0.37)
   compare <a> <b>         Side-by-side status of two changes (v0.33)
   assumptions <change>    List draft's [assumption] tasks — verify them (v0.33)
   stats                   Aggregate project statistics (v0.27)
@@ -51,7 +59,7 @@ Commands:
   metrics                 Benchmark + token-budget report (v0.5)
   mcp                     MCP server for AI agents (v0.7) — any MCP client
   serve [--port N] [--host H] [--ui] Start the web dashboard (v0.2)
-  <multi-word prompt>      Shorthand for think — capture an idea (v0.7)
+  shell                   Interactive REPL with tab-completion and history (v0.37)
   plugin new <name>       Scaffold a plugin skeleton (v0.3)
   plugin install <dir>    Copy a plugin into ~/.orion/plugins
   plugin list             List installed plugins

@@ -42,13 +42,18 @@ import { compareCmd, assumptionsCmd } from "./compareCmd.js";
 import { selfAudit } from "./selfauditCmd.js";
 import { backupCmd, restoreCmd } from "./backupCmd.js";
 import { doctor } from "./doctorCmd.js";
-import { exportProfile, importProfile, resetProfile } from "../core/profile.js";
+import { exportProfile, importProfile, resetProfile, updateProfile } from "../core/profile.js";
 import { initRepo } from "../skills/init/handler.js";
 import { changelogFor, changelogAll } from "./changelogCmd.js";
 import { resume } from "../skills/resume/handler.js";
 import { verifyChange, formatVerifyReport } from "../core/verify.js";
 import { guardPrompt, checkNpmPackages } from "../skills/think/guard.js";
 import { startServer, readVersion } from "./serve.js";
+import { configCmd } from "./configCmd.js";
+import { cleanCmd } from "./cleanCmd.js";
+import { statusWatch } from "./statusWatchCmd.js";
+import { completionScript } from "./completionCmd.js";
+import { shell } from "./shellCmd.js";
 import {
   metricsReport,
   formatMetricsReport,
@@ -206,11 +211,26 @@ export async function main(argv: string[]): Promise<number> {
           "shield requires a change id, e.g. orion shield my-csv-tool",
         );
       const report = await shield(changeId, opts);
-      printOut(
-        opts,
-        report,
-        report.allPass ? "All guard-rails PASS" : "Guard-rails FAILED",
-      );
+      if (opts.json) {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        for (const c of report.checks) {
+          const color =
+            c.status === "PASS"
+              ? "green"
+              : c.status === "FAIL"
+                ? "red"
+                : c.status === "WARN"
+                  ? "yellow"
+                  : "dim";
+          console.log(
+            `  ${paint(c.status.padEnd(4), color)} ${c.step.padEnd(14)} ${c.detail ?? ""}`,
+          );
+        }
+        console.log(
+          `\n  ${report.allPass ? statusMark("done") : statusMark("error")} ${paint(report.allPass ? "PASS" : "FAIL", report.allPass ? "green" : "red")}`,
+        );
+      }
       return report.allPass ? 0 : 1;
     }
 
@@ -308,10 +328,11 @@ export async function main(argv: string[]): Promise<number> {
     case "profile": {
       // User adaptation (v0.26): show the memory.md analogue. Renders the
       // file as-is (it is already human-readable markdown) or an honest
-      // hint when it does not exist yet. Sub-commands (v0.27):
-      //   orion profile --reset    clear auto-observed signals (keep notes)
-      //   orion profile export     print portable JSON to stdout
-      //   orion profile import <f> load a portable JSON profile
+      // hint when it does not exist yet. Sub-commands (v0.27/v0.37):
+      //   orion profile --reset       clear auto-observed signals (keep notes)
+      //   orion profile export        print portable JSON to stdout
+      //   orion profile import <f>    load a portable JSON profile
+      //   orion profile set <k> <v>   set a profile field manually
       const sub = args[0];
       if (sub === "--reset") {
         resetProfile();
@@ -335,6 +356,33 @@ export async function main(argv: string[]): Promise<number> {
             `profile import failed: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
+      }
+      if (sub === "set") {
+        const key = args[1];
+        const value = args.slice(2).join(" ");
+        if (!key || !value) {
+          return fail(
+            "profile set requires: profile set language|platform|budget <value>",
+          );
+        }
+        const signals: Record<string, string> = {};
+        if (key === "language") {
+          if (value !== "en" && value !== "ru") {
+            return fail('language must be "en" or "ru"');
+          }
+          signals.language = value;
+        } else if (key === "platform") {
+          signals.platform = value;
+        } else if (key === "budget") {
+          signals.budget = value;
+        } else {
+          return fail(
+            `unknown profile field: ${key} (expected: language, platform, budget)`,
+          );
+        }
+        updateProfile(signals);
+        console.log(`orion: profile ${key} = ${value}`);
+        return 0;
       }
       printOut(opts, { path: profilePath() }, profileView());
       return 0;
@@ -394,7 +442,20 @@ export async function main(argv: string[]): Promise<number> {
       return result.ok ? 0 : 1;
     }
 
+    case "status": {
+      if (opts.watch) {
+        statusWatch();
+        return 0;
+      }
+      printOut(opts, { changes: scanChanges() }, listTable(scanChanges()));
+      return 0;
+    }
+
     case "list": {
+      if (opts.watch) {
+        statusWatch();
+        return 0;
+      }
       printOut(opts, { changes: scanChanges() }, listTable(scanChanges()));
       return 0;
     }
@@ -614,6 +675,31 @@ export async function main(argv: string[]): Promise<number> {
       const report = await metricsReport(track, readVersion());
       printOut(opts, report, formatMetricsReport(report));
       return 0;
+    }
+
+    case "config": {
+      const result = configCmd(args);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
+    }
+
+    case "shell": {
+      await shell();
+      return 0;
+    }
+
+    case "completion": {
+      const shell = args[0] ?? "bash";
+      console.log(completionScript(shell));
+      return shell === "bash" || shell === "zsh" || shell === "powershell"
+        ? 0
+        : 1;
+    }
+
+    case "clean": {
+      const result = cleanCmd(args);
+      console.log(result.text);
+      return result.ok ? 0 : 1;
     }
 
     case "serve": {
