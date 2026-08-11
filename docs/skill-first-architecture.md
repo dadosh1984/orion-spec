@@ -151,10 +151,11 @@ Orion — единственная система, где ИИ **создаёт 
 - [x] v0.39.1 — spec-driven валидация + hazard gate + spec cache
 - [x] v0.39.2 — hazard gate per-runtime + --force + lastForceRun
 - [x] v0.40 — классификатор задач в `orion think` (авто-определение категории)
-- [ ] v0.40 — `orion run test <name>` — запуск тестов навыка
-- [ ] v0.41 — `orion metrics --skills` — ROI по каждому навыку
-- [ ] v0.42 — `orion run repair <name>` — авто-починка сломавшегося навыка
-- [ ] v0.43 — sandbox: контейнеры / namespace isolation
+- [x] v0.41 — token ledger + dry-run (`orion tokens`, `--dry-run`)
+- [x] v0.42 — repair loop + policy engine + sandbox env
+- [x] v0.43 — router v2 + verifier v2 + scheduler v2 (file watchers)
+- [x] v0.44 — skill generator (manifest + tests + README)
+- [ ] v0.45 — контейнерная изоляция (Docker sandbox)
 
 ## См. также
 
