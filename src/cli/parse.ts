@@ -60,6 +60,10 @@ Commands:
   mcp                     MCP server for AI agents (v0.7) — any MCP client
   serve [--port N] [--host H] [--ui] Start the web dashboard (v0.2)
   shell                   Interactive REPL with tab-completion and history (v0.37)
+  tokens                  Token ledger report (v0.41)
+  tokens top-skills       Top skills by tokens saved (v0.41)
+  tokens savings          Total token savings summary (v0.41)
+  tokens events           Recent token events (v0.41)
   run                     List saved offline scripts (v0.39)
   run new <name>          Create a new offline script (v0.39)
   run <name>              Execute a saved offline script (v0.39)

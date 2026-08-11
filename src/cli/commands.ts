@@ -58,6 +58,7 @@ import { diffCmd } from "./diffCmd.js";
 import { envCmd } from "./envCmd.js";
 import { historyCmd } from "./historyCmd.js";
 import { runDispatch } from "./runCmd.js";
+import { tokensDispatch } from "./tokensCmd.js";
 import { createScript, scriptPath, writeManifest } from "../core/runtime.js";
 import {
   metricsReport,
@@ -752,7 +753,14 @@ export async function main(argv: string[]): Promise<number> {
       return result.ok ? 0 : 1;
     }
 
+    case "tokens":
+      return tokensDispatch(args);
+
     case "run":
+      // Pass --dry-run flag to runDispatch
+      if (opts.dry && !args.includes("--dry-run")) {
+        args.push("--dry-run");
+      }
       return runDispatch(args);
 
     case "shell": {

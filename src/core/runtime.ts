@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { scanHazardsForRuntime } from "./hazards.js";
 import { validateOutput } from "./specValidator.js";
+import { recordTokenEvent, updateSkillMetrics, estimateBaselineTokens } from "./tokenLedger.js";
 
 /**
  * `orion run` runtime (v0.39) — локальные автономные скрипты.
@@ -129,7 +130,7 @@ export function createScript(
 /** Запустить скрипт и вернуть stdout + время выполнения. */
 export function runScript(
   name: string,
-  opts?: { force?: boolean },
+  opts?: { force?: boolean; dryRun?: boolean },
 ): { ok: boolean; output: string; durationMs: number } {
   const m = readManifest(name);
   if (!m) {
@@ -139,6 +140,26 @@ export function runScript(
   const scriptFile = scriptPath(name);
   if (!existsSync(scriptFile)) {
     return { ok: false, output: `script file not found: ${scriptFile}`, durationMs: 0 };
+  }
+
+  // Dry-run (v0.41): не выполняем, возвращаем что БЫЛО БЫ сделано
+  if (opts?.dryRun) {
+    const code = readFileSync(scriptFile, "utf8");
+    const lines = code.split("\n").length;
+    return {
+      ok: true,
+      output: JSON.stringify({
+        status: "dry_run_success",
+        summary: `Would execute ${m.runtime} script "${name}" (${lines} lines)`,
+        metrics: {
+          would_execute: true,
+          script_lines: lines,
+          runtime: m.runtime,
+          description: m.description,
+        },
+      }, null, 2),
+      durationMs: 0,
+    };
   }
 
   // Hazard gate (v0.39.2): scan script for destructive patterns BEFORE execution.
@@ -187,6 +208,27 @@ export function runScript(
 
     // Spec-driven validation (v0.39): проверить stdout по outputSchema
     const validation = validateOutput(output.trim(), m.outputSchema);
+
+    // Token ledger (v0.41): записать событие и обновить метрики
+    const baseline = estimateBaselineTokens(m.description?.length ?? 0);
+    const saved = baseline; // локальный запуск — 0 токенов LLM
+    recordTokenEvent({
+      skillName: name,
+      mode: "run",
+      tokensIn: 0,
+      tokensSaved: saved,
+      baselineTokens: baseline,
+      status: validation.ok ? "success" : "validation_failed",
+      durationMs,
+    });
+    updateSkillMetrics(name, {
+      success: validation.ok,
+      tokensSaved: saved,
+      durationMs,
+      mode: "run",
+      tokensIn: 0,
+    });
+
     if (!validation.ok) {
       return {
         ok: false,

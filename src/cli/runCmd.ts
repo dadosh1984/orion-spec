@@ -112,8 +112,11 @@ export function runDispatch(args: string[]): number {
     default: {
       const m = readManifest(sub);
       if (!m) return fail(`unknown subcommand or script "${sub}" not found.\n  Usage: orion run [list|new|show|edit|delete|schedule|unschedule|scheduled|cache|<name>]`);
-      const force = rest.includes("--force");
-      const result = runScriptCore(sub, { force });
+      // Check --dry-run and --force from anywhere in original argv
+      const origArgs = process.argv.slice(2);
+      const force = origArgs.includes("--force");
+      const dryRun = origArgs.includes("--dry-run");
+      const result = runScriptCore(sub, { force, dryRun });
       if (result.ok) {
         process.stdout.write(result.output);
         console.error(`\n${paint(`✓ ${sub} — ${result.durationMs}ms`, "dim")}`);
