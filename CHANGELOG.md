@@ -4,6 +4,15 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.41.0] — 2026-08-12
+
+Token ledger + dry-run support.
+
+- New: `src/core/tokenLedger.ts` — TokenEvent + SkillMetric, estimateBaselineTokens()
+- New: `src/cli/tokensCmd.ts` — `orion tokens report|top-skills|savings|events`
+- Dry-run: `orion run <name> --dry-run` returns JSON without executing script
+- `runScript()` now records TokenEvent + updates SkillMetric automatically
+
 ## [0.40.0] — 2026-08-12
 
 Task category classifier v0.40: `orion think` now recommends whether a task
