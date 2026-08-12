@@ -3,3 +3,5 @@ allowBuilds:
 # pnpm workspace + settings (pnpm >= 10)
 onlyBuiltDependencies:
   - esbuild
+overrides:
+  orion-spec: 'link:'

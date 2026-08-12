@@ -9,6 +9,7 @@ export const ORION_COMMANDS: ReadonlyArray<string> = Object.freeze([
   "track", "scale", "tdd", "metrics", "mcp", "serve", "plugin",
   "config", "clean", "profile", "help", "version", "shell",
   "env", "history", "diff", "watch", "completion",
+  "run",
 ]);
 
 export const ORION_FLAGS: ReadonlyArray<string> = Object.freeze([
