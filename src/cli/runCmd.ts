@@ -20,6 +20,7 @@ import { canAttemptRepair, markRepairFixed } from "../core/repair.js";
 import { addFileWatcher, removeFileWatcher, listWatchers } from "../core/router.js";
 import { verifyRun } from "../core/router.js";
 import { generateSkill } from "../core/generator.js";
+import { getSkillMetric, getRecentEvents, tokenSummary } from "../core/tokenLedger.js";
 
 /**
  * `orion run` (v0.39) — автономные локальные скрипты.
@@ -106,6 +107,66 @@ export async function runDispatch(args: string[]): Promise<number> {
       return 0;
     }
 
+    case "explain": {
+      if (!name) return fail("run explain requires a script name");
+      const m = readManifest(name);
+      if (!m) { console.error(`orion: script "${name}" not found`); return 1; }
+      const metric = getSkillMetric(name);
+      const riskIcon = m.risk_level === "critical" ? "🔴" : m.risk_level === "high" ? "🟠" : m.risk_level === "medium" ? "🟡" : "🟢";
+      console.log([
+        `${statusMark("info")} ${paint(name, "cyan")} — ${m.description}`,
+        `  ${paint("Risk:", "dim")}        ${riskIcon} ${m.risk_level ?? "low"}${m.requires_confirmation ? " (requires confirmation)" : ""}`,
+        `  ${paint("Runtime:", "dim")}     ${m.runtime}  |  ${paint("Runs:", "dim")} ${m.runCount}  |  ${paint("Last:", "dim")} ${m.lastRun ?? "never"}`,
+        `  ${paint("Schedule:", "dim")}    ${m.schedule ?? "none"}`,
+        m.sandbox?.network ? `  ${paint("Network:", "dim")}    ${m.sandbox.network}` : "",
+        m.sourceChange ? `  ${paint("Source:", "dim")}      change "${m.sourceChange}"` : "",
+        "",
+        metric ? [
+          `  ${paint("Token ROI:", "dim")}   ${metric.roiScore === Infinity ? "∞" : metric.roiScore.toFixed(2)}x  |  ${paint("Saved:", "dim")} ${metric.totalTokensSaved}  |  ${paint("Net:", "dim")} ${metric.netTokensSaved}`,
+          `  ${paint("Success rate:", "dim")} ${m.runCount > 0 ? Math.round(metric.successRuns / metric.runs * 100) : 0}% (${metric.successRuns}/${metric.runs})`,
+        ].join("\n") : `  ${paint("Token ROI:", "dim")}   no data yet — run the script first`,
+        "",
+        `  ${paint("Run:", "dim")}        orion run ${name}`,
+        `  ${paint("Preview:", "dim")}    orion run ${name} --dry-run`,
+        `  ${paint("Log:", "dim")}        orion run log ${name}`,
+      ].filter((l) => l !== "").join("\n"));
+      return 0;
+    }
+
+    case "log": {
+      if (!name) return fail("run log requires a script name");
+      const events = getRecentEvents(20).filter((e) => e.skillName === name);
+      if (events.length === 0) {
+        console.log(`${statusMark("info")} No events for "${name}". Run the script first.`);
+        return 0;
+      }
+      console.log(`${statusMark("info")} Last ${events.length} events for ${paint(name, "cyan")}:`);
+      for (const e of events) {
+        const statusIcon = e.status === "success" ? "✅" : e.status === "error" ? "❌" : e.status === "hazard_blocked" ? "🚫" : "⚠️";
+        console.log(`  ${statusIcon} ${new Date(e.ts).toLocaleString()}  ${e.mode.padEnd(8)}  ${e.durationMs}ms  ${e.tokensSaved > 0 ? `saved ${e.tokensSaved}` : `in ${e.tokensIn}`}`);
+      }
+      return 0;
+    }
+
+    case "stats": {
+      const s = tokenSummary();
+      if (s.skillCount === 0) {
+        console.log(`${statusMark("info")} No skills yet. Create one with: orion run new <name>`);
+        return 0;
+      }
+      console.log(`${statusMark("info")} ${paint("Token economy", "cyan")}:`);
+      console.log(`  ${paint("Skills:", "dim")}      ${s.skillCount}  |  ${paint("Runs:", "dim")} ${s.totalRuns}  |  ${paint("Events:", "dim")} ${s.totalEvents}`);
+      console.log(`  ${paint("Saved:", "dim")}       ${s.totalSaved} tokens  (estimated LLM cost avoided)`);
+      console.log("");
+      const metrics = (await import("../core/tokenLedger.js")).getSkillMetrics().slice(0, 10);
+      console.log(`  ${paint("Top skills by tokens saved:", "dim")}`);
+      for (const m of metrics) {
+        const roi = m.roiScore === Infinity ? "∞" : m.roiScore.toFixed(1) + "x";
+        console.log(`    ${m.skillName.padEnd(20)} ${paint(roi.padStart(6), "green")}  saved ${m.totalTokensSaved}  net ${m.netTokensSaved}  ${m.runs} runs`);
+      }
+      return 0;
+    }
+
     case "list":
       return runList();
 
@@ -156,14 +217,22 @@ export async function runDispatch(args: string[]): Promise<number> {
       if (!m) { console.error(`orion: script "${name}" not found`); return 1; }
       const code = existsSync(scriptPath(name))
         ? readFileSync(scriptPath(name), "utf8") : "(missing)";
-      console.log([
-        `${statusMark("info")} Script: ${name}`,
-        `  Description: ${m.description}`,
-        `  Runtime: ${m.runtime}  |  Runs: ${m.runCount}  |  Last: ${m.lastRun ?? "never"}`,
-        `  Schedule: ${m.schedule ?? "none"}`,
-        m.sourceChange ? `  Source: change "${m.sourceChange}"` : "",
-        "", "---", code.trimEnd(),
-      ].filter((l) => l !== "").join("\n"));
+      const riskIcon = m.risk_level === "critical" ? "🔴" : m.risk_level === "high" ? "🟠" : m.risk_level === "medium" ? "🟡" : "🟢";
+      const lines = [
+        `${statusMark("info")} ${paint(name, "cyan")}`,
+        `  ${paint("Description:", "dim")} ${m.description}`,
+        `  ${paint("Runtime:", "dim")}    ${m.runtime}  |  ${paint("Runs:", "dim")} ${m.runCount}  |  ${paint("Last:", "dim")} ${m.lastRun ?? "never"}`,
+        `  ${paint("Risk:", "dim")}       ${riskIcon} ${m.risk_level ?? "low"}`,
+        `  ${paint("Schedule:", "dim")}   ${m.schedule ? "⏰ " + m.schedule : "none"}`,
+        m.sourceChange ? `  ${paint("Source:", "dim")}     change "${m.sourceChange}"` : "",
+        m.requires_confirmation ? `  ${paint("Confirm:", "dim")}    ⚠️  requires confirmation before run` : "",
+        m.lastForceRun ? `  ${paint("Last force:", "dim")} ${new Date(m.lastForceRun).toLocaleString()}` : "",
+        m.sandbox?.network ? `  ${paint("Network:", "dim")}   ${m.sandbox.network}` : "",
+        m.status && m.status !== "active" ? `  ${paint("Status:", "dim")}     ${m.status === "needs_repair" ? "⚠️ needs_repair" : m.status}` : "",
+        m.lastRunHash ? `  ${paint("Cache:", "dim")}      ${m.lastRunHash.slice(0, 12)}…` : "",
+        "", `${paint("───", "dim")}`, code.trimEnd(),
+      ].filter((l) => l !== "");
+      console.log(lines.join("\n"));
       return 0;
     }
 
@@ -259,7 +328,11 @@ function runList(): number {
   console.log(`${statusMark("info")} Scripts (${scripts.length}):`);
   for (const m of scripts) {
     const last = m.lastRun ? new Date(m.lastRun).toLocaleDateString() : "never";
-    console.log(`  ${m.name.padEnd(20)} ${m.runtime.padEnd(6)} ×${String(m.runCount).padStart(3)}  last: ${last}${m.schedule ? " ⏰" : ""}`);
+    const risk = m.risk_level === "critical" ? "🔴" : m.risk_level === "high" ? "🟠" : m.risk_level === "medium" ? "🟡" : "🟢";
+    const src = m.sourceChange ? ` ←${m.sourceChange}` : "";
+    const conf = m.requires_confirmation ? " ⚠️" : "";
+    const sched = m.schedule ? " ⏰" : "";
+    console.log(`  ${m.name.padEnd(20)} ${m.runtime.padEnd(6)} ${risk} ×${String(m.runCount).padStart(3)}  last: ${last}${src}${conf}${sched}`);
   }
   return 0;
 }
