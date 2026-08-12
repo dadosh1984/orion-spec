@@ -145,6 +145,12 @@ dated and described in [CHANGELOG.md](CHANGELOG.md).
 - **Plugin API + agents** — unknown commands dispatch to installed plugins;
   `orion mcp` exposes a JSON‑RPC 2.0 server (17 tools) that any MCP‑capable
   agent can attach to.
+- **Autonomous offline scripts** (`orion run`) — a task written once becomes a
+  local script in `~/.orion/scripts/<name>/` (`run.sh`/`run.js`/`run.py` +
+  `orion.json`). Run it any time with `orion run <name>` — no tokens, no LLM.
+  Cross‑platform on Windows (bash/node/python resolved by absolute path) and
+  deterministic: identical `orion run <name> <args>` calls report `[cached]`
+  instead of re‑executing (override with `--force`).
 
 ---
 

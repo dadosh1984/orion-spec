@@ -4,6 +4,23 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.47.0] — 2026-08-12
+
+Deep audit implemented across five phases (A–E): Windows compatibility,
+duplicate/dead-code removal, interactive safety, and deterministic re-runs.
+
+- **Phase A (Windows)**: `orion run` now invokes runtimes by absolute path
+  (`resolveBinary`), auto-detects node/py when bash is missing, offers an
+  interactive runtime picker on TTY, and reports an honest "Linux/macOS only"
+  error for cron scheduling on Windows.
+- **Phase B (cleanup)**: merged `humanBytes`/`formatBytes`; removed a dead
+  e2e artifact and the unused `progressBar` export.
+- **Phase C (safety)**: `orion clean`, `orion archive` and `orion run delete`
+  ask `[y/N]` when running in a terminal; non-interactive/CI runs are unchanged.
+- **Phase E (determinism)**: `orion run <name> <args>` forwards args and caches
+  identical inputs by SHA-256 — a matching re-run reports `[cached]` instead of
+  re-executing (override with `--force` or `ORION_RUN_NO_CACHE=1`).
+
 ## [0.44.0] — 2026-08-12
 
 Skill generator: `orion run generate` creates full skill scaffold
