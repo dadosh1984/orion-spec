@@ -41,6 +41,12 @@ export function routeDispatch(args: string[]): number {
   if (decision.action === "USE_EXISTING_SKILL" && decision.skillName) {
     console.log(`\n  Run: orion run ${decision.skillName}`);
   }
+  if (decision.action === "REJECT") {
+    console.log(`\n  ${statusMark("error")} Task rejected — requires explicit user approval.`);
+  }
+  if (decision.action === "ASK_USER") {
+    console.log(`\n  ${statusMark("warn")} This task needs user confirmation before proceeding.`);
+  }
 
   return 0;
 }

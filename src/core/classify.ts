@@ -3,14 +3,18 @@
  * skill-first-архитектуры относится задача.
  */
 
-export type TaskCategory = 1 | 2 | 3 | 4 | 5;
+export type TaskCategory = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface ClassifyResult {
   category: TaskCategory;
   label: string;
-  recommendation: "script" | "script_with_ai" | "ai_only";
+  recommendation: "script" | "script_with_ai" | "ai_only" | "reject";
   reason: string;
 }
+
+// Category 6 FIRST — dangerous patterns (v0.48)
+const CAT6_RE =
+  /(rm\s+-rf\s+\/|format\s+(c:|d:|disk)|del\s+\/f\s+\/s\s+\*|shutdown\s+\/s|dd\s+if=|mkfs\.|>\/dev\/sd|>\/dev\/nvme|chmod\s+777\s+\/|sudo\s+rm|удали\s+(?:вс[её]|систем|диск|windows|linux)|форматир(?:уй|овать)\s+(?:диск|disk)|выключ(?:и|ить)\s+(?:комп|сервер|server))/i;
 
 // Category 4 FIRST — "спарсить сайт" before "парсить" (cat 2)
 const CAT4_RE =
@@ -35,6 +39,14 @@ const RULES: Array<{
   rec: ClassifyResult["recommendation"];
   reason: string;
 }> = [
+  {
+    re: CAT6_RE,
+    cat: 6,
+    label: "Опасная / деструктивная",
+    rec: "reject",
+    reason:
+      "Содержит потенциально опасные паттерны. Требует явного подтверждения пользователя.",
+  },
   {
     re: CAT4_RE,
     cat: 4,
@@ -99,6 +111,16 @@ export function formatClassifyResult(
   r: ClassifyResult,
   _prompt: string,
 ): string {
+  if (r.recommendation === "reject") {
+    return [
+      "",
+      "🚫 Эта задача — «" + r.label + "».",
+      r.reason,
+      "",
+      "Автоматизация отклонена. Требуется явное подтверждение пользователя.",
+      "",
+    ].join("\n");
+  }
   return r.recommendation === "script" || r.recommendation === "script_with_ai"
     ? [
         "",

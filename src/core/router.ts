@@ -75,6 +75,12 @@ export function routeRequest(prompt: string): RouterDecision {
     };
   }
   const cat = classifyTask(prompt);
+  if (cat.category === 6)
+    return {
+      action: "REJECT",
+      confidence: 0.95,
+      reason: `${cat.label}. ${cat.reason}`,
+    };
   if (cat.category <= 3)
     return {
       action: "CREATE_NEW_SKILL",
@@ -83,7 +89,7 @@ export function routeRequest(prompt: string): RouterDecision {
     };
   if (cat.category === 4)
     return {
-      action: "CREATE_NEW_SKILL",
+      action: "ASK_USER",
       confidence: 0.6,
       reason: `${cat.label}. ${cat.reason}`,
     };
