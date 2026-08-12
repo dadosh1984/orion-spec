@@ -271,22 +271,30 @@ export function runScript(
     };
   }
 
-  // Dry-run (v0.41): не выполняем, возвращаем что БЫЛО БЫ сделано
+  // Dry-run (v0.48): human-readable preview instead of raw JSON.
   if (opts?.dryRun) {
     const code = readFileSync(scriptFile, "utf8");
     const lines = code.split("\n").length;
+    const sandbox = sandboxLevel();
+    const network = m.sandbox?.network ?? "denied";
+    const cacheHit = m.lastRunHash === inputHash && m.lastRun !== null;
     return {
       ok: true,
-      output: JSON.stringify({
-        status: "dry_run_success",
-        summary: `Would execute ${m.runtime} script "${name}" (${lines} lines)`,
-        metrics: {
-          would_execute: true,
-          script_lines: lines,
-          runtime: m.runtime,
-          description: m.description,
-        },
-      }, null, 2),
+      output: [
+        `[dry-run] ${m.runtime} script "${name}"`,
+        `  Lines:       ${lines}`,
+        `  Runtime:     ${m.runtime}`,
+        `  Sandbox:     ${sandbox}`,
+        `  Network:     ${network}`,
+        `  Cache:       ${cacheHit ? "HIT (would skip)" : "cold (would execute)"}`,
+        `  Description: ${m.description}`,
+        m.risk_level ? `  Risk:        ${m.risk_level}` : "",
+        m.requires_confirmation ? `  Confirm:     required` : "",
+        m.schedule ? `  Schedule:    ${m.schedule}` : "",
+        "",
+        `  Run:         orion run ${name}`,
+        `  Force:       orion run ${name} --force`,
+      ].filter((l) => l !== "").join("\n"),
       durationMs: 0,
     };
   }

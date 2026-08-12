@@ -33,6 +33,35 @@ export async function runDispatch(args: string[]): Promise<number> {
 
   if (!sub) return runList();
 
+  if (sub === "--help" || sub === "-h") {
+    console.log([
+      `${paint("orion run", "cyan")} — autonomous offline scripts (v0.48)`,
+      "",
+      "  orion run                        List saved scripts",
+      "  orion run <name>                 Execute a saved script",
+      "  orion run <name> --dry-run       Preview without executing",
+      "  orion run <name> --force         Skip hazard gate + policy",
+      "  orion run new <name> [--node|--python|--bash]  Create a new script",
+      "  orion run show <name>            Show script details + code",
+      "  orion run edit <name>            Open script in $EDITOR",
+      "  orion run delete <name> [--yes]  Delete a script",
+      "  orion run explain <name>         Skill summary + token ROI",
+      "  orion run log <name>             Last 20 run events",
+      "  orion run stats                  Token economy dashboard",
+      "  orion run diff <a> <b>           Line-level diff of two scripts",
+      "  orion run schedule <name> <cron> Set cron schedule (linux/mac)",
+      "  orion run unschedule <name>      Remove cron schedule",
+      "  orion run scheduled              List scheduled scripts",
+      "  orion run generate <name> --from \"<prompt>\"  Generate full skill",
+      "  orion run repair <name> [--auto] Mark for repair / auto-reforge",
+      "  orion run watch start <name> <dir> [pattern]  Start file watcher",
+      "  orion run watch stop <name>      Stop file watcher",
+      "  orion run watchers               List file watchers",
+      "  orion run cache                  Show spec-driven script cache",
+    ].join("\n"));
+    return 0;
+  }
+
   switch (sub) {
     case "watch": {
       // run watch start <name> <dir> [pattern] — start real fs.watch (v0.48)
@@ -275,6 +304,13 @@ export async function runDispatch(args: string[]): Promise<number> {
         (process.stdin.isTTY
           ? await promptRuntime(detectDefaultRuntime())
           : detectDefaultRuntime());
+      // Non-TTY hint (v0.48): tell the user which runtime was auto-selected.
+      if (!explicit && !process.stdin.isTTY) {
+        console.error(
+          `${statusMark("info")} Non-interactive mode: auto-selected runtime "${runtime}". ` +
+          `Use --bash, --node or --python to override.`,
+        );
+      }
       const desc = rest
         .join(" ")
         .replace(/--(node|python|bash)\b/g, "")
