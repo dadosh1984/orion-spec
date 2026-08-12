@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { createInterface } from "node:readline";
 import { statusMark, paint } from "../utils/term.js";
 import {
   listScripts,
@@ -10,6 +11,8 @@ import {
   readManifest,
   writeManifest,
   scriptPath,
+  detectDefaultRuntime,
+  resolveBinary,
 } from "../core/runtime.js";
 import { listCacheEntries } from "../core/specCache.js";
 import { canAttemptRepair, markRepairFixed } from "../core/repair.js";
@@ -19,7 +22,7 @@ import { generateSkill } from "../core/generator.js";
 /**
  * `orion run` (v0.39) — автономные локальные скрипты.
  */
-export function runDispatch(args: string[]): number {
+export async function runDispatch(args: string[]): Promise<number> {
   const sub = args[0];
   const name = args[1];
   const rest = args.slice(2);
@@ -119,14 +122,23 @@ export function runDispatch(args: string[]): number {
 
     case "new": {
       if (!name) return fail("usage: orion run new <name> [--node|--python]");
-      // Runtimes with a shared binary resolve > default bash; allow explicit choice
-      // so Windows (no bash in spawn context) can still run node/python scripts.
-      const runtime = rest.includes("--node") ? "node" : rest.includes("--python") ? "python" : "bash";
-      const desc = rest.join(" ").replace(/--(node|python)\b/g, "").trim() || "No description";
+      // Runtimes: explicit --node/--python win; else TTY asks; else detect
+      // (fall back to node when bash isn't in this process's PATH, v0.47).
+      const explicit =
+        rest.includes("--node") ? "node" : rest.includes("--python") ? "python" : rest.includes("--bash") ? "bash" : null;
+      const runtime =
+        explicit ??
+        (process.stdin.isTTY
+          ? await promptRuntime(detectDefaultRuntime())
+          : detectDefaultRuntime());
+      const desc = rest
+        .join(" ")
+        .replace(/--(node|python|bash)\b/g, "")
+        .trim() || "No description";
       try {
-        const m = createScript(name, runtime, desc);
+        const m = createScript(name, runtime as "bash" | "node" | "python", desc);
         console.log(`${statusMark("done")} Script created: ${m.name}`);
-        console.log(`  Runtime: ${m.runtime}`);
+        console.log(`  Runtime: ${m.runtime}${explicit ? "" : " (auto)"}`);
         console.log(`  Path:    ${scriptPath(name)}`);
         console.log(`  Edit:    orion run edit ${name}`);
       } catch (err) {
@@ -233,4 +245,32 @@ function runList(): number {
 function fail(msg: string): number {
   console.error(`orion: ${statusMark("error")} ${msg}`);
   return 1;
+}
+
+type Runtime = "bash" | "node" | "python";
+
+/**
+ * Interactive runtime picker (v0.47). Shown only when running in a terminal
+ * (process.stdin.isTTY). Returns the chosen runtime.
+ */
+async function promptRuntime(defaultRuntime: Runtime): Promise<Runtime> {
+  const choices: Runtime[] = ["node", "python", "bash"];
+  // Only offer runtimes that are actually available in this process's PATH.
+  const available = choices.filter((r) => r === "node" || resolveBinary(r) !== null);
+  const shown = available.length ? available : choices;
+  console.log(paint(`  Choose runtime [${shown.join("/")}] (default: ${defaultRuntime}):`, "dim"));
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true,
+  });
+  return new Promise<Runtime>((resolve) => {
+    rl.question("  > ", (ans) => {
+      rl.close();
+      const a = ans.trim().toLowerCase();
+      resolve(
+        (shown as string[]).includes(a) ? (a as Runtime) : defaultRuntime,
+      );
+    });
+  });
 }

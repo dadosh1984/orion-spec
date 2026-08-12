@@ -62,6 +62,71 @@ export function scriptsDir(): string {
   );
 }
 
+/**
+ * Cross-platform availability (v0.47):
+ * True when `cmd` resolves to an executable on the current PATH as seen by
+ * this process. On Windows the spawned context may strip PATH (e.g. the
+ * pnpm-shim), so `node` stays available via process.execPath but `bash` may
+ * not — `whichExists` reports the truth for that context.
+ */
+export function whichExists(cmd: string): boolean {
+  return resolveBinary(cmd) !== null;
+}
+
+/**
+ * Resolve the absolute path of an executable on this process's PATH, or null
+ * if not found. Returns e.g. "C:\\Program Files\\Git\\bin\\bash.exe". Used to
+ * invoke runtimes by absolute path so they resolve even when the spawn context
+ * (cmd.exe on Windows) does not inherit the full PATH.
+ */
+export function resolveBinary(cmd: string): string | null {
+  if (process.platform !== "win32") {
+    try {
+      const out = execSync(`command -v ${cmd} 2>/dev/null || true`, { encoding: "utf8" }).trim();
+      return out || null;
+    } catch {
+      return null;
+    }
+  }
+  const exts = (process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM").split(";").filter(Boolean);
+  const dirs = (process.env.PATH || "").split(pathDelimiter());
+  // Case-insensitive name lookup on Windows.
+  const lname = cmd.toLowerCase();
+  for (const dir of dirs) {
+    if (!dir) continue;
+    const candidates = [cmd, ...exts.map((e) => cmd + e.toLowerCase())];
+    for (const cand of candidates) {
+      const full = join(dir, cand);
+      try {
+        if (existsSync(full) && lname === full.split(/[\\/]/).pop()!.split(".")[0].toLowerCase()) {
+          return full;
+        }
+      } catch {
+        /* ignore unreadable dir */
+      }
+    }
+  }
+  return null;
+}
+
+function pathDelimiter(): string {
+  return process.platform === "win32" ? ";" : ":";
+}
+
+/**
+ * Default runtime for `orion run new` (v0.47):
+ * Prefer bash, but fall back to node when bash is unavailable in this
+ * process's PATH (common on Windows spawned context like the pnpm-shim).
+ * node is always runnable because we invoke it via process.execPath.
+ */
+export function detectDefaultRuntime(): "bash" | "node" | "python" {
+  if (resolveBinary("bash")) return "bash";
+  if (process.execPath) return "node";
+  if (resolveBinary("python") || resolveBinary("python3")) return "python";
+  return "node";
+}
+
+
 export function manifestPath(name: string): string {
   return join(scriptsDir(), name, "orion.json");
 }
@@ -233,9 +298,14 @@ export function runScript(
       // spawned context has a stripped PATH (e.g. Windows pnpm-shim).
       cmd = `"${process.execPath}" "${scriptFile}"`;
     } else if (m.runtime === "python") {
-      cmd = `python3 "${scriptFile}"`;
+      // `python` on Windows, `python3` on Linux/macOS (v0.47). Resolve the
+      // absolute path so it survives a stripped spawn context.
+      const py = process.platform === "win32" ? "python" : "python3";
+      cmd = `"${resolveBinary(py) ?? py}" "${scriptFile}"`;
     } else {
-      cmd = `bash "${scriptFile}"`;
+      // bash by absolute path (v0.47): `bash` alone can fail on Windows when
+      // cmd.exe doesn't inherit the full PATH from the pnpm-shim spawn.
+      cmd = `"${resolveBinary("bash") ?? "bash"}" "${scriptFile}"`;
     }
     const output = execSync(cmd, {
       encoding: "utf8",
@@ -302,10 +372,26 @@ export function deleteScript(name: string): void {
   rmSync(join(scriptsDir(), name), { recursive: true, force: true });
 }
 
+/**
+ * Honest platform guard for cron scheduling (v0.47). On Windows there is no
+ * `crontab`, so `schedule`/`unschedule` would fail with a cryptic error —
+ * throw a clear message instead of silently relying on a missing binary.
+ */
+export function assertCronSupported(): void {
+  if (process.platform === "win32") {
+    throw new Error(
+      "cron scheduling is supported only on Linux/macOS. " +
+        "On Windows use a saved script with `orion run <name>` instead.",
+    );
+  }
+}
+
 /** Обновить cron-расписание. Только linux/mac. */
 export function setSchedule(name: string, cronExpr: string | null): void {
   const m = readManifest(name);
   if (!m) throw new Error(`script "${name}" not found`);
+
+  assertCronSupported();
 
   // Удаляем старую cron-запись
   unscheduleCron(name);
@@ -333,6 +419,7 @@ export function setSchedule(name: string, cronExpr: string | null): void {
 
 /** Убрать cron-запись для скрипта. */
 export function unscheduleCron(name: string): void {
+  assertCronSupported();
   try {
     const existing = execSync("crontab -l 2>/dev/null || true", { encoding: "utf8" });
     const cleaned = existing
