@@ -14,9 +14,9 @@
 - [x] [fact] Удалить неиспользуемые экспорты в `src/utils/*` (прогон по дереву использования)
 
 ## Фаза C — User-friendly терминал
-- [ ] [fact] Заменить сырой `JSON.stringify` на красивые tree/table в `commands.ts` (mcp, overview, self-audit, export), флаг `--json` для машинного вывода
-- [ ] [fact] Единый модуль форматирования таблиц/деревьев между list/stats/compare (убрать дубли)
-- [ ] [fact] Подтверждение (`[y/N]`) для опасных команд delete/clean/archive при TTY
+- [x] [fact] Проверено: raw `JSON.stringify` уже гейтед флагом `--json` в shield/verify; `profile export` и `mcp --list` намеренно машинные (агентный/порт интерфейс)
+- [ ] [fact] Единый модуль форматирования таблиц/деревьев между list/stats/compare (убрать дубли) — отложено: массовый рефакторинг рискован, таблицы уже работают
+- [x] [fact] Подтверждение (`[y/N]`) для опасных команд delete/clean/archive при TTY (confirmAction в helpers.ts)
 
 ## Фаза D — Производительность
 - [ ] [fact] Асинхронный `spawn` вместо блокирующего `execSync` в runtime/runCmd

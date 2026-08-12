@@ -13,7 +13,7 @@ import { parseArgs, HELP } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
 export type { CliOptions } from "./helpers.js";
-import { printOut, fail, lineDiff } from "./helpers.js";
+import { printOut, fail, lineDiff, confirmAction } from "./helpers.js";
 import { trackCommand } from "./trackCmd.js";
 import { tddCommand } from "./tddCmd.js";
 import { pluginCommand } from "./pluginCmd.js";
@@ -574,6 +574,11 @@ export async function main(argv: string[]): Promise<number> {
       const title = args[0];
       if (!title)
         return fail("archive requires a title, e.g. orion archive my-csv-tool");
+      const ok = await confirmAction(`Archive "${title}"?`);
+      if (ok === false) {
+        console.log(`${paint("cancelled", "dim")} — no changes made`);
+        return 0;
+      }
       try {
         const moved = archiveChange(title);
         console.log(
@@ -801,6 +806,12 @@ export async function main(argv: string[]): Promise<number> {
     }
 
     case "clean": {
+      const what = args[0] ?? "cache";
+      const ok = await confirmAction(`Run clean on "${what}"? (removes cache/reports/dist/coverage)`);
+      if (ok === false) {
+        console.log(`${paint("cancelled", "dim")} — nothing removed`);
+        return 0;
+      }
       const result = cleanCmd(args);
       console.log(result.text);
       return result.ok ? 0 : 1;

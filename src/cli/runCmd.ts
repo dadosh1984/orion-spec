@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { statusMark, paint } from "../utils/term.js";
+import { confirmAction } from "./helpers.js";
 import {
   listScripts,
   createScript,
@@ -175,6 +176,11 @@ export async function runDispatch(args: string[]): Promise<number> {
 
     case "delete": {
       if (!name) return fail("run delete requires a script name");
+      const ok = await confirmAction(`Delete script "${name}"?`);
+      if (ok === false) {
+        console.log(`${statusMark("info")} "${name}" not deleted`);
+        return 0;
+      }
       try { deleteScript(name); console.log(`${statusMark("done")} "${name}" deleted`); }
       catch (err) { console.error(`orion: ${statusMark("error")} ${err instanceof Error ? err.message : String(err)}`); return 1; }
       return 0;

@@ -36,6 +36,26 @@ export function printOut(opts: CliOptions, obj: unknown, plain: string): void {
   }
 }
 
+/**
+ * Interactive confirmation guard (v0.47, Phase C). When running in a terminal
+ * (process.stdin.isTTY) it asks "Proceed? [y/N]" and returns the user's answer.
+ * Returns `null` when stdin is not a TTY (pipes, CI) so callers preserve their
+ * existing default behaviour and only prompt real humans.
+ */
+export async function confirmAction(
+  message: string,
+): Promise<boolean | null> {
+  if (!process.stdin.isTTY) return null;
+  const { createInterface } = await import("node:readline");
+  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  return new Promise<boolean | null>((resolve) => {
+    rl.question(`  ${message} [y/N] `, (ans) => {
+      rl.close();
+      resolve(/^y(es)?$/i.test(ans.trim()));
+    });
+  });
+}
+
 /** Print an error to stderr and return a non-zero exit code. */
 export function fail(message: string): number {
   console.error(`orion: ${statusMark("error")} ${message}`);
