@@ -129,6 +129,18 @@ export async function main(argv: string[]): Promise<number> {
           'think requires a prompt, e.g. orion think "Build a CSV-to-JSON tool"',
         );
       const proposal = await think(prompt, opts);
+      // Skill-first hint (v0.48): check if an existing skill matches the prompt.
+      try {
+        const { findExistingSkill } = await import("../core/router.js");
+        const existing = findExistingSkill(prompt);
+        if (existing && existing.score >= 3) {
+          console.error(
+            `\n${statusMark("info")} Existing skill found: "${existing.name}" (score: ${existing.score}).`,
+          );
+          console.error(`  Run with: orion run ${existing.name}`);
+          console.error(`  Or continue creating a new change: orion draft ${proposal.title}\n`);
+        }
+      } catch { /* router not critical for think */ }
       printOut(
         opts,
         proposal,

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { statusMark, paint } from "../utils/term.js";
-import { confirmAction } from "./helpers.js";
+import { confirmAction, lineDiff } from "./helpers.js";
 import {
   listScripts,
   createScript,
@@ -92,18 +92,47 @@ export async function runDispatch(args: string[]): Promise<number> {
       if (!name) return fail("run repair requires a script name");
       const m = readManifest(name);
       if (!m) { console.error(`orion: script "${name}" not found`); return 1; }
-      if (!canAttemptRepair(name)) {
+      const autoMode = rest.includes("--auto");
+      if (!canAttemptRepair(name) && !autoMode) {
         console.log(`${statusMark("error")} Too many repair attempts for "${name}". Manual fix required.`);
         return 1;
       }
       // Repair: mark needs_repair, let LLM fix it (or user edits manually)
       m.status = "needs_repair";
       writeManifest(m);
-      console.log(`${statusMark("info")} "${name}" marked as needs_repair.`);
-      console.log(`  Edit the script: orion run edit ${name}`);
-      console.log(`  Then test:        orion run ${name} --dry-run`);
-      console.log(`  Then run:         orion run ${name}`);
-      console.log(`  On success, status auto-clears.`);
+      if (autoMode && m.sourceChange) {
+        console.log(`${statusMark("info")} Auto-repair: re-forging change "${m.sourceChange}"...`);
+        console.log(`  Run: orion forge ${m.sourceChange} --save-as ${name}`);
+        console.log(`  (auto-repair requires an LLM agent to execute forge — run manually)`);
+      } else {
+        console.log(`${statusMark("info")} "${name}" marked as needs_repair.`);
+        console.log(`  Edit the script: orion run edit ${name}`);
+        console.log(`  Then test:        orion run ${name} --dry-run`);
+        console.log(`  Then run:         orion run ${name}`);
+        console.log(`  On success, status auto-clears.`);
+      }
+      return 0;
+    }
+
+    case "diff": {
+      if (!name || !rest[0]) return fail("run diff requires two script names: orion run diff <a> <b>");
+      const b = rest[0];
+      const ma = readManifest(name);
+      const mb = readManifest(b);
+      if (!ma) { console.error(`orion: script "${name}" not found`); return 1; }
+      if (!mb) { console.error(`orion: script "${b}" not found`); return 1; }
+      const codeA = existsSync(scriptPath(name)) ? readFileSync(scriptPath(name), "utf8") : "";
+      const codeB = existsSync(scriptPath(b)) ? readFileSync(scriptPath(b), "utf8") : "";
+      const diff = lineDiff(codeA, codeB);
+      if (diff.length === 0) {
+        console.log(`${statusMark("done")} Scripts "${name}" and "${b}" are identical.`);
+      } else {
+        console.log(`${statusMark("info")} Diff ${name} → ${b} (${diff.length} lines):`);
+        for (const d of diff) {
+          const prefix = d.startsWith("+") ? paint(d, "green") : d.startsWith("-") ? paint(d, "red") : d;
+          console.log(`  ${prefix}`);
+        }
+      }
       return 0;
     }
 
