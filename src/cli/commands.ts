@@ -162,6 +162,21 @@ export async function main(argv: string[]): Promise<number> {
       const title = args[0];
       if (!title)
         return fail("draft requires a title, e.g. orion draft my-csv-tool");
+      // Skill-first hint (v0.49): check for existing skills matching the title.
+      try {
+        const { findExistingSkill } = await import("../core/router.js");
+        const existing = findExistingSkill(title);
+        if (existing && existing.score >= 5) {
+          console.error(
+            `\n${statusMark("warn")} Existing skill "${existing.name}" matches (score: ${existing.score}).`,
+          );
+          console.error(
+            `  Consider: orion run ${existing.name}  (instead of drafting a new change)\n`,
+          );
+        }
+      } catch {
+        /* router not critical */
+      }
       const artifacts = await draft(title, {
         noCache: opts.noCache,
         lang: opts.lang,

@@ -151,6 +151,17 @@ dated and described in [CHANGELOG.md](CHANGELOG.md).
   Cross‑platform on Windows (bash/node/python resolved by absolute path) and
   deterministic: identical `orion run <name> <args>` calls report `[cached]`
   instead of re‑executing (override with `--force`).
+- **Observability & skill-first router** (v0.48–0.49):
+  - `orion run list` — colorized cards with risk icons, source, schedule.
+  - `orion run explain <name>` — skill summary + token ROI + success rate.
+  - `orion run log <name>` — last 20 events with status icons.
+  - `orion run stats` — token economy dashboard (top-10 by saved tokens).
+  - `orion run diff <a> <b>` — line-level diff of two scripts.
+  - `orion run generate --interactive` — TTY wizard for risk/network/schedule.
+  - `orion run repair --auto` — auto-regeneration via `forge --save-as`.
+  - `orion route <prompt>` — router: existing-skill / new-skill / direct-AI /
+    ask-user / reject (dangerous patterns blocked).
+  - `orion think`/`draft` — suggest existing skills before creating changes.
 
 ---
 

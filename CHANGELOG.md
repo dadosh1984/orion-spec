@@ -4,6 +4,26 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.49.0] — 2026-08-12
+
+Skill-first router integration, interactive generate, runtime config,
+cron+repair tests, and README observability section.
+
+- **Router in draft**: `orion draft` checks `findExistingSkill` before creating
+  a new change — suggests `orion run <existing>` if score >= 5.
+- **generate --interactive**: TTY wizard for risk level, network, schedule,
+  postconditions (json_field/file_exists). Non-TTY falls back to defaults.
+- **Runtime config**: `orionTdd.json: run.preferredRuntime` (bash/node/python).
+  `detectDefaultRuntime` reads it before auto-detection.
+- **run repair --auto**: executes `forge <sourceChange> --save-as <name>` via
+  `execSync` (120s timeout), clears `needs_repair` on success.
+- **Cron+repair tests**: `tests/cron-repair.test.ts` — 11 tests covering
+  `assertCronSupported`, `setSchedule`, `unscheduleCron`, repair loop
+  (record/mark/can), `policyCheck`, `sandboxEnv`.
+- **README**: observability + skill-first router section added.
+- **REJECT/ASK_USER**: router category 6 (dangerous patterns) → `REJECT`;
+  category 4 (dynamic web) → `ASK_USER`.
+
 ## [0.48.0] — 2026-08-12
 
 Six-phase modernization: stability, observability, skill-first router,
