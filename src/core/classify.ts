@@ -18,7 +18,7 @@ const CAT6_RE =
 
 // Category 4 FIRST — "спарсить сайт" before "парсить" (cat 2)
 const CAT4_RE =
-  /(scrap(?:e|ing)|monitor\s+(?:the\s+)?(?:price|site)|browser|selenium|puppeteer|playwright|спарс(?:ить|инг)|парс(?:ить|инг)\s+(?:сайт|site|web|html)|монитор(?:ить|инг)\s+(?:цен|price|сайт|site)|извле(?:чь|кать)\s+(?:с|из)\s+(?:сайт|site|web)|заполн(?:ить|ение)\s+(?:форм|form)|браузер)/i;
+  /(scrap(?:e|ing)|monitor\s+(?:the\s+)?(?:price|site)|browser|selenium|puppeteer|playwright|спарс(?:ить|инг)|парс(?:ить|инг)\s+(?:сайт|site|web|html)|монитор(?:ить|инг)\s+(?:цен|price|сайт|site)|извле(?:чь|кать)\s+(?:с|из)\s+(?:сайт|site|web)|заполн(?:ить|ение)\s+(?:форм|form)|браузер|(?:найди|ищи|поиск)\s+.{0,60}?на\s+(?:сайте|ebay|e-bay|amazon|site)|найдешь\s+.+\bна\s+(?:сайте|ebay|site))/iu;
 
 const CAT1_RE =
   /(backup|archive|clean(?:up)?|delete\s+(old|dup|temp|junk)|sort\s+(file|folder)|rename|convert|compress|extract\s+archive|run\s+(test|build)|бэкап|архив|очист(?:ить|ка)|удал(?:ить|ение)\s+(?:стар|дубликат|врем|мусор)|сортиров(?:ать|ка)|переимен(?:овать|ование)|конверт(?:ировать|ация)|сжат(?:ь|ие)|распак(?:овать|овка)|запус(?:тить|к)\s+(?:тест|test|сборк|build))/i;

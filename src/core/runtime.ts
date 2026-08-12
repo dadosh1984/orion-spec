@@ -394,12 +394,23 @@ export function runScript(
 
   // Hazard gate (v0.39.2): scan script for destructive patterns BEFORE execution.
   // Cache by sha256(script) to avoid re-scanning on every run (v0.48).
+  // https:// fetch is allowed when the skill explicitly opts out of network
+  // denial (sandbox.network === "allowed"); http:// and destructive patterns
+  // are still blocked (v0.49).
   if (!force) {
     const codeHash = sha256(code);
-    let hits = hazardCache.get(codeHash);
+    const allowHttps = m.sandbox?.network === "allowed";
+    const isLowRisk = m.risk_level === "low" || m.risk_level === undefined;
+    // Cache key must include the policy flags — different flags mean a
+    // different result for the same script content.
+    const cacheKey = `${codeHash}:https=${allowHttps}:exit=${isLowRisk}`;
+    let hits = hazardCache.get(cacheKey);
     if (hits === undefined) {
-      hits = scanHazardsForRuntime(code, m.runtime);
-      hazardCache.set(codeHash, hits);
+      hits = scanHazardsForRuntime(code, m.runtime, {
+        allowHttps,
+        allowOwnExit: isLowRisk,
+      });
+      hazardCache.set(cacheKey, hits);
     }
     if (hits.length > 0) {
       return {

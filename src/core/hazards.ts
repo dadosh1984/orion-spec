@@ -31,12 +31,17 @@ const HAZARDS_JS: { re: RegExp; what: string }[] = [
   { re: /\btruncate(?:Sync)?\s*\(/, what: "file truncation" },
   { re: /\bchmod\w*\s*\([^)]*0?777/, what: "chmod 777" },
   { re: /child_process/, what: "child-process spawn" },
-  { re: /\bexec(?:Sync|File|FileSync)?\s*\(/, what: "shell execution" },
+  { re: /(?<!\.)\bexec(?:Sync|File|FileSync)?\s*\(/, what: "shell execution" },
   { re: /\bspawn(?:Sync)?\s*\(/, what: "process spawn" },
   { re: /\beval\s*\(/, what: "dynamic eval" },
   { re: /new\s+Function\s*\(/, what: "dynamic Function constructor" },
-  { re: /\bprocess\.exit\s*\(/, what: "process termination" },
-  { re: /fetch\s*\(\s*["']https?:/, what: "outbound network call" },
+  { re: /\bprocess\.exit\s*\(/, what: "process termination (own process)" },
+  { re: /fetch\s*\(\s*["']http:\/\//, what: "insecure (http://) outbound network call" },
+  {
+    re: /fetch\s*\(\s*["']https:\/\//,
+    what: "outbound network call (https://)",
+    // Allowed when the skill explicitly sets sandbox.network = "allowed".
+  },
   {
     re: /process\.env\.(?:AWS_[A-Z_]*|.*(?:API_KEY|APISECRET|ACCESS_KEY|SECRET|PASSWORD|PRIVATE_KEY|TOKEN))/,
     what: "reads a credential-shaped env var (denyEnv)",
@@ -92,6 +97,7 @@ export function scanHazards(source: string): string[] {
 export function scanHazardsForRuntime(
   source: string,
   runtime: "bash" | "node" | "python",
+  options?: { allowHttps?: boolean; allowOwnExit?: boolean }
 ): string[] {
   const patterns =
     runtime === "bash"
@@ -101,6 +107,12 @@ export function scanHazardsForRuntime(
         : [...HAZARDS_JS];
   const found: string[] = [];
   for (const { re, what } of patterns) {
+    // If network is explicitly allowed for the skill, https:// fetch is OK
+    // (insecure http:// is still blocked). Destructive patterns stay blocked.
+    if (options?.allowHttps && what.includes("https://")) continue;
+    // A low/medium-risk skill may terminate its own process; that is not an
+    // escape vector (the process belongs to the skill itself).
+    if (options?.allowOwnExit && what.includes("own process")) continue;
     const m = source.match(re);
     if (m) found.push(`${what} ("${m[0].slice(0, 40)}")`);
   }

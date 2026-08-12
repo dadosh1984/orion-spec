@@ -121,3 +121,57 @@ describe("hazard gate in runScript", () => {
     expect(m?.lastForceRun).toBeTruthy();
   });
 });
+
+describe("network fetch hazard policy (v0.49)", () => {
+  it("blocks https fetch by default (network denied)", () => {
+    const hits = scanHazardsForRuntime('fetch("https://x.com")', "node");
+    expect(hits.some((h) => h.includes("network call"))).toBe(true);
+  });
+
+  it("allows https fetch when allowHttps=true", () => {
+    const hits = scanHazardsForRuntime('fetch("https://x.com")', "node", {
+      allowHttps: true,
+    });
+    expect(hits.some((h) => h.includes("network call"))).toBe(false);
+  });
+
+  it("still blocks insecure http:// fetch even when allowHttps=true", () => {
+    const hits = scanHazardsForRuntime('fetch("http://x.com")', "node", {
+      allowHttps: true,
+    });
+    expect(hits.some((h) => h.includes("http")) && hits.some((h) => h.includes("network call"))).toBe(true);
+  });
+
+  it("still blocks destructive rm even when allowHttps=true", () => {
+    const hits = scanHazardsForRuntime('fetch("https://x.com")\nrmSync("/")', "node", {
+      allowHttps: true,
+    });
+    expect(hits.some((h) => h.includes("rm"))).toBe(true);
+  });
+});
+
+describe("regex exec + own-exit policy (v0.49)", () => {
+  it("regex .exec() is not treated as shell execution", () => {
+    const hits = scanHazardsForRuntime('while ((m = re.exec(html))) {}', "node");
+    expect(hits.some((h) => h.includes("shell execution"))).toBe(false);
+  });
+
+  it("shell exec() is still blocked", () => {
+    const hits = scanHazardsForRuntime('exec("ls -la")', "node");
+    expect(hits.some((h) => h.includes("shell execution"))).toBe(true);
+  });
+
+  it("process.exit is allowed when allowOwnExit=true (low risk)", () => {
+    const hits = scanHazardsForRuntime('process.exit(1)', "node", {
+      allowOwnExit: true,
+    });
+    expect(hits.some((h) => h.includes("process termination"))).toBe(false);
+  });
+
+  it("process.exit is blocked when allowOwnExit=false (high risk)", () => {
+    const hits = scanHazardsForRuntime('process.exit(1)', "node", {
+      allowOwnExit: false,
+    });
+    expect(hits.some((h) => h.includes("process termination"))).toBe(true);
+  });
+});

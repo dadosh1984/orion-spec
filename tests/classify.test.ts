@@ -64,6 +64,19 @@ describe("classifyTask", () => {
   it("classifies form filling as category 4", () => {
     check("заполнить форму на сайте автоматически", 4, "script_with_ai");
   });
+  it("classifies 'find X on ebay' as category 4 (RU)", () => {
+    check(
+      "найди самую дешевую iPhone 17 Pro Max на сайте e-bay.com",
+      4,
+      "script_with_ai",
+    );
+  });
+  it("classifies 'find price on site' as category 4 (RU)", () => {
+    check("найди цену айфона на сайте amazon", 4, "script_with_ai");
+  });
+  it("classifies 'ищи X на ebay' as category 4 (RU)", () => {
+    check("ищи самую дешёвую машину на ebay", 4, "script_with_ai");
+  });
 
   // --- Category 5: творческие ---
   it("classifies contract analysis as category 5 (RU)", () => {
