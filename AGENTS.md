@@ -1,6 +1,7 @@
 # Agent instructions — Orion
 
-This repository contains **Orion**, a zero-dependency AI-agent toolkit.
+This repository contains **Orion**, a zero-dependency AI-agent toolkit
+(Node >=22.12, ESM, `"type": "module"`).
 
 ## Using Orion tools (preferred)
 
@@ -37,10 +38,46 @@ If MCP is unavailable, call the CLI directly: `orion <command>`.
 ## Checking the project (this repo)
 
 ```bash
-pnpm lint                      # eslint src tests --max-warnings=0
-pnpm run test:coverage         # build + vitest with coverage
-pnpm exec tsc --noEmit         # type check
+pnpm run ci                  # full gate: lint + format:check + tsc + build + test:coverage + core:coverage
+pnpm lint                    # eslint src --max-warnings=0
+pnpm exec tsc --noEmit       # type check
+pnpm run test:coverage       # build + vitest with coverage
+pnpm exec vitest run <file>  # fast targeted test (no full build)
+pnpm run format              # prettier --write (run before committing; format must pass)
 ```
+
+## Architecture
+
+- `src/cli/index.ts` → `commands.ts` — CLI dispatcher (all top-level commands),
+  `parse.ts` (help/flags), `commands-list.ts` (master command list + autocomplete).
+- `src/cli/runCmd.ts` — `orion run` sub-commands (list/new/show/edit/delete/
+  schedule/stats/explain/log/diff/generate/repair/watch + direct execution).
+- `src/core/runtime.ts` — script storage + `runScript()` (**async**, v0.50);
+  hazard gate, idempotent cache, cron, docker/browser sandbox dispatch.
+- `src/core/browser.ts` — optional browser engine (`ORION_SANDBOX=browser`,
+  dynamic `import("playwright")`, zero-dep by default); loads user skills as ESM.
+- `src/core/hazards.ts` — pre-execution scan (destructive/network/exit patterns).
+- `src/core/router.ts` — skill-first router (existing/new/direct/ask/reject).
+- `src/core/uzum.ts` — extracted Uzum.uz parsers (`parsePriceBlock`,
+  `parseRatingReviews`) with unit tests in `tests/uzum.test.ts`.
+- `examples/skills/` — committed real browser skills (find-uzum-book,
+  find-uzum-notebook, find-uzum-calculator, find-uzum-calculator-sold).
+- `changes/<title>/` — Orion change-store (proposal, specs, tasks, snippets).
+
+## Conventions
+
+- **`runScript` is async** — always `await` it; callers/tests must be async.
+- User browser skills exported as `run(ctx)` (ctx = { page, browser, args });
+  `.run.js` outside the repo lacks `"type":"module"`, so browser.ts copies it
+  to a temp `.mjs` before dynamic import.
+- Cyrillic matching: `\w` does NOT match non-ASCII even with `/u` — use an
+  explicit class like `[а-яё]*` (see parseRatingReviews / parseSoldWeekly).
+- Dedup product URLs by `(href.split("/")[3]||"").split("?")[0]` to ignore
+  `?skuId=` seller variants.
+- Return JSON with `status: "success"|"error"` + `summary`; human-facing CLI
+  output uses `paint`/`statusMark` from `src/utils/term.ts` (NO_COLOR aware).
+- Zero runtime dependencies: optional heavy features (playwright) load via
+  dynamic import only when opted in.
 
 ## Token economy (applies to all Orion work)
 
@@ -56,3 +93,7 @@ pnpm exec tsc --noEmit         # type check
 ## One-line natural language
 
 `orion <multi-word prompt>` is shorthand for `orion think <prompt>`.
+
+## Notes
+
+<!-- quick-adds for future sessions -->
