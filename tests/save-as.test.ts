@@ -9,11 +9,15 @@ describe("--save-as with entry point", () => {
   beforeEach(() => {
     // Clean up any leftover from previous runs
     try { deleteScript(TEST_NAME); } catch { /* ok */ }
+    try { deleteScript(TEST_NAME + "2"); } catch { /* ok */ }
+    try { deleteScript(TEST_NAME + "3"); } catch { /* ok */ }
     try { rmSync("changes/_test_change", { recursive: true, force: true }); } catch { /* ok */ }
   });
 
   afterEach(() => {
     try { deleteScript(TEST_NAME); } catch { /* ok */ }
+    try { deleteScript(TEST_NAME + "2"); } catch { /* ok */ }
+    try { deleteScript(TEST_NAME + "3"); } catch { /* ok */ }
     try { rmSync("changes/_test_change", { recursive: true, force: true }); } catch { /* ok */ }
   });
 
@@ -62,14 +66,14 @@ describe("--save-as with entry point", () => {
     expect(reloaded?.sourceChange).toBe("my-change-title");
   });
 
-  it("runScript executes a node script via the current interpreter (stripped PATH fix)", () => {
+  it("runScript executes a node script via the current interpreter (stripped PATH fix)", async () => {
     const m = createScript(TEST_NAME + "3", "node", "run test");
     writeFileSync(
       scriptPath(TEST_NAME + "3"),
       '#!/usr/bin/env node\nconsole.log("RUN OK " + (1 + 1));\n',
       "utf8",
     );
-    const res = runScript(TEST_NAME + "3");
+    const res = await runScript(TEST_NAME + "3");
     expect(res.ok).toBe(true);
     expect(res.output).toContain("RUN OK 2");
     try { deleteScript(TEST_NAME + "3"); } catch { /* ok */ }

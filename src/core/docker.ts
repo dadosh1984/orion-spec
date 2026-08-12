@@ -93,10 +93,11 @@ export function runInDocker(
   }
 }
 
-/** Выбрать sandbox: docker или basic (process). */
-export function sandboxLevel(): "docker" | "basic" | "none" {
+/** Выбрать sandbox: docker, browser (playwright) или basic (process). */
+export function sandboxLevel(): "docker" | "browser" | "basic" | "none" {
   const level = process.env.ORION_SANDBOX?.toLowerCase();
   if (level === "docker" && dockerAvailable()) return "docker";
+  if (level === "browser") return "browser";
   if (level === "basic" || !level) return "basic";
   return "none";
 }

@@ -4,6 +4,23 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.50.0] — 2026-08-12
+
+Optional browser engine for anti-bot-protected sites.
+
+- **runScript is now async**: `orion run <name>` returns a Promise; dispatch
+  and tests updated accordingly.
+- **`ORION_SANDBOX=browser`**: executes a skill in real headless Chromium via
+  a dynamic import of Playwright. Zero-dependency by default — playwright is
+  only resolved at run time when a skill opts into browser execution.
+  Browser-mode scripts may export `run(ctx)` with a real `page`, or point at
+  `BROWSER_URL` and the runner returns rendered DOM for the existing parser.
+- **Honest fallback**: if playwright is not installed, `orion run` reports a
+  clear message instead of crashing or silently falling back.
+- **New**: `src/core/browser.ts`; `sandboxLevel()` returns `"browser"`.
+- **Tests**: `tests/browser.test.ts` (2) — browser sandbox resolution + honest
+  missing-dependency error.
+
 ## [0.49.0] — 2026-08-12
 
 Skill-first router integration, interactive generate, runtime config,

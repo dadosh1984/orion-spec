@@ -162,6 +162,17 @@ dated and described in [CHANGELOG.md](CHANGELOG.md).
   - `orion route <prompt>` — router: existing-skill / new-skill / direct-AI /
     ask-user / reject (dangerous patterns blocked).
   - `orion think`/`draft` — suggest existing skills before creating changes.
+- **Optional browser engine** (v0.50): for sites with strong anti-bot protection
+  (Akamai, Yandex CDN, captcha) that block plain server-side fetch. Set
+  `ORION_SANDBOX=browser` to execute a skill in a real headless Chromium via
+  Playwright. Zero-dependency by default — playwright is only required when a
+  script actually opts into browser execution:
+  ```bash
+  npm i -D playwright && npx playwright install chromium
+  ORION_SANDBOX=browser orion run <name>
+  ```
+  A browser-mode script receives a `run(ctx)` context with a real `page`,
+  or points at `BROWSER_URL` and its parser runs on the rendered DOM.
 
 ---
 

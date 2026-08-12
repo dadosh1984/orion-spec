@@ -741,7 +741,7 @@ export async function runDispatch(args: string[]): Promise<number> {
       const origArgs = process.argv.slice(2);
       const force = origArgs.includes("--force");
       const dryRun = origArgs.includes("--dry-run");
-      const result = runScriptCore(sub, {
+      const result = await runScriptCore(sub, {
         force,
         dryRun,
         args: [name, ...rest].filter(Boolean),

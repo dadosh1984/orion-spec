@@ -279,10 +279,10 @@ export function createScript(
 }
 
 /** Запустить скрипт и вернуть stdout + время выполнения. */
-export function runScript(
+export async function runScript(
   name: string,
   opts?: { force?: boolean; dryRun?: boolean; args?: string[] },
-): { ok: boolean; output: string; durationMs: number } {
+): Promise<{ ok: boolean; output: string; durationMs: number }> {
   const m = readManifest(name);
   if (!m) {
     return { ok: false, output: `script "${name}" not found`, durationMs: 0 };
@@ -358,6 +358,36 @@ export function runScript(
 
   // Hazard gate + policy: skip with --force or ORION_RUN_NO_HAZARDS=1.
   const force = opts?.force || process.env.ORION_RUN_NO_HAZARDS === "1";
+
+  // Browser sandbox (v0.50): execute in real Chromium via optional playwright.
+  // In this mode the script receives a `page`/`fetch` context (run(ctx)) or is
+  // pointed at BROWSER_URL and we return the rendered HTML for its parser.
+  if (sandboxLevel() === "browser") {
+    const { runInBrowser } = await import("./browser.js");
+    const bres = await runInBrowser(name, scriptFile, m, args);
+    if (bres.ok) {
+      m.lastRun = new Date().toISOString();
+      m.runCount = (m.runCount ?? 0) + 1;
+      writeManifest(m);
+      recordTokenEvent({
+        skillName: name,
+        mode: "run",
+        tokensIn: 0,
+        tokensSaved: estimateBaselineTokens(m.description?.length ?? 0),
+        baselineTokens: estimateBaselineTokens(m.description?.length ?? 0),
+        status: "success",
+        durationMs: bres.durationMs,
+      });
+      updateSkillMetrics(name, {
+        success: true,
+        tokensSaved: estimateBaselineTokens(m.description?.length ?? 0),
+        durationMs: bres.durationMs,
+        mode: "run",
+        tokensIn: 0,
+      });
+    }
+    return bres;
+  }
 
   // Docker sandbox (v0.45): execute in container if ORION_SANDBOX=docker
   if (sandboxLevel() === "docker") {

@@ -71,7 +71,7 @@ describe("run runtime — Phase A (Windows-совместимость, v0.47)", 
     }
   });
 
-  it("caches an identical re-run by input hash; new args re-execute (Phase E)", () => {
+  it("caches an identical re-run by input hash; new args re-execute (Phase E)", async () => {
     const name = TEST_NAME + "_cache";
     createScript(name, "node", "cache test");
     writeFileSync(
@@ -81,17 +81,17 @@ describe("run runtime — Phase A (Windows-совместимость, v0.47)", 
     );
 
     // First run with an argument executes and records the hash.
-    const first = runScript(name, { args: ["a"] });
+    const first = await runScript(name, { args: ["a"] });
     expect(first.ok).toBe(true);
     expect(first.output).toContain("OUT");
 
     // Second run with the SAME args is served from cache.
-    const cached = runScript(name, { args: ["a"] });
+    const cached = await runScript(name, { args: ["a"] });
     expect(cached.ok).toBe(true);
     expect(cached.output).toContain("cached");
 
     // Different args -> different hash -> re-executes.
-    const fresh = runScript(name, { args: ["b"] });
+    const fresh = await runScript(name, { args: ["b"] });
     expect(fresh.ok).toBe(true);
     expect(fresh.output).toContain("OUT");
 
