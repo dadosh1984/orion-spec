@@ -246,10 +246,44 @@ export async function runDispatch(args: string[]): Promise<number> {
         console.log(
           `${statusMark("info")} Auto-repair: re-forging change "${m.sourceChange}"...`,
         );
-        console.log(`  Run: orion forge ${m.sourceChange} --save-as ${name}`);
+        try {
+          const cli = join(
+            import.meta.dirname ?? ".",
+            "..",
+            "..",
+            "dist",
+            "cli",
+            "index.js",
+          );
+          execSync(
+            `"${process.execPath}" "${cli}" forge ${m.sourceChange} --save-as ${name}`,
+            { stdio: "inherit", timeout: 120_000 },
+          );
+          // On success: clear needs_repair, mark as active.
+          m.status = "active";
+          writeManifest(m);
+          markRepairFixed(name);
+          console.log(
+            `\n${statusMark("done")} Auto-repair complete: "${name}" is active again.`,
+          );
+        } catch (err) {
+          console.error(
+            `\n${statusMark("error")} Auto-repair failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          console.error(
+            `  Manual fix: orion run edit ${name}`,
+          );
+          return 1;
+        }
+      } else if (autoMode) {
         console.log(
-          `  (auto-repair requires an LLM agent to execute forge — run manually)`,
+          `${statusMark("warn")} Auto-repair requires sourceChange in manifest.`,
         );
+        console.log(
+          `  This skill was not created via forge --save-as. Manual repair needed.`,
+        );
+        console.log(`  Edit: orion run edit ${name}`);
+        return 1;
       } else {
         console.log(`${statusMark("info")} "${name}" marked as needs_repair.`);
         console.log(`  Edit the script: orion run edit ${name}`);
