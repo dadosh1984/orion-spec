@@ -1,0 +1,26 @@
+{
+  "name": "find-uzum-calculator-sold",
+  "description": "Find calculator on uzum.uz that sold the most this week (browser mode)",
+  "runtime": "node",
+  "created": "2026-08-12T16:00:00.000Z",
+  "lastRun": "2026-08-12T11:19:05.443Z",
+  "runCount": 2,
+  "schedule": null,
+  "risk_level": "low",
+  "requires_confirmation": false,
+  "sandbox": {
+    "network": "allowed",
+    "timeout_sec": 300,
+    "max_memory_mb": 512
+  },
+  "outputSchema": {
+    "required": [
+      "status"
+    ],
+    "properties": {
+      "status": {
+        "type": "string"
+      }
+    }
+  }
+}
