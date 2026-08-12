@@ -11,7 +11,6 @@ import {
   scriptPath,
 } from "../src/core/runtime.js";
 import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { sha256 } from "../src/utils/hash.js";
 
 const TEST_NAME = "_test_runtime_phase_a";
@@ -19,6 +18,7 @@ const TEST_NAME = "_test_runtime_phase_a";
 describe("run runtime — Phase A (Windows-совместимость, v0.47)", () => {
   afterEach(() => {
     try { deleteScript(TEST_NAME); } catch { /* ok */ }
+    try { deleteScript(TEST_NAME + "_cache"); } catch { /* ok */ }
   });
 
   it("detectDefaultRuntime returns one of the three supported runtimes", () => {
@@ -95,11 +95,17 @@ describe("run runtime — Phase A (Windows-совместимость, v0.47)", 
     expect(fresh.ok).toBe(true);
     expect(fresh.output).toContain("OUT");
 
-    // The manifest recorded the last input hash.
+    // The manifest recorded the last input hash (v0.48 format).
     const recorded = readManifest(name);
     expect(recorded?.lastRunHash).toBeTruthy();
     expect(recorded?.lastRunHash).toBe(
-      sha256(`${scriptPath(name)}:${join("b")}`),
+      sha256(
+        JSON.stringify({
+          script: sha256('#!/usr/bin/env node\nconsole.log("OUT");\n'),
+          args: ["b"],
+          env: { ORION_SANDBOX_NETWORK: process.env.ORION_SANDBOX_NETWORK ?? "" },
+        }),
+      ),
     );
 
     try { deleteScript(name); } catch { /* ok */ }

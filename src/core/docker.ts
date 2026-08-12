@@ -9,6 +9,7 @@
 
 import { execSync } from "node:child_process";
 import type { RunManifest } from "./runtime.js";
+import { scriptExt } from "./runtime.js";
 
 /** Проверить, доступен ли Docker. */
 export function dockerAvailable(): boolean {
@@ -40,19 +41,20 @@ export function dockerRunCommand(
         ? "python3"
         : "bash";
 
+  const ext = scriptExt(m.runtime);
   return [
     "docker run --rm",
     network,
     memory,
     `--name orion-skill-${name}`,
-    `-v "${scriptPath}:/script/${name}${m.runtime === 'node' ? '.js' : m.runtime === 'python' ? '.py' : '.sh'}:ro"`,
+    `-v "${scriptPath}:/script/${name}${ext}:ro"`,
     `-w ${workDir}`,
     `--stop-timeout ${timeout}`,
     `--cpus=0.5`,
     `-e ORION_SANDBOX_NETWORK=${network ? '0' : '1'}`,
     `-e ORION_RUN_NAME=${name}`,
     image,
-    `${runtime} /script/${name}${m.runtime === 'node' ? '.js' : m.runtime === 'python' ? '.py' : '.sh'}`,
+    `${runtime} /script/${name}${ext}`,
   ]
     .filter(Boolean)
     .join(" ");

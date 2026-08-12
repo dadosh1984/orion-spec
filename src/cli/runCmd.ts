@@ -18,6 +18,7 @@ import {
 import { listCacheEntries } from "../core/specCache.js";
 import { canAttemptRepair, markRepairFixed } from "../core/repair.js";
 import { addFileWatcher, removeFileWatcher, listWatchers } from "../core/router.js";
+import { verifyRun } from "../core/router.js";
 import { generateSkill } from "../core/generator.js";
 
 /**
@@ -177,7 +178,12 @@ export async function runDispatch(args: string[]): Promise<number> {
     case "delete": {
       if (!name) return fail("run delete requires a script name");
       const ok = await confirmAction(`Delete script "${name}"?`);
-      if (ok === false) {
+      if (ok === null) {
+        // Non-TTY: require explicit --yes to prevent accidental deletion (v0.48).
+        if (!rest.includes("--yes")) {
+          return fail(`delete requires confirmation. Use --yes to delete in non-interactive mode.`);
+        }
+      } else if (ok === false) {
         console.log(`${statusMark("info")} "${name}" not deleted`);
         return 0;
       }
@@ -222,6 +228,16 @@ export async function runDispatch(args: string[]): Promise<number> {
           m.status = "active";
           writeManifest(m);
           markRepairFixed(sub);
+        }
+        // Post-run verification (v0.48): check postconditions if defined.
+        if (m.postconditions && m.postconditions.length > 0) {
+          const v = verifyRun(result.output, m.postconditions);
+          if (!v.ok) {
+            console.error(`\n${statusMark("warn")} Postcondition check failed:`);
+            for (const c of v.checks.filter((c) => !c.passed)) {
+              console.error(`  ${statusMark("error")} ${c.name}: ${c.detail}`);
+            }
+          }
         }
         process.stdout.write(result.output);
         console.error(`\n${paint(`✓ ${sub} — ${result.durationMs}ms`, "dim")}`);

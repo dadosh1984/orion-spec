@@ -18,6 +18,12 @@ pnpm-debug.log*
 
 # OS
 .DS_Store
+
+# Reasonix agent artifacts
+.reasonix/
+
+# Temp files
+Qwen_text_*
 Thumbs.db
 
 # Test artifacts

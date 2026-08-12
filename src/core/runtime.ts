@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, chmodSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, chmodSync, rmSync, openSync, closeSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
@@ -19,6 +19,9 @@ import { sha256 } from "../utils/hash.js";
  * Идея: ИИ создаёт скрипт ОДИН раз (тратя токены), а запускается он
  * бесконечно через `orion run <name>` — без токенов, без интернета.
  */
+
+/** In-memory hazard-scan cache keyed by sha256(script) (v0.48). */
+const hazardCache = new Map<string, string[]>();
 
 export interface RunManifest {
   name: string;
@@ -57,6 +60,14 @@ export interface RunManifest {
   status?: "active" | "broken" | "needs_repair";
   /** SHA-256 of (args + script file) from the last run (v0.47) — lets idempotent runs skip re-execution. */
   lastRunHash?: string;
+  /** Post-run verification conditions (v0.48). Checked after successful execution. */
+  postconditions?: Array<{
+    type: "json_field" | "metric" | "file_exists";
+    field?: string;
+    equals?: unknown;
+    path?: string;
+    min?: number;
+  }>;
 }
 
 export function scriptsDir(): string {
@@ -137,8 +148,12 @@ export function manifestPath(name: string): string {
 export function scriptPath(name: string): string {
   const m = readManifest(name);
   if (!m) return join(scriptsDir(), name, "run.sh");
-  const ext = m.runtime === "node" ? ".js" : m.runtime === "python" ? ".py" : ".sh";
-  return join(scriptsDir(), name, `run${ext}`);
+  return join(scriptsDir(), name, `run${scriptExt(m.runtime)}`);
+}
+
+/** File extension for a runtime (v0.48). */
+export function scriptExt(runtime: "bash" | "node" | "python"): ".sh" | ".js" | ".py" {
+  return runtime === "node" ? ".js" : runtime === "python" ? ".py" : ".sh";
 }
 
 /** Read manifest; null if missing or corrupt. */
@@ -227,11 +242,22 @@ export function runScript(
     return { ok: false, output: `script file not found: ${scriptFile}`, durationMs: 0 };
   }
 
-  // Deterministic re-run cache (v0.47): if the same args + script content ran
-  // successfully before and wasn't forced, report it as cached instead of
-  // re-executing — the script is idempotent for an identical input.
+  // Read script once for both cache hash and hazard scan (v0.48).
+  const code = readFileSync(scriptFile, "utf8");
+
+  // Deterministic re-run cache (v0.48): hash of script content + normalized args
+  // + key env vars. Identical inputs skip re-execution (override with --force
+  // or ORION_RUN_NO_CACHE=1).
   const args = opts?.args ?? [];
-  const inputHash = sha256(`${scriptFile}:${join(...args)}`);
+  const inputHash = sha256(
+    JSON.stringify({
+      script: sha256(code),
+      args,
+      env: {
+        ORION_SANDBOX_NETWORK: process.env.ORION_SANDBOX_NETWORK ?? "",
+      },
+    }),
+  );
   if (
     !opts?.force &&
     process.env.ORION_RUN_NO_CACHE !== "1" &&
@@ -293,9 +319,14 @@ export function runScript(
   }
 
   // Hazard gate (v0.39.2): scan script for destructive patterns BEFORE execution.
+  // Cache by sha256(script) to avoid re-scanning on every run (v0.48).
   if (!force) {
-    const code = readFileSync(scriptFile, "utf8");
-    const hits = scanHazardsForRuntime(code, m.runtime);
+    const codeHash = sha256(code);
+    let hits = hazardCache.get(codeHash);
+    if (hits === undefined) {
+      hits = scanHazardsForRuntime(code, m.runtime);
+      hazardCache.set(codeHash, hits);
+    }
     if (hits.length > 0) {
       return {
         ok: false,
@@ -415,33 +446,39 @@ export function setSchedule(name: string, cronExpr: string | null): void {
 
   assertCronSupported();
 
-  // Удаляем старую cron-запись
-  unscheduleCron(name);
+  withCronLock(() => {
+    // Удаляем старую cron-запись
+    unscheduleCronLocked(name);
 
-  if (cronExpr) {
-    const scriptFile = scriptPath(name);
-    const cronLine = `${cronExpr} cd ${join(scriptsDir(), name)} && bash "${scriptFile}" # orion:${name}`;
-    try {
-      const existing = execSync("crontab -l 2>/dev/null || true", { encoding: "utf8" });
-      const cleaned = existing
-        .split("\n")
-        .filter((l) => !l.includes(`# orion:${name}`))
-        .join("\n")
-        .trim();
-      const next = (cleaned ? cleaned + "\n" : "") + cronLine + "\n";
-      execSync("crontab -", { input: next, encoding: "utf8" });
-    } catch (err) {
-      throw new Error(`cron setup failed: ${err instanceof Error ? err.message : String(err)}`);
+    if (cronExpr) {
+      const scriptFile = scriptPath(name);
+      const cronLine = `${cronExpr} cd ${join(scriptsDir(), name)} && bash "${scriptFile}" # orion:${name}`;
+      try {
+        const existing = execSync("crontab -l 2>/dev/null || true", { encoding: "utf8" });
+        const cleaned = existing
+          .split("\n")
+          .filter((l) => !l.includes(`# orion:${name}`))
+          .join("\n")
+          .trim();
+        const next = (cleaned ? cleaned + "\n" : "") + cronLine + "\n";
+        execSync("crontab -", { input: next, encoding: "utf8" });
+      } catch (err) {
+        throw new Error(`cron setup failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
-  }
 
-  m.schedule = cronExpr;
-  writeManifest(m);
+    m.schedule = cronExpr;
+    writeManifest(m);
+  });
 }
 
 /** Убрать cron-запись для скрипта. */
 export function unscheduleCron(name: string): void {
   assertCronSupported();
+  withCronLock(() => unscheduleCronLocked(name));
+}
+
+function unscheduleCronLocked(name: string): void {
   try {
     const existing = execSync("crontab -l 2>/dev/null || true", { encoding: "utf8" });
     const cleaned = existing
@@ -455,5 +492,33 @@ export function unscheduleCron(name: string): void {
     }
   } catch {
     /* best effort */
+  }
+}
+
+/**
+ * Atomic cron lock via O_EXCL (v0.48). Prevents parallel schedule/unschedule
+ * from corrupting the crontab. Retries up to 10 times with 50ms backoff.
+ */
+function withCronLock(fn: () => void): void {
+  const lockPath = join(scriptsDir(), "..", ".cron.lock");
+  mkdirSync(join(scriptsDir(), ".."), { recursive: true });
+  let fd: number | undefined;
+  for (let i = 0; i < 10; i++) {
+    try {
+      fd = openSync(lockPath, "wx");
+      break;
+    } catch {
+      if (i < 9) {
+        const ms = 50 * (i + 1);
+        const start = Date.now();
+        while (Date.now() - start < ms) { /* spin */ }
+      }
+    }
+  }
+  if (fd === undefined) throw new Error("cron lock timeout — another schedule/unschedule is in progress");
+  try {
+    fn();
+  } finally {
+    try { closeSync(fd); unlinkSync(lockPath); } catch { /* ok */ }
   }
 }
