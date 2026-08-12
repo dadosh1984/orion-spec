@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsePriceBlock } from "../src/core/uzum.js";
+import { parsePriceBlock, parseRatingReviews } from "../src/core/uzum.js";
 
 describe("uzum price parser (v0.50)", () => {
   it("extracts the lowest full price, ignoring installments", () => {
@@ -31,5 +31,38 @@ describe("uzum price parser (v0.50)", () => {
     // \u00a0 instead of a plain space.
     const line = "51\u00a0510 57\u00a0230 4\u00a0053 сум/мес";
     expect(parsePriceBlock(line)).toBe(51510);
+  });
+});
+
+describe("uzum rating/reviews parser (v0.50)", () => {
+  it("extracts rating and review count", () => {
+    const r = parseRatingReviews(
+      "Тетради в клетку, 12 листов, 10 шт 4.9 (9989 отзывов) Завтра",
+    );
+    expect(r.rating).toBe(4.9);
+    expect(r.reviews).toBe(9989);
+  });
+
+  it("handles 'отзыва' singular", () => {
+    const r = parseRatingReviews("Тетрадь 12л 4.9 (2 отзыва)");
+    expect(r.rating).toBe(4.9);
+    expect(r.reviews).toBe(2);
+  });
+
+  it("handles thousands separator in reviews", () => {
+    const r = parseRatingReviews("Тетрадь 5.0 (18 954 отзывов)");
+    expect(r.rating).toBe(5.0);
+    expect(r.reviews).toBe(18954);
+  });
+
+  it("returns nulls when no rating/review string present", () => {
+    const r = parseRatingReviews("Тетрадь в клетку 12 листов");
+    expect(r.rating).toBeNull();
+    expect(r.reviews).toBe(0);
+  });
+
+  it("low minPrice allows notebook prices (12-liners ~5-15k UZS)", () => {
+    expect(parsePriceBlock("5 940 17 000 420 сум/мес Тетрадь", 1000)).toBe(5940);
+    expect(parsePriceBlock("10 780 10 890 771 сум/мес", 1000)).toBe(10780);
   });
 });
