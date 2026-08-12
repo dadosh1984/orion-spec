@@ -16,7 +16,29 @@
  * page content so existing HTML parsers keep working unchanged.
  */
 
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { RunManifest } from "./runtime.js";
+
+/**
+ * Load a user browser skill as an ESM module regardless of where it lives.
+ * A plain `run.js` inside ~/.orion/scripts has no package.json with "type":
+ * "module", so Node would parse it as CommonJS and `export` fails. We copy it
+ * to a temp `.mjs` file (ESM by extension) and import from there.
+ */
+async function importSkillAsEsm(scriptFile: string): Promise<any> {
+  const { pathToFileURL } = await import("node:url");
+  const src = readFileSync(scriptFile, "utf8");
+  const dir = mkdtempSync(join(tmpdir(), "orion-browser-"));
+  const tmp = join(dir, "skill.mjs");
+  writeFileSync(tmp, src, "utf8");
+  try {
+    return await import(pathToFileURL(tmp).href);
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }); } catch { /* ok */ }
+  }
+}
 
 export interface BrowserRunResult {
   ok: boolean;
@@ -33,9 +55,8 @@ export async function runInBrowser(
   let chromium: any;
   try {
     // playwright is an OPTIONAL peer dependency — never bundled with the
-    // project. `@ts-expect-error` is intentional: types are only present when
-    // the user has installed playwright locally.
-    // @ts-expect-error - optional dependency, not installed by default
+    // project. When it is installed, types resolve; when it is not, this
+    // import still resolves to `any` at runtime via a natural catch.
     const mod = await import("playwright");
     chromium = mod.chromium;
   } catch {
@@ -75,7 +96,8 @@ export async function runInBrowser(
     // simply do its own work and assign result to a global.
     let userRun: ((c: typeof ctx) => Promise<unknown> | unknown) | undefined;
     try {
-      const mod = await import(scriptFile);
+      // Copy to temp .mjs so skill.js parses as ESM outside the project.
+      const mod = await importSkillAsEsm(scriptFile);
       if (typeof mod.run === "function") userRun = mod.run;
     } catch {
       /* not an ES module / no export — see below */
