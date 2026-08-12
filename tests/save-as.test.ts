@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { createScript, readManifest, scriptPath, deleteScript, writeManifest } from "../src/core/runtime.js";
+import { createScript, readManifest, scriptPath, deleteScript, writeManifest, runScript } from "../src/core/runtime.js";
 
 const TEST_NAME = "_test_save_as_entry";
 
@@ -60,5 +60,18 @@ describe("--save-as with entry point", () => {
     writeManifest(m);
     const reloaded = readManifest(TEST_NAME);
     expect(reloaded?.sourceChange).toBe("my-change-title");
+  });
+
+  it("runScript executes a node script via the current interpreter (stripped PATH fix)", () => {
+    const m = createScript(TEST_NAME + "3", "node", "run test");
+    writeFileSync(
+      scriptPath(TEST_NAME + "3"),
+      '#!/usr/bin/env node\nconsole.log("RUN OK " + (1 + 1));\n',
+      "utf8",
+    );
+    const res = runScript(TEST_NAME + "3");
+    expect(res.ok).toBe(true);
+    expect(res.output).toContain("RUN OK 2");
+    try { deleteScript(TEST_NAME + "3"); } catch { /* ok */ }
   });
 });

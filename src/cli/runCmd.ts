@@ -118,10 +118,13 @@ export function runDispatch(args: string[]): number {
     }
 
     case "new": {
-      if (!name) return fail("usage: orion run new <name>");
-      const desc = rest.join(" ") || "No description";
+      if (!name) return fail("usage: orion run new <name> [--node|--python]");
+      // Runtimes with a shared binary resolve > default bash; allow explicit choice
+      // so Windows (no bash in spawn context) can still run node/python scripts.
+      const runtime = rest.includes("--node") ? "node" : rest.includes("--python") ? "python" : "bash";
+      const desc = rest.join(" ").replace(/--(node|python)\b/g, "").trim() || "No description";
       try {
-        const m = createScript(name, "bash", desc);
+        const m = createScript(name, runtime, desc);
         console.log(`${statusMark("done")} Script created: ${m.name}`);
         console.log(`  Runtime: ${m.runtime}`);
         console.log(`  Path:    ${scriptPath(name)}`);

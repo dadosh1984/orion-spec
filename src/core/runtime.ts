@@ -229,7 +229,9 @@ export function runScript(
   try {
     let cmd: string;
     if (m.runtime === "node") {
-      cmd = `node "${scriptFile}"`;
+      // Use the current interpreter's absolute path: resolves even when the
+      // spawned context has a stripped PATH (e.g. Windows pnpm-shim).
+      cmd = `"${process.execPath}" "${scriptFile}"`;
     } else if (m.runtime === "python") {
       cmd = `python3 "${scriptFile}"`;
     } else {
