@@ -24,6 +24,9 @@ pnpm-debug.log*
 
 # Temp files
 Qwen_text_*
+
+# Local test scripts
+.orion-test-scripts/
 Thumbs.db
 
 # Test artifacts

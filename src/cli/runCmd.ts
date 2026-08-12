@@ -445,10 +445,17 @@ export async function runDispatch(args: string[]): Promise<number> {
             : "",
           "",
           metric
-            ? [
-                `  ${paint("Token ROI:", "dim")}   ${metric.roiScore === Infinity ? "∞" : metric.roiScore.toFixed(2)}x  |  ${paint("Saved:", "dim")} ${metric.totalTokensSaved}  |  ${paint("Net:", "dim")} ${metric.netTokensSaved}`,
-                `  ${paint("Success rate:", "dim")} ${m.runCount > 0 ? Math.round((metric.successRuns / metric.runs) * 100) : 0}% (${metric.successRuns}/${metric.runs})`,
-              ].join("\n")
+            ? (() => {
+                const roi = metric.roiScore == null
+                  ? "n/a"
+                  : metric.roiScore === Infinity
+                    ? "∞"
+                    : metric.roiScore.toFixed(2);
+                return [
+                  `  ${paint("Token ROI:", "dim")}   ${roi}x  |  ${paint("Saved:", "dim")} ${metric.totalTokensSaved}  |  ${paint("Net:", "dim")} ${metric.netTokensSaved}`,
+                  `  ${paint("Success rate:", "dim")} ${m.runCount > 0 ? Math.round((metric.successRuns / metric.runs) * 100) : 0}% (${metric.successRuns}/${metric.runs})`,
+                ].join("\n");
+              })()
             : `  ${paint("Token ROI:", "dim")}   no data yet — run the script first`,
           "",
           `  ${paint("Run:", "dim")}        orion run ${name}`,
@@ -510,7 +517,12 @@ export async function runDispatch(args: string[]): Promise<number> {
         .slice(0, 10);
       console.log(`  ${paint("Top skills by tokens saved:", "dim")}`);
       for (const m of metrics) {
-        const roi = m.roiScore === Infinity ? "∞" : m.roiScore.toFixed(1) + "x";
+        const roi =
+          m.roiScore == null
+            ? "n/a"
+            : m.roiScore === Infinity
+              ? "∞"
+              : m.roiScore.toFixed(1) + "x";
         console.log(
           `    ${m.skillName.padEnd(20)} ${paint(roi.padStart(6), "green")}  saved ${m.totalTokensSaved}  net ${m.netTokensSaved}  ${m.runs} runs`,
         );
