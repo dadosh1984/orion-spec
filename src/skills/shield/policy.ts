@@ -1,6 +1,7 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
+import { collectTsFiles } from "../../utils/file.js";
 
 /**
  * Project policy gates (v0.23, idea #2: "strict gates" for shield).
@@ -69,28 +70,6 @@ function barePackage(name: string): string {
     : name.split("/")[0];
 }
 
-function collectTsFiles(cwd: string, changeId: string): string[] {
-  const out: string[] = [];
-  const walk = (dir: string): void => {
-    let entries;
-    try {
-      entries = readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      const p = join(dir, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name.endsWith(".ts") || e.name.endsWith(".tsx")) out.push(p);
-    }
-  };
-  // The change's own snippets are the primary AI-generated surface; src/ is
-  // the repo-wide floor. Both are scanned against the same policy.
-  walk(join(cwd, "changes", changeId, "snippets"));
-  walk(join(cwd, "src"));
-  return out;
-}
-
 /**
  * Scan the change's snippets + the repo's src/ for policy violations.
  * Deterministic, best-effort per file (unreadable files are skipped).
@@ -113,7 +92,11 @@ export function scanPolicyFiles(
   if (deny.size === 0 && patterns.length === 0) return [];
 
   const findings: PolicyFinding[] = [];
-  for (const file of collectTsFiles(cwd, changeId)) {
+  const files = [
+    ...collectTsFiles(join(cwd, "changes", changeId, "snippets"), { tsx: true }),
+    ...collectTsFiles(join(cwd, "src"), { tsx: true }),
+  ];
+  for (const file of files) {
     let src: string;
     try {
       src = readFileSync(file, "utf8");

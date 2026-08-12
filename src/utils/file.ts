@@ -5,7 +5,7 @@ import {
   rename as renameFile,
 } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /** Write a text file, creating parent directories on demand. */
@@ -82,4 +82,57 @@ export function humanBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/** Options for `collectTsFiles`. */
+export interface CollectTsOptions {
+  /** Maximum directory depth (default: unlimited). */
+  depth?: number;
+  /** Include `.tsx` files (default: false). */
+  tsx?: boolean;
+  /** Directories to skip (default: node_modules, dist, .git). */
+  skipDirs?: string[];
+}
+
+const DEFAULT_SKIP_DIRS = ["node_modules", "dist", ".git"];
+
+/**
+ * Recursively collect `.ts` (and optionally `.tsx`) files from a directory.
+ * Unified from `scaleStages/reuse.ts` and `skills/shield/policy.ts` (v0.46).
+ */
+export function collectTsFiles(
+  dir: string,
+  opts: CollectTsOptions = {},
+): string[] {
+  const {
+    depth = Infinity,
+    tsx = false,
+    skipDirs = DEFAULT_SKIP_DIRS,
+  } = opts;
+  if (depth < 0) return [];
+  const out: string[] = [];
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    if (skipDirs.includes(e)) continue;
+    const full = join(dir, e);
+    try {
+      const st = statSync(full);
+      if (st.isDirectory()) {
+        out.push(...collectTsFiles(full, { depth: depth - 1, tsx, skipDirs }));
+      } else if (
+        e.endsWith(".ts") ||
+        (tsx && e.endsWith(".tsx"))
+      ) {
+        out.push(full);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return out;
 }

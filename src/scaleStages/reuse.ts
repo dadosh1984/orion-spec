@@ -1,5 +1,6 @@
-import { readdirSync, readFileSync, statSync, realpathSync } from "node:fs";
-import { join, basename, resolve, dirname, relative } from "node:path";
+import { readFileSync, realpathSync } from "node:fs";
+import { basename, resolve, dirname, relative } from "node:path";
+import { collectTsFiles } from "../utils/file.js";
 
 /** A top-level function declaration found in source code. */
 interface FunctionDecl {
@@ -24,7 +25,7 @@ export function handler(code: string, selfFile?: string): string {
   if (funcs.size === 0) return code;
 
   const selfPath = selfFile ? realPath(resolve(selfFile)) : null;
-  const projectFiles = collectTsFiles(process.cwd(), 2);
+  const projectFiles = collectTsFiles(process.cwd(), { depth: 2 });
   const library = new Map<string, { file: string; name: string }>();
 
   for (const file of projectFiles) {
@@ -169,30 +170,6 @@ function matchBrace(code: string, openIndex: number): number {
     }
   }
   return -1;
-}
-
-/** Recursively collect `.ts` files up to a given depth. */
-function collectTsFiles(dir: string, depth: number): string[] {
-  if (depth < 0) return [];
-  const out: string[] = [];
-  let entries: string[] = [];
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return out;
-  }
-  for (const e of entries) {
-    if (e === "node_modules" || e === "dist" || e === ".git") continue;
-    const full = join(dir, e);
-    try {
-      const st = statSync(full);
-      if (st.isDirectory()) out.push(...collectTsFiles(full, depth - 1));
-      else if (e.endsWith(".ts")) out.push(full);
-    } catch {
-      /* ignore */
-    }
-  }
-  return out;
 }
 
 function stripExtension(file: string): string {

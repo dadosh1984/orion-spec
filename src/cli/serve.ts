@@ -1,10 +1,14 @@
 import http from "node:http";
-import { randomBytes } from "node:crypto";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { OrionTrack } from "../core/track.js";
 import { humanBytes } from "../utils/file.js";
+import { isLoopbackHost } from "../utils/net.js";
+export { isLoopbackHost } from "../utils/net.js";
+import { generateToken } from "../utils/crypto.js";
+export { generateToken } from "../utils/crypto.js";
+import { redactValue } from "../utils/redact.js";
 import { economyStats } from "../core/compress.js";
 import { tokenBudget } from "../core/metrics.js";
 import { readDebt } from "../core/debt.js";
@@ -29,11 +33,6 @@ export interface ServeOptions {
   token?: string;
 }
 
-/** True when a host only listens on the local machine (no auth needed). */
-export function isLoopbackHost(host: string): boolean {
-  return host === "127.0.0.1" || host === "localhost" || host === "::1";
-}
-
 /** Constant-time string comparison (avoids timing side-channels). */
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -50,36 +49,6 @@ function extractToken(req: http.IncomingMessage, url: URL): string | null {
   if (typeof header === "string" && header.length > 0) return header;
   const query = url.searchParams.get("token");
   return query && query.length > 0 ? query : null;
-}
-
-/**
- * Generate a random 32-char bearer token.
- *
- * v0.23: switched from Math.random() to a CSPRNG (node:crypto builtin, zero
- * new dependencies). Math.random()'s V8 state is recoverable from a few
- * outputs, and this token is the only auth on a non-loopback bind — a
- * predictable dashboard token defeats the whole point of auto-auth.
- */
-export function generateToken(): string {
-  return randomBytes(24).toString("base64url"); // 24 bytes -> 32 url-safe chars
-}
-
-/**
- * Secret-looking tokens that must not be echoed back by the dashboard
- * (v0.23). Deliberately conservative — a cache entry is user data, so a
- * value that carries a credential-shaped string is redacted wholesale.
- */
-const SECRET_RE =
-  /(api[_-]?key|secret|passwd|password|token|private[_-]?key|authorization|bearer)["']?\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{8,}["']?/gi;
-
-/** Replace credential-shaped matches with a short, honest marker. */
-function redactValue(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  if (!value.match(SECRET_RE)) return value;
-  return value.replace(
-    SECRET_RE,
-    (m) => `[redacted ${m.slice(0, 12)}… (${m.length} chars)]`,
-  );
 }
 
 interface ApiChange {

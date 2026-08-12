@@ -73,3 +73,12 @@ export function progressBar(
     : "";
   return `${barStr} ${done}/${total} ${label}${statusStr}`;
 }
+
+/**
+ * Print an error message to stderr and exit with a non-zero code (v0.46).
+ * Unified exit handler — replaces ad-hoc `console.error(...); process.exit(1)`.
+ */
+export function fail(msg: string, code = 1): never {
+  console.error(`${statusMark("error")} ${msg}`);
+  process.exit(code);
+}

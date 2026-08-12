@@ -1,0 +1,14 @@
+# Предложение — v0-46-устранить-дубли
+
+## Цель
+v0.46: устранить дубли кода (readCapped, bar, collectTsFiles), вынести хардкоды в src/constants.ts, унифицировать утилиты (humanBytes, fail, isLoopbackHost, generateToken, redactValue), добавить src/utils/file.ts и src/utils/term.ts если ещё нет. Приоритет: A1–A10 из аудита + B3 (36-50) + B4 (51-62). Бюджет: compact.
+
+## Контекст
+
+| Аспект | Значение |
+|--------|----------|
+| Платформа | any |
+| Бюджет | unlimited |
+| Ограничения | none |
+
+- **Lessons applied (v0.12):** user-adaptation-memory-profile:forge:a1e8c7f7ceee, mcp-python-1-7:forge:be3622eff6af, внедрить-проект-правило-экономии:shield:6425d7e9a605, фазу-23-conformance-тесты:forge:46c66ee4b181, mcp-python-1-7:forge:1d94c736cd23

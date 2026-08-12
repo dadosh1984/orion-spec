@@ -1,0 +1,32 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 10,
+  "skipped": 0,
+  "pending": [
+    "1_унифицировать_collecttsfiles",
+    "2_унифицировать_human",
+    "3_унифицировать_bar",
+    "4_вынести_isloopbackhost",
+    "5_вынести_generatetoken",
+    "6_вынести_redactvalue",
+    "7_добавить_fail",
+    "8_расширить_src",
+    "9_тесты_покрыть",
+    "10_линт_tsc"
+  ],
+  "missingSnippets": [
+    "changes/v0-46-устранить-дубли/snippets/1_унифицировать_collecttsfiles.ts",
+    "changes/v0-46-устранить-дубли/snippets/2_унифицировать_human.ts",
+    "changes/v0-46-устранить-дубли/snippets/3_унифицировать_bar.ts",
+    "changes/v0-46-устранить-дубли/snippets/4_вынести_isloopbackhost.ts",
+    "changes/v0-46-устранить-дубли/snippets/5_вынести_generatetoken.ts",
+    "changes/v0-46-устранить-дубли/snippets/6_вынести_redactvalue.ts",
+    "changes/v0-46-устранить-дубли/snippets/7_добавить_fail.ts",
+    "changes/v0-46-устранить-дубли/snippets/8_расширить_src.ts",
+    "changes/v0-46-устранить-дубли/snippets/9_тесты_покрыть.ts",
+    "changes/v0-46-устранить-дубли/snippets/10_линт_tsc.ts"
+  ],
+  "reportPath": "changes/v0-46-устранить-дубли/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 10 pending — add snippets: changes/v0-46-устранить-дубли/snippets/1_унифицировать_collecttsfiles.ts, changes/v0-46-устранить-дубли/snippets/2_унифицировать_human.ts, changes/v0-46-устранить-дубли/snippets/3_унифицировать_bar.ts, changes/v0-46-устранить-дубли/snippets/4_вынести_isloopbackhost.ts, changes/v0-46-устранить-дубли/snippets/5_вынести_generatetoken.ts, changes/v0-46-устранить-дубли/snippets/6_вынести_redactvalue.ts, changes/v0-46-устранить-дубли/snippets/7_добавить_fail.ts, changes/v0-46-устранить-дубли/snippets/8_расширить_src.ts, changes/v0-46-устранить-дубли/snippets/9_тесты_покрыть.ts, changes/v0-46-устранить-дубли/snippets/10_линт_tsc.ts"
+}
