@@ -8,9 +8,7 @@ import { statusMark } from "../utils/term.js";
  * reports. Never touches changes/ or .orion/lessons.json (user data).
  * Safe: only removes files Orion itself can regenerate.
  */
-export function cleanCmd(
-  args: string[],
-): { ok: boolean; text: string } {
+export function cleanCmd(args: string[]): { ok: boolean; text: string } {
   const what = args[0] ?? "cache";
   const removed: string[] = [];
 
@@ -77,9 +75,7 @@ export function cleanCmd(
     }
   }
 
-  if (
-    !["cache", "reports", "dist", "coverage", "all"].includes(what)
-  ) {
+  if (!["cache", "reports", "dist", "coverage", "all"].includes(what)) {
     return {
       ok: false,
       text: `${statusMark("error")} unknown target: ${what}\nUsage: orion clean [cache|reports|dist|coverage|all]`,

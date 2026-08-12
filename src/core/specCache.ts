@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  unlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { scriptsDir } from "./runtime.js";
 
@@ -27,8 +34,14 @@ export function cacheDir(): string {
   return join(scriptsDir(), ".cache");
 }
 
-export function specHash(spec: { description: string; outputSchema?: unknown }): string {
-  return createHash("sha256").update(JSON.stringify(spec)).digest("hex").slice(0, 16);
+export function specHash(spec: {
+  description: string;
+  outputSchema?: unknown;
+}): string {
+  return createHash("sha256")
+    .update(JSON.stringify(spec))
+    .digest("hex")
+    .slice(0, 16);
 }
 
 export function readCacheEntry(hash: string): CacheEntry | null {
@@ -44,7 +57,11 @@ export function readCacheEntry(hash: string): CacheEntry | null {
 export function writeCacheEntry(entry: CacheEntry): void {
   const dir = cacheDir();
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, `${entry.key}.json`), JSON.stringify(entry, null, 2), "utf8");
+  writeFileSync(
+    join(dir, `${entry.key}.json`),
+    JSON.stringify(entry, null, 2),
+    "utf8",
+  );
 
   // Prune oldest entries if over limit
   try {
@@ -52,21 +69,32 @@ export function writeCacheEntry(entry: CacheEntry): void {
       .filter((f) => f.endsWith(".json"))
       .map((f) => ({
         name: f,
-        mtime: existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8").length : 0,
+        mtime: existsSync(join(dir, f))
+          ? readFileSync(join(dir, f), "utf8").length
+          : 0,
       }));
     if (files.length > MAX_CACHE_ENTRIES) {
       const sorted = files
         .map((f) => {
           try {
-            const e = JSON.parse(readFileSync(join(dir, f.name), "utf8")) as CacheEntry;
+            const e = JSON.parse(
+              readFileSync(join(dir, f.name), "utf8"),
+            ) as CacheEntry;
             return { name: f.name, ts: new Date(e.lastHit).getTime() };
           } catch {
             return { name: f.name, ts: 0 };
           }
         })
         .sort((a, b) => a.ts - b.ts);
-      for (const { name } of sorted.slice(0, files.length - MAX_CACHE_ENTRIES)) {
-        try { unlinkSync(join(dir, name)); } catch { /* ok */ }
+      for (const { name } of sorted.slice(
+        0,
+        files.length - MAX_CACHE_ENTRIES,
+      )) {
+        try {
+          unlinkSync(join(dir, name));
+        } catch {
+          /* ok */
+        }
       }
     }
   } catch {
@@ -75,7 +103,10 @@ export function writeCacheEntry(entry: CacheEntry): void {
 }
 
 /** Find cached script by spec hash. Returns script name or null. */
-export function findCachedScript(spec: { description: string; outputSchema?: unknown }): string | null {
+export function findCachedScript(spec: {
+  description: string;
+  outputSchema?: unknown;
+}): string | null {
   const hash = specHash(spec);
   const entry = readCacheEntry(hash);
   if (entry) {
@@ -122,5 +153,7 @@ export function listCacheEntries(): CacheEntry[] {
       }
     })
     .filter((e): e is CacheEntry => e !== null)
-    .sort((a, b) => new Date(b.lastHit).getTime() - new Date(a.lastHit).getTime());
+    .sort(
+      (a, b) => new Date(b.lastHit).getTime() - new Date(a.lastHit).getTime(),
+    );
 }

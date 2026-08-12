@@ -26,9 +26,7 @@ function readConfig(name: ConfigFile): Record<string, unknown> | null {
   }
 }
 
-export function configCmd(
-  args: string[],
-): { ok: boolean; text: string } {
+export function configCmd(args: string[]): { ok: boolean; text: string } {
   const [sub, file, key, ...rest] = args;
   const value = rest.join(" ");
 

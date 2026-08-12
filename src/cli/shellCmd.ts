@@ -28,12 +28,14 @@ export async function shell(): Promise<void> {
     terminal: true,
   });
 
-  console.log([
-    `🪐 Orion shell v${readVersionSafe()}`,
-    "Type a command (think, draft, forge, shield, out, …) or help.",
-    "Tab-complete is on.  exit / quit / Ctrl+D to leave.",
-    "",
-  ].join("\n"));
+  console.log(
+    [
+      `🪐 Orion shell v${readVersionSafe()}`,
+      "Type a command (think, draft, forge, shield, out, …) or help.",
+      "Tab-complete is on.  exit / quit / Ctrl+D to leave.",
+      "",
+    ].join("\n"),
+  );
 
   rl.prompt();
 
@@ -51,7 +53,8 @@ export async function shell(): Promise<void> {
     }
     if (trimmed === "help") {
       console.log(
-        "Commands: " + commands.filter((c) => c !== "exit" && c !== "quit").join(", "),
+        "Commands: " +
+          commands.filter((c) => c !== "exit" && c !== "quit").join(", "),
       );
       console.log("Flags: --no-cache --dry --json --watch …");
       console.log("");

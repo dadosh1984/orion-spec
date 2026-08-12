@@ -18,9 +18,17 @@ export function diffCmd(changeId: string): { ok: boolean; text: string } {
   const total = tasks.length;
 
   const artifacts: string[] = [];
-  for (const file of ["proposal.md", "design.md", "tasks.md", "result.md", "forge-report.md"]) {
+  for (const file of [
+    "proposal.md",
+    "design.md",
+    "tasks.md",
+    "result.md",
+    "forge-report.md",
+  ]) {
     if (existsSync(join(base, file))) {
-      artifacts.push(`${file} (${readFileSync(join(base, file), "utf8").length} B)`);
+      artifacts.push(
+        `${file} (${readFileSync(join(base, file), "utf8").length} B)`,
+      );
     }
   }
 
@@ -28,13 +36,23 @@ export function diffCmd(changeId: string): { ok: boolean; text: string } {
   const snippetsDir = join(base, "snippets");
   if (existsSync(snippetsDir)) {
     try {
-      snippetFiles = readdirSync(snippetsDir).filter((f) => f.endsWith(".ts")).length;
-    } catch { /* ignore */ }
+      snippetFiles = readdirSync(snippetsDir).filter((f) =>
+        f.endsWith(".ts"),
+      ).length;
+    } catch {
+      /* ignore */
+    }
   }
 
   const hasResult = existsSync(join(base, "result.md"));
   const hasGuard = existsSync(join("reports", changeId, "guard-report.json"));
-  const phase = hasResult ? "out" : hasGuard ? "shield" : tasks.length > 0 ? "forge" : "draft";
+  const phase = hasResult
+    ? "out"
+    : hasGuard
+      ? "shield"
+      : tasks.length > 0
+        ? "forge"
+        : "draft";
 
   const lines = [
     `${statusMark("info")} Change: ${changeId}`,
@@ -44,7 +62,13 @@ export function diffCmd(changeId: string): { ok: boolean; text: string } {
     `  Snippets:  ${snippetFiles} file(s)`,
     "",
     ...(tasks.length > 0
-      ? ["Task checklist:", ...tasks.map((t) => `  ${t.done ? statusMark("done") : statusMark("open")} ${t.text}`)]
+      ? [
+          "Task checklist:",
+          ...tasks.map(
+            (t) =>
+              `  ${t.done ? statusMark("done") : statusMark("open")} ${t.text}`,
+          ),
+        ]
       : ["No tasks yet."]),
   ];
 

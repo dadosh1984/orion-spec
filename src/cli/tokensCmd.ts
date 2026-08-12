@@ -10,22 +10,26 @@ export function tokensDispatch(args: string[]): number {
 
   if (sub === "report" || !sub) {
     const summary = tokenSummary();
-    console.log([
-      `${statusMark("info")} Token Ledger:`,
-      `  Events:       ${summary.totalEvents}`,
-      `  Skill runs:   ${summary.totalRuns}`,
-      `  Skills:       ${summary.skillCount}`,
-      `  Total saved:  ~${summary.totalSaved} tok`,
-      "",
-      "Subcommands: tokens top-skills | tokens savings | tokens events",
-    ].join("\n"));
+    console.log(
+      [
+        `${statusMark("info")} Token Ledger:`,
+        `  Events:       ${summary.totalEvents}`,
+        `  Skill runs:   ${summary.totalRuns}`,
+        `  Skills:       ${summary.skillCount}`,
+        `  Total saved:  ~${summary.totalSaved} tok`,
+        "",
+        "Subcommands: tokens top-skills | tokens savings | tokens events",
+      ].join("\n"),
+    );
     return 0;
   }
 
   if (sub === "top-skills") {
     const metrics = getSkillMetrics().slice(0, 10);
     if (metrics.length === 0) {
-      console.log(`${statusMark("info")} No skill metrics yet. Run a skill first.`);
+      console.log(
+        `${statusMark("info")} No skill metrics yet. Run a skill first.`,
+      );
       return 0;
     }
     console.log(`${statusMark("info")} Top skills by tokens saved:`);
@@ -45,14 +49,16 @@ export function tokensDispatch(args: string[]): number {
 
   if (sub === "savings") {
     const summary = tokenSummary();
-    console.log([
-      `${statusMark("info")} Token savings summary:`,
-      `  Total saved:    ~${summary.totalSaved} tok`,
-      `  Total skill runs: ${summary.totalRuns}`,
-      `  Active skills:    ${summary.skillCount}`,
-      "",
-      "Each `orion run <name>` saves ~200-900 tok compared to direct LLM execution.",
-    ].join("\n"));
+    console.log(
+      [
+        `${statusMark("info")} Token savings summary:`,
+        `  Total saved:    ~${summary.totalSaved} tok`,
+        `  Total skill runs: ${summary.totalRuns}`,
+        `  Active skills:    ${summary.skillCount}`,
+        "",
+        "Each `orion run <name>` saves ~200-900 tok compared to direct LLM execution.",
+      ].join("\n"),
+    );
     return 0;
   }
 

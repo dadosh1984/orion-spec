@@ -153,7 +153,9 @@ export function updateSkillMetrics(
     m.runs > 0 ? Math.round(m.totalTokensSaved / m.runs) : 0;
   m.roiScore =
     m.creationTokens + m.repairTokens > 0
-      ? Math.round((m.netTokensSaved / (m.creationTokens + m.repairTokens)) * 100) / 100
+      ? Math.round(
+          (m.netTokensSaved / (m.creationTokens + m.repairTokens)) * 100,
+        ) / 100
       : m.totalTokensSaved > 0
         ? Infinity
         : 0;

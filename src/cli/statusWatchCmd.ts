@@ -12,7 +12,7 @@ export function statusWatch(): void {
     process.stdout.write("\x1b[2J\x1b[H");
     const rows = scanChanges();
     if (rows.length === 0) {
-      process.stdout.write("No changes yet. Run: orion think \"...\"\n");
+      process.stdout.write('No changes yet. Run: orion think "..."\n');
       process.stdout.write("\nWatching for changes... (Ctrl+C to exit)\n");
     } else {
       process.stdout.write(`${listTable(rows)}\n`);

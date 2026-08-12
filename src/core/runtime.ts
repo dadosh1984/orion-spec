@@ -1,10 +1,25 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, chmodSync, rmSync, openSync, closeSync, unlinkSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  chmodSync,
+  rmSync,
+  openSync,
+  closeSync,
+  unlinkSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { scanHazardsForRuntime } from "./hazards.js";
 import { validateOutput } from "./specValidator.js";
-import { recordTokenEvent, updateSkillMetrics, estimateBaselineTokens } from "./tokenLedger.js";
+import {
+  recordTokenEvent,
+  updateSkillMetrics,
+  estimateBaselineTokens,
+} from "./tokenLedger.js";
 import { recordRepairAttempt, policyCheck, sandboxEnv } from "./repair.js";
 import { runInDocker, sandboxLevel } from "./docker.js";
 import { sha256 } from "../utils/hash.js";
@@ -71,9 +86,7 @@ export interface RunManifest {
 }
 
 export function scriptsDir(): string {
-  return (
-    process.env.ORION_SCRIPTS_DIR ?? join(homedir(), ".orion", "scripts")
-  );
+  return process.env.ORION_SCRIPTS_DIR ?? join(homedir(), ".orion", "scripts");
 }
 
 /**
@@ -96,13 +109,17 @@ export function whichExists(cmd: string): boolean {
 export function resolveBinary(cmd: string): string | null {
   if (process.platform !== "win32") {
     try {
-      const out = execSync(`command -v ${cmd} 2>/dev/null || true`, { encoding: "utf8" }).trim();
+      const out = execSync(`command -v ${cmd} 2>/dev/null || true`, {
+        encoding: "utf8",
+      }).trim();
       return out || null;
     } catch {
       return null;
     }
   }
-  const exts = (process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM").split(";").filter(Boolean);
+  const exts = (process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM")
+    .split(";")
+    .filter(Boolean);
   const dirs = (process.env.PATH || "").split(pathDelimiter());
   // Case-insensitive name lookup on Windows.
   const lname = cmd.toLowerCase();
@@ -112,7 +129,10 @@ export function resolveBinary(cmd: string): string | null {
     for (const cand of candidates) {
       const full = join(dir, cand);
       try {
-        if (existsSync(full) && lname === full.split(/[\\/]/).pop()!.split(".")[0].toLowerCase()) {
+        if (
+          existsSync(full) &&
+          lname === full.split(/[\\/]/).pop()!.split(".")[0].toLowerCase()
+        ) {
           return full;
         }
       } catch {
@@ -140,7 +160,6 @@ export function detectDefaultRuntime(): "bash" | "node" | "python" {
   return "node";
 }
 
-
 export function manifestPath(name: string): string {
   return join(scriptsDir(), name, "orion.json");
 }
@@ -152,7 +171,9 @@ export function scriptPath(name: string): string {
 }
 
 /** File extension for a runtime (v0.48). */
-export function scriptExt(runtime: "bash" | "node" | "python"): ".sh" | ".js" | ".py" {
+export function scriptExt(
+  runtime: "bash" | "node" | "python",
+): ".sh" | ".js" | ".py" {
   return runtime === "node" ? ".js" : runtime === "python" ? ".py" : ".sh";
 }
 
@@ -171,7 +192,11 @@ export function readManifest(name: string): RunManifest | null {
 export function writeManifest(m: RunManifest): void {
   const dir = join(scriptsDir(), m.name);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(manifestPath(m.name), JSON.stringify(m, null, 2) + "\n", "utf8");
+  writeFileSync(
+    manifestPath(m.name),
+    JSON.stringify(m, null, 2) + "\n",
+    "utf8",
+  );
 }
 
 /** List all saved scripts (newest first). */
@@ -182,7 +207,9 @@ export function listScripts(): RunManifest[] {
     .filter((d) => d.isDirectory() && existsSync(manifestPath(d.name)))
     .map((d) => readManifest(d.name)!)
     .filter((m): m is RunManifest => m !== null)
-    .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+    .sort(
+      (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime(),
+    );
 }
 
 /** Создать новый скрипт из шаблона. */
@@ -239,7 +266,11 @@ export function runScript(
 
   const scriptFile = scriptPath(name);
   if (!existsSync(scriptFile)) {
-    return { ok: false, output: `script file not found: ${scriptFile}`, durationMs: 0 };
+    return {
+      ok: false,
+      output: `script file not found: ${scriptFile}`,
+      durationMs: 0,
+    };
   }
 
   // Read script once for both cache hash and hazard scan (v0.48).
@@ -294,7 +325,9 @@ export function runScript(
         "",
         `  Run:         orion run ${name}`,
         `  Force:       orion run ${name} --force`,
-      ].filter((l) => l !== "").join("\n"),
+      ]
+        .filter((l) => l !== "")
+        .join("\n"),
       durationMs: 0,
     };
   }
@@ -310,12 +343,21 @@ export function runScript(
       m.runCount = (m.runCount ?? 0) + 1;
       writeManifest(m);
       recordTokenEvent({
-        skillName: name, mode: "run", tokensIn: 0,
+        skillName: name,
+        mode: "run",
+        tokensIn: 0,
         tokensSaved: estimateBaselineTokens(m.description?.length ?? 0),
         baselineTokens: estimateBaselineTokens(m.description?.length ?? 0),
-        status: "success", durationMs: result.durationMs,
+        status: "success",
+        durationMs: result.durationMs,
       });
-      updateSkillMetrics(name, { success: true, tokensSaved: estimateBaselineTokens(m.description?.length ?? 0), durationMs: result.durationMs, mode: "run", tokensIn: 0 });
+      updateSkillMetrics(name, {
+        success: true,
+        tokensSaved: estimateBaselineTokens(m.description?.length ?? 0),
+        durationMs: result.durationMs,
+        mode: "run",
+        tokensIn: 0,
+      });
     }
     return result;
   }
@@ -462,7 +504,9 @@ export function setSchedule(name: string, cronExpr: string | null): void {
       const scriptFile = scriptPath(name);
       const cronLine = `${cronExpr} cd ${join(scriptsDir(), name)} && bash "${scriptFile}" # orion:${name}`;
       try {
-        const existing = execSync("crontab -l 2>/dev/null || true", { encoding: "utf8" });
+        const existing = execSync("crontab -l 2>/dev/null || true", {
+          encoding: "utf8",
+        });
         const cleaned = existing
           .split("\n")
           .filter((l) => !l.includes(`# orion:${name}`))
@@ -471,7 +515,9 @@ export function setSchedule(name: string, cronExpr: string | null): void {
         const next = (cleaned ? cleaned + "\n" : "") + cronLine + "\n";
         execSync("crontab -", { input: next, encoding: "utf8" });
       } catch (err) {
-        throw new Error(`cron setup failed: ${err instanceof Error ? err.message : String(err)}`);
+        throw new Error(
+          `cron setup failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
 
@@ -488,7 +534,9 @@ export function unscheduleCron(name: string): void {
 
 function unscheduleCronLocked(name: string): void {
   try {
-    const existing = execSync("crontab -l 2>/dev/null || true", { encoding: "utf8" });
+    const existing = execSync("crontab -l 2>/dev/null || true", {
+      encoding: "utf8",
+    });
     const cleaned = existing
       .split("\n")
       .filter((l) => !l.includes(`# orion:${name}`) && l.trim() !== "")
@@ -519,14 +567,24 @@ function withCronLock(fn: () => void): void {
       if (i < 9) {
         const ms = 50 * (i + 1);
         const start = Date.now();
-        while (Date.now() - start < ms) { /* spin */ }
+        while (Date.now() - start < ms) {
+          /* spin */
+        }
       }
     }
   }
-  if (fd === undefined) throw new Error("cron lock timeout — another schedule/unschedule is in progress");
+  if (fd === undefined)
+    throw new Error(
+      "cron lock timeout — another schedule/unschedule is in progress",
+    );
   try {
     fn();
   } finally {
-    try { closeSync(fd); unlinkSync(lockPath); } catch { /* ok */ }
+    try {
+      closeSync(fd);
+      unlinkSync(lockPath);
+    } catch {
+      /* ok */
+    }
   }
 }

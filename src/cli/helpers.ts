@@ -42,12 +42,14 @@ export function printOut(opts: CliOptions, obj: unknown, plain: string): void {
  * Returns `null` when stdin is not a TTY (pipes, CI) so callers preserve their
  * existing default behaviour and only prompt real humans.
  */
-export async function confirmAction(
-  message: string,
-): Promise<boolean | null> {
+export async function confirmAction(message: string): Promise<boolean | null> {
   if (!process.stdin.isTTY) return null;
   const { createInterface } = await import("node:readline");
-  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true,
+  });
   return new Promise<boolean | null>((resolve) => {
     rl.question(`  ${message} [y/N] `, (ans) => {
       rl.close();

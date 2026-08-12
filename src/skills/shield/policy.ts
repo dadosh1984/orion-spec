@@ -93,7 +93,9 @@ export function scanPolicyFiles(
 
   const findings: PolicyFinding[] = [];
   const files = [
-    ...collectTsFiles(join(cwd, "changes", changeId, "snippets"), { tsx: true }),
+    ...collectTsFiles(join(cwd, "changes", changeId, "snippets"), {
+      tsx: true,
+    }),
     ...collectTsFiles(join(cwd, "src"), { tsx: true }),
   ];
   for (const file of files) {

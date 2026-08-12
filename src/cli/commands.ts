@@ -42,7 +42,12 @@ import { compareCmd, assumptionsCmd } from "./compareCmd.js";
 import { selfAudit } from "./selfauditCmd.js";
 import { backupCmd, restoreCmd } from "./backupCmd.js";
 import { doctor } from "./doctorCmd.js";
-import { exportProfile, importProfile, resetProfile, updateProfile } from "../core/profile.js";
+import {
+  exportProfile,
+  importProfile,
+  resetProfile,
+  updateProfile,
+} from "../core/profile.js";
 import { initRepo } from "../skills/init/handler.js";
 import { changelogFor, changelogAll } from "./changelogCmd.js";
 import { resume } from "../skills/resume/handler.js";
@@ -138,9 +143,13 @@ export async function main(argv: string[]): Promise<number> {
             `\n${statusMark("info")} Existing skill found: "${existing.name}" (score: ${existing.score}).`,
           );
           console.error(`  Run with: orion run ${existing.name}`);
-          console.error(`  Or continue creating a new change: orion draft ${proposal.title}\n`);
+          console.error(
+            `  Or continue creating a new change: orion draft ${proposal.title}\n`,
+          );
         }
-      } catch { /* router not critical for think */ }
+      } catch {
+        /* router not critical for think */
+      }
       printOut(
         opts,
         proposal,
@@ -207,7 +216,10 @@ export async function main(argv: string[]): Promise<number> {
           ];
           let entryPath: string | null = null;
           for (const ec of entryCandidates) {
-            if (existsSync(ec)) { entryPath = ec; break; }
+            if (existsSync(ec)) {
+              entryPath = ec;
+              break;
+            }
           }
 
           if (!entryPath) {
@@ -242,13 +254,19 @@ export async function main(argv: string[]): Promise<number> {
           }
 
           // Создаём скрипт и копируем реальный код
-          const m = createScript(saveName, "node", `Forge result for change: ${title}`);
+          const m = createScript(
+            saveName,
+            "node",
+            `Forge result for change: ${title}`,
+          );
           const entryCode = readFileSync(entryPath, "utf8");
           writeFileSync(scriptPath(saveName), entryCode, "utf8");
           // Записываем sourceChange для трассируемости
           m.sourceChange = title;
           writeManifest(m);
-          console.log(`\n${statusMark("done")} Saved as runnable script: ${saveName}`);
+          console.log(
+            `\n${statusMark("done")} Saved as runnable script: ${saveName}`,
+          );
           console.log(`  Source: changes/${title}/${entryPath}`);
           console.log(`  Run anytime with: orion run ${saveName}`);
         } catch (err) {
@@ -819,7 +837,9 @@ export async function main(argv: string[]): Promise<number> {
 
     case "clean": {
       const what = args[0] ?? "cache";
-      const ok = await confirmAction(`Run clean on "${what}"? (removes cache/reports/dist/coverage)`);
+      const ok = await confirmAction(
+        `Run clean on "${what}"? (removes cache/reports/dist/coverage)`,
+      );
       if (ok === false) {
         console.log(`${paint("cancelled", "dim")} — nothing removed`);
         return 0;

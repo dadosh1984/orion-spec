@@ -18,7 +18,10 @@ export interface ValidationResult {
 }
 
 /** Проверить stdout на соответствие outputSchema из manifest-а скрипта. */
-export function validateOutput(stdout: string, spec?: OutputSpec): ValidationResult {
+export function validateOutput(
+  stdout: string,
+  spec?: OutputSpec,
+): ValidationResult {
   const errors: string[] = [];
 
   if (!spec) return { ok: true, errors: [] };
@@ -58,7 +61,13 @@ export function validateOutput(stdout: string, spec?: OutputSpec): ValidationRes
 
   // Проверяем поле status если есть
   if ("status" in obj) {
-    const valid = ["success", "error", "needs_ai", "needs_human", "partial_success"];
+    const valid = [
+      "success",
+      "error",
+      "needs_ai",
+      "needs_human",
+      "partial_success",
+    ];
     if (!valid.includes(obj.status as string)) {
       errors.push(`unknown status: "${obj.status}"`);
     }

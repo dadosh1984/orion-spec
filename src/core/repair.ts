@@ -26,7 +26,9 @@ function readRepairLog(): RepairEntry[] {
     const p = repairLogPath();
     if (!existsSync(p)) return [];
     return JSON.parse(readFileSync(p, "utf8")) as RepairEntry[];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function writeRepairLog(entries: RepairEntry[]): void {
@@ -34,13 +36,21 @@ function writeRepairLog(entries: RepairEntry[]): void {
     const p = repairLogPath();
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, JSON.stringify(entries.slice(-500), null, 2), "utf8");
-  } catch { /* ok */ }
+  } catch {
+    /* ok */
+  }
 }
 
 export function recordRepairAttempt(skillName: string, error: string): number {
   const log = readRepairLog();
   const prev = log.filter((e) => e.skillName === skillName && !e.fixed).length;
-  log.push({ skillName, ts: new Date().toISOString(), error: error.slice(0, 500), attempt: prev + 1, fixed: false });
+  log.push({
+    skillName,
+    ts: new Date().toISOString(),
+    error: error.slice(0, 500),
+    attempt: prev + 1,
+    fixed: false,
+  });
   writeRepairLog(log);
   return prev + 1;
 }
@@ -48,13 +58,19 @@ export function recordRepairAttempt(skillName: string, error: string): number {
 export function markRepairFixed(skillName: string): void {
   const log = readRepairLog();
   for (const e of [...log].reverse()) {
-    if (e.skillName === skillName && !e.fixed) { e.fixed = true; break; }
+    if (e.skillName === skillName && !e.fixed) {
+      e.fixed = true;
+      break;
+    }
   }
   writeRepairLog(log);
 }
 
 export function canAttemptRepair(skillName: string): boolean {
-  return readRepairLog().filter((e) => e.skillName === skillName && !e.fixed).length < MAX_REPAIR_ATTEMPTS;
+  return (
+    readRepairLog().filter((e) => e.skillName === skillName && !e.fixed)
+      .length < MAX_REPAIR_ATTEMPTS
+  );
 }
 
 export function policyCheck(m: RunManifest): string | null {
@@ -73,7 +89,11 @@ export function sandboxEnv(m: RunManifest): Record<string, string> {
     ORION_SANDBOX_WORKSPACE: "1",
     HOME: process.env.HOME ?? process.env.USERPROFILE ?? "",
     PATH: "/usr/bin:/bin:/usr/local/bin",
-    ...(m.sandbox?.timeout_sec ? { ORION_SANDBOX_TIMEOUT: String(m.sandbox.timeout_sec) } : {}),
-    ...(m.sandbox?.max_memory_mb ? { ORION_SANDBOX_MAX_MEMORY: String(m.sandbox.max_memory_mb) } : {}),
+    ...(m.sandbox?.timeout_sec
+      ? { ORION_SANDBOX_TIMEOUT: String(m.sandbox.timeout_sec) }
+      : {}),
+    ...(m.sandbox?.max_memory_mb
+      ? { ORION_SANDBOX_MAX_MEMORY: String(m.sandbox.max_memory_mb) }
+      : {}),
   };
 }

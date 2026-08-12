@@ -13,37 +13,109 @@ export interface ClassifyResult {
 }
 
 // Category 4 FIRST — "спарсить сайт" before "парсить" (cat 2)
-const CAT4_RE = /(scrap(?:e|ing)|monitor\s+(?:the\s+)?(?:price|site)|browser|selenium|puppeteer|playwright|спарс(?:ить|инг)|парс(?:ить|инг)\s+(?:сайт|site|web|html)|монитор(?:ить|инг)\s+(?:цен|price|сайт|site)|извле(?:чь|кать)\s+(?:с|из)\s+(?:сайт|site|web)|заполн(?:ить|ение)\s+(?:форм|form)|браузер)/i;
+const CAT4_RE =
+  /(scrap(?:e|ing)|monitor\s+(?:the\s+)?(?:price|site)|browser|selenium|puppeteer|playwright|спарс(?:ить|инг)|парс(?:ить|инг)\s+(?:сайт|site|web|html)|монитор(?:ить|инг)\s+(?:цен|price|сайт|site)|извле(?:чь|кать)\s+(?:с|из)\s+(?:сайт|site|web)|заполн(?:ить|ение)\s+(?:форм|form)|браузер)/i;
 
-const CAT1_RE = /(backup|archive|clean(?:up)?|delete\s+(old|dup|temp|junk)|sort\s+(file|folder)|rename|convert|compress|extract\s+archive|run\s+(test|build)|бэкап|архив|очист(?:ить|ка)|удал(?:ить|ение)\s+(?:стар|дубликат|врем|мусор)|сортиров(?:ать|ка)|переимен(?:овать|ование)|конверт(?:ировать|ация)|сжат(?:ь|ие)|распак(?:овать|овка)|запус(?:тить|к)\s+(?:тест|test|сборк|build))/i;
+const CAT1_RE =
+  /(backup|archive|clean(?:up)?|delete\s+(old|dup|temp|junk)|sort\s+(file|folder)|rename|convert|compress|extract\s+archive|run\s+(test|build)|бэкап|архив|очист(?:ить|ка)|удал(?:ить|ение)\s+(?:стар|дубликат|врем|мусор)|сортиров(?:ать|ка)|переимен(?:овать|ование)|конверт(?:ировать|ация)|сжат(?:ь|ие)|распак(?:овать|овка)|запус(?:тить|к)\s+(?:тест|test|сборк|build))/i;
 
-const CAT3_RE = /(webhook|telegram|slack|discord|deploy|curl|wget|\bapi\b|fetch\s+(?:rate|data|status)|send\s+(?:a\s+)?(?:message|notification|email|webhook)|отправи(?:ть|ка)\s+(?:сообщен|message|уведом|notification)|полу(?:чить|ение)\s+(?:курс|данные|статус)|запрос\s+(?:к|на)\s+(?:api|сервер)|деплой)/i;
+const CAT3_RE =
+  /(webhook|telegram|slack|discord|deploy|curl|wget|\bapi\b|fetch\s+(?:rate|data|status)|send\s+(?:a\s+)?(?:message|notification|email|webhook)|отправи(?:ть|ка)\s+(?:сообщен|message|уведом|notification)|полу(?:чить|ение)\s+(?:курс|данные|статус)|запрос\s+(?:к|на)\s+(?:api|сервер)|деплой)/i;
 
-const CAT2_RE = /(parse|extract\s+data|valid(?:ate|ation)|парс(?:ить|инг)|извле(?:чь|кать)\s+данные|обработ(?:ать|ка)\s+(?:лог|log|таблиц|table|документ|document)|анализ\s+(?:лог|log|отчёт|report)|провер(?:ить|ка)\s+(?:файл|file|данные|data))/i;
+const CAT2_RE =
+  /(parse|extract\s+data|valid(?:ate|ation)|парс(?:ить|инг)|извле(?:чь|кать)\s+данные|обработ(?:ать|ка)\s+(?:лог|log|таблиц|table|документ|document)|анализ\s+(?:лог|log|отчёт|report)|провер(?:ить|ка)\s+(?:файл|file|данные|data))/i;
 
-const CAT5_RE = /(write\s+(?:text|article|report|email)|research|explain|brainstorm|creative|why|напи(?:ши|сать)\s+(?:текст|стать|письмо|документ|отчёт|report|article|email)|проанализир(?:уй|овать)\s+(?:договор|contract|риск|risk|текст|text|смысл|meaning)|оцен(?:и|ка)\s+(?:риск|risk|иде|idea)|сравн(?:и|ение)|compar(?:e|ison)|план(?:ирование)?\s+(?:проект|project|задач|task)|plan\s+(?:project|task)|исследова(?:ть|ние)|объясн(?:и|ение)|почему|придума(?:й|ть)|креатив)/i;
+const CAT5_RE =
+  /(write\s+(?:text|article|report|email)|research|explain|brainstorm|creative|why|напи(?:ши|сать)\s+(?:текст|стать|письмо|документ|отчёт|report|article|email)|проанализир(?:уй|овать)\s+(?:договор|contract|риск|risk|текст|text|смысл|meaning)|оцен(?:и|ка)\s+(?:риск|risk|иде|idea)|сравн(?:и|ение)|compar(?:e|ison)|план(?:ирование)?\s+(?:проект|project|задач|task)|plan\s+(?:project|task)|исследова(?:ть|ние)|объясн(?:и|ение)|почему|придума(?:й|ть)|креатив)/i;
 
-const RULES: Array<{ re: RegExp; cat: TaskCategory; label: string; rec: ClassifyResult["recommendation"]; reason: string }> = [
-  { re: CAT4_RE, cat: 4, label: "Динамичная веб-задача", rec: "script_with_ai", reason: "Веб-сайты меняют структуру. Скрипт потребует периодической починки ИИ." },
-  { re: CAT3_RE, cat: 3, label: "Внешний API / сеть", rec: "script", reason: "Использует стабильный внешний API. Можно автоматизировать скриптом." },
-  { re: CAT1_RE, cat: 1, label: "Локальная детерминированная", rec: "script", reason: "Чёткие повторяемые шаги с файлами. Идеальный кандидат для автономного скрипта." },
-  { re: CAT2_RE, cat: 2, label: "Локальная с неопределённостью", rec: "script_with_ai", reason: "В основном детерминированная, но возможны нестандартные входные данные." },
-  { re: CAT5_RE, cat: 5, label: "Творческая / аналитическая", rec: "ai_only", reason: "Требует понимания контекста и творческого мышления." },
+const RULES: Array<{
+  re: RegExp;
+  cat: TaskCategory;
+  label: string;
+  rec: ClassifyResult["recommendation"];
+  reason: string;
+}> = [
+  {
+    re: CAT4_RE,
+    cat: 4,
+    label: "Динамичная веб-задача",
+    rec: "script_with_ai",
+    reason:
+      "Веб-сайты меняют структуру. Скрипт потребует периодической починки ИИ.",
+  },
+  {
+    re: CAT3_RE,
+    cat: 3,
+    label: "Внешний API / сеть",
+    rec: "script",
+    reason:
+      "Использует стабильный внешний API. Можно автоматизировать скриптом.",
+  },
+  {
+    re: CAT1_RE,
+    cat: 1,
+    label: "Локальная детерминированная",
+    rec: "script",
+    reason:
+      "Чёткие повторяемые шаги с файлами. Идеальный кандидат для автономного скрипта.",
+  },
+  {
+    re: CAT2_RE,
+    cat: 2,
+    label: "Локальная с неопределённостью",
+    rec: "script_with_ai",
+    reason:
+      "В основном детерминированная, но возможны нестандартные входные данные.",
+  },
+  {
+    re: CAT5_RE,
+    cat: 5,
+    label: "Творческая / аналитическая",
+    rec: "ai_only",
+    reason: "Требует понимания контекста и творческого мышления.",
+  },
 ];
 
 export function classifyTask(prompt: string): ClassifyResult {
   const n = prompt.toLowerCase().trim();
   for (const r of RULES) {
-    if (r.re.test(n)) return { category: r.cat, label: r.label, recommendation: r.rec, reason: r.reason };
+    if (r.re.test(n))
+      return {
+        category: r.cat,
+        label: r.label,
+        recommendation: r.rec,
+        reason: r.reason,
+      };
   }
-  return { category: 5, label: "Творческая / аналитическая", recommendation: "ai_only", reason: "По умолчанию — решать через ИИ." };
+  return {
+    category: 5,
+    label: "Творческая / аналитическая",
+    recommendation: "ai_only",
+    reason: "По умолчанию — решать через ИИ.",
+  };
 }
 
-export function formatClassifyResult(r: ClassifyResult, _prompt: string): string {
+export function formatClassifyResult(
+  r: ClassifyResult,
+  _prompt: string,
+): string {
   return r.recommendation === "script" || r.recommendation === "script_with_ai"
-    ? ["", "💡 Эта задача выглядит как «" + r.label + "».", r.reason, "",
-      r.recommendation === "script"
-        ? "Рекомендуется: orion forge <change> --save-as <name> — создать автономный скрипт и запускать без токенов."
-        : "Рекомендуется: orion forge <change> --save-as <name> + orion run <name> для основной массы, ИИ для исключений.", ""].join("\n")
-    : ["", "🧠 Эта задача — «" + r.label + "».", r.reason, "", "Автоматизация не рекомендуется. Лучше решать через ИИ напрямую.", ""].join("\n");
+    ? [
+        "",
+        "💡 Эта задача выглядит как «" + r.label + "».",
+        r.reason,
+        "",
+        r.recommendation === "script"
+          ? "Рекомендуется: orion forge <change> --save-as <name> — создать автономный скрипт и запускать без токенов."
+          : "Рекомендуется: orion forge <change> --save-as <name> + orion run <name> для основной массы, ИИ для исключений.",
+        "",
+      ].join("\n")
+    : [
+        "",
+        "🧠 Эта задача — «" + r.label + "».",
+        r.reason,
+        "",
+        "Автоматизация не рекомендуется. Лучше решать через ИИ напрямую.",
+        "",
+      ].join("\n");
 }

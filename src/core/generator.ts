@@ -8,7 +8,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { classifyTask } from "./classify.js";
-import { createScript, scriptsDir, writeManifest, type RunManifest } from "./runtime.js";
+import {
+  createScript,
+  scriptsDir,
+  writeManifest,
+  type RunManifest,
+} from "./runtime.js";
 
 export interface GeneratedSkill {
   name: string;
@@ -33,7 +38,8 @@ export function generateSkill(
   files.push("run.sh");
 
   // 2. Обогатить manifest
-  m.risk_level = cat.category <= 2 ? "low" : cat.category === 3 ? "medium" : "medium";
+  m.risk_level =
+    cat.category <= 2 ? "low" : cat.category === 3 ? "medium" : "medium";
   m.requires_confirmation = cat.category >= 3;
   m.irreversible = false;
   m.sandbox = {
@@ -92,7 +98,7 @@ export function generateSkill(
         ? [
             "#!/usr/bin/env python3",
             '"""Test for ' + name + '"""',
-            'import json',
+            "import json",
             'print(json.dumps({"status":"success","summary":"all tests passed","metrics":{"tests":1,"passed":1}}))',
           ].join("\n")
         : [
@@ -102,8 +108,13 @@ export function generateSkill(
           ].join("\n");
 
   mkdirSync(join(dir, "tests"), { recursive: true });
-  const testExt = runtime === "node" ? ".js" : runtime === "python" ? ".py" : ".sh";
-  writeFileSync(join(dir, "tests", `test_basic${testExt}`), testBody + "\n", "utf8");
+  const testExt =
+    runtime === "node" ? ".js" : runtime === "python" ? ".py" : ".sh";
+  writeFileSync(
+    join(dir, "tests", `test_basic${testExt}`),
+    testBody + "\n",
+    "utf8",
+  );
   files.push("tests/test_basic" + testExt);
 
   return { name, files, manifest: m };

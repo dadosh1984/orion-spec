@@ -97,11 +97,7 @@ export function collectTsFiles(
   dir: string,
   opts: CollectTsOptions = {},
 ): string[] {
-  const {
-    depth = Infinity,
-    tsx = false,
-    skipDirs = DEFAULT_SKIP_DIRS,
-  } = opts;
+  const { depth = Infinity, tsx = false, skipDirs = DEFAULT_SKIP_DIRS } = opts;
   if (depth < 0) return [];
   const out: string[] = [];
   let entries: string[] = [];
@@ -117,10 +113,7 @@ export function collectTsFiles(
       const st = statSync(full);
       if (st.isDirectory()) {
         out.push(...collectTsFiles(full, { depth: depth - 1, tsx, skipDirs }));
-      } else if (
-        e.endsWith(".ts") ||
-        (tsx && e.endsWith(".tsx"))
-      ) {
+      } else if (e.endsWith(".ts") || (tsx && e.endsWith(".tsx"))) {
         out.push(full);
       }
     } catch {

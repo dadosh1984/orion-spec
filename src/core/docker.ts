@@ -35,11 +35,7 @@ export function dockerRunCommand(
     : "--memory=256m";
   const network = m.sandbox?.network === "allowed" ? "" : "--network none";
   const runtime =
-    m.runtime === "node"
-      ? "node"
-      : m.runtime === "python"
-        ? "python3"
-        : "bash";
+    m.runtime === "node" ? "node" : m.runtime === "python" ? "python3" : "bash";
 
   const ext = scriptExt(m.runtime);
   return [
@@ -51,7 +47,7 @@ export function dockerRunCommand(
     `-w ${workDir}`,
     `--stop-timeout ${timeout}`,
     `--cpus=0.5`,
-    `-e ORION_SANDBOX_NETWORK=${network ? '0' : '1'}`,
+    `-e ORION_SANDBOX_NETWORK=${network ? "0" : "1"}`,
     `-e ORION_RUN_NAME=${name}`,
     image,
     `${runtime} /script/${name}${ext}`,
