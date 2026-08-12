@@ -7,7 +7,12 @@ import {
   deleteScript,
   readManifest,
   assertCronSupported,
+  runScript,
+  scriptPath,
 } from "../src/core/runtime.js";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { sha256 } from "../src/utils/hash.js";
 
 const TEST_NAME = "_test_runtime_phase_a";
 
@@ -64,5 +69,39 @@ describe("run runtime — Phase A (Windows-совместимость, v0.47)", 
       // On unix it must not throw — scheduling is supported.
       expect(() => assertCronSupported()).not.toThrow();
     }
+  });
+
+  it("caches an identical re-run by input hash; new args re-execute (Phase E)", () => {
+    const name = TEST_NAME + "_cache";
+    createScript(name, "node", "cache test");
+    writeFileSync(
+      scriptPath(name),
+      '#!/usr/bin/env node\nconsole.log("OUT");\n',
+      "utf8",
+    );
+
+    // First run with an argument executes and records the hash.
+    const first = runScript(name, { args: ["a"] });
+    expect(first.ok).toBe(true);
+    expect(first.output).toContain("OUT");
+
+    // Second run with the SAME args is served from cache.
+    const cached = runScript(name, { args: ["a"] });
+    expect(cached.ok).toBe(true);
+    expect(cached.output).toContain("cached");
+
+    // Different args -> different hash -> re-executes.
+    const fresh = runScript(name, { args: ["b"] });
+    expect(fresh.ok).toBe(true);
+    expect(fresh.output).toContain("OUT");
+
+    // The manifest recorded the last input hash.
+    const recorded = readManifest(name);
+    expect(recorded?.lastRunHash).toBeTruthy();
+    expect(recorded?.lastRunHash).toBe(
+      sha256(`${scriptPath(name)}:${join("b")}`),
+    );
+
+    try { deleteScript(name); } catch { /* ok */ }
   });
 });

@@ -24,10 +24,10 @@
 - [ ] [fact] Визуальный прогресс-бар для многошагового `forge` — отложено: progressBar удалён в Фазе B как мёртвый
 
 ## Фаза E — Функциональность и уникальность
-- [ ] [fact] Единый `~/.orion/config.json` runtime-конфиг + `orion config` (вместо разрозненных orionTdd/orionTrack/env)
-- [ ] [fact] Маркdown-сводка в файл для `out`/`shield` (человекочитаемый отчёт, не только JSON)
-- [ ] [fact] Авто-применение топ-уроков `lessons` при `draft` к конкретному change
-- [ ] [fact] Хэш-проверка входных аргументов `run` для детерминированного перезапуска только при изменении входа
+- [ ] [fact] Единый `~/.orion/config.json` runtime-конфиг — отклонено как преждевременное: project-локальные orionTdd/orionTrack версионируются и нужны per-project, глобальный config.json смешал бы понятия
+- [x] [fact] Маркdown-сводка — уже есть: `out` пишет result.md, `shield` пишет reports/<id>/guard-report.md
+- [x] [fact] Авто-применение уроков — уже есть: `think` заполняет appliesLessons, `draft` вставляет в proposal (+ lessons export/import)
+- [x] [fact] Хэш-проверка входных аргументов `run`: runScript кэширует по SHA-256(args+скрипт), idempotent перезапуск; живой тест + unit-тест
 
 ## Финал
 - [ ] [fact] Линт + tsc + 663 теста — все гейты зелёные

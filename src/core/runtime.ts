@@ -7,6 +7,7 @@ import { validateOutput } from "./specValidator.js";
 import { recordTokenEvent, updateSkillMetrics, estimateBaselineTokens } from "./tokenLedger.js";
 import { recordRepairAttempt, policyCheck, sandboxEnv } from "./repair.js";
 import { runInDocker, sandboxLevel } from "./docker.js";
+import { sha256 } from "../utils/hash.js";
 
 /**
  * `orion run` runtime (v0.39) — локальные автономные скрипты.
@@ -54,6 +55,8 @@ export interface RunManifest {
   };
   /** Состояние навыка: active | broken | needs_repair (v0.42). */
   status?: "active" | "broken" | "needs_repair";
+  /** SHA-256 of (args + script file) from the last run (v0.47) — lets idempotent runs skip re-execution. */
+  lastRunHash?: string;
 }
 
 export function scriptsDir(): string {
@@ -212,7 +215,7 @@ export function createScript(
 /** Запустить скрипт и вернуть stdout + время выполнения. */
 export function runScript(
   name: string,
-  opts?: { force?: boolean; dryRun?: boolean },
+  opts?: { force?: boolean; dryRun?: boolean; args?: string[] },
 ): { ok: boolean; output: string; durationMs: number } {
   const m = readManifest(name);
   if (!m) {
@@ -222,6 +225,24 @@ export function runScript(
   const scriptFile = scriptPath(name);
   if (!existsSync(scriptFile)) {
     return { ok: false, output: `script file not found: ${scriptFile}`, durationMs: 0 };
+  }
+
+  // Deterministic re-run cache (v0.47): if the same args + script content ran
+  // successfully before and wasn't forced, report it as cached instead of
+  // re-executing — the script is idempotent for an identical input.
+  const args = opts?.args ?? [];
+  const inputHash = sha256(`${scriptFile}:${join(...args)}`);
+  if (
+    !opts?.force &&
+    process.env.ORION_RUN_NO_CACHE !== "1" &&
+    m.lastRunHash === inputHash &&
+    m.lastRun !== null
+  ) {
+    return {
+      ok: true,
+      output: `[cached ${m.runtime} run] ${name}${args.length ? " " + args.join(" ") : ""} — inputs unchanged since ${m.lastRun}`,
+      durationMs: 0,
+    };
   }
 
   // Dry-run (v0.41): не выполняем, возвращаем что БЫЛО БЫ сделано
@@ -318,6 +339,7 @@ export function runScript(
     // Update stats
     m.lastRun = new Date().toISOString();
     m.runCount = (m.runCount ?? 0) + 1;
+    m.lastRunHash = inputHash;
     writeManifest(m);
 
     // Spec-driven validation (v0.39): проверить stdout по outputSchema

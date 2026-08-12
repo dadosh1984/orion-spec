@@ -215,7 +215,7 @@ export async function runDispatch(args: string[]): Promise<number> {
       const origArgs = process.argv.slice(2);
       const force = origArgs.includes("--force");
       const dryRun = origArgs.includes("--dry-run");
-      const result = runScriptCore(sub, { force, dryRun });
+      const result = runScriptCore(sub, { force, dryRun, args: [name, ...rest].filter(Boolean) });
       if (result.ok) {
         // Auto-clear needs_repair on success (v0.42)
         if (m.status === "needs_repair") {
