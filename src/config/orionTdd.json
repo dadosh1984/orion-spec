@@ -5,5 +5,8 @@
   "command": "pnpm vitest run {{testDir}}/{{testFile}}",
   "minCoverage": 80,
   "testExt": ".test.ts",
-  "srcExt": ".ts"
+  "srcExt": ".ts",
+  "run": {
+    "preferredRuntime": "bash"
+  }
 }

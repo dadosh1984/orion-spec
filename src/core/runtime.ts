@@ -154,6 +154,30 @@ function pathDelimiter(): string {
  * node is always runnable because we invoke it via process.execPath.
  */
 export function detectDefaultRuntime(): "bash" | "node" | "python" {
+  // Check user preference from orionTdd.json (v0.48).
+  try {
+    const cfgPath = join(
+      import.meta.dirname ?? ".",
+      "..",
+      "config",
+      "orionTdd.json",
+    );
+    if (existsSync(cfgPath)) {
+      const cfg = JSON.parse(readFileSync(cfgPath, "utf8")) as {
+        run?: { preferredRuntime?: string };
+      };
+      const pref = cfg.run?.preferredRuntime;
+      if (
+        pref === "bash" ||
+        pref === "node" ||
+        pref === "python"
+      ) {
+        if (resolveBinary(pref)) return pref;
+      }
+    }
+  } catch {
+    /* config not critical */
+  }
   if (resolveBinary("bash")) return "bash";
   if (process.execPath) return "node";
   if (resolveBinary("python") || resolveBinary("python3")) return "python";

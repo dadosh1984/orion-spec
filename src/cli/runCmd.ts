@@ -201,6 +201,7 @@ export async function runDispatch(args: string[]): Promise<number> {
         );
       const fromIdx = rest.indexOf("--from");
       const prompt = fromIdx >= 0 ? rest.slice(fromIdx + 1).join(" ") : name;
+      const interactive = rest.includes("--interactive");
       try {
         const runtime = rest.includes("--node")
           ? "node"
@@ -208,12 +209,89 @@ export async function runDispatch(args: string[]): Promise<number> {
             ? "python"
             : "bash";
         const result = generateSkill(name, prompt, runtime);
+
+        // Interactive wizard (v0.48): ask for risk, network, schedule, postconditions.
+        if (interactive && process.stdin.isTTY) {
+          const rl = createInterface({
+            input: process.stdin,
+            output: process.stdout,
+            terminal: true,
+          });
+          const ask = (q: string): Promise<string> =>
+            new Promise((resolve) => rl.question(q, resolve));
+
+          console.log(`\n${paint("⚙ Interactive skill setup", "cyan")}`);
+          console.log(`  Press Enter to accept defaults.\n`);
+
+          // Risk level
+          const riskAns = await ask(
+            `  Risk level [low/medium/high/critical] (default: ${result.manifest.risk_level}): `,
+          );
+          const risk = ["low", "medium", "high", "critical"].includes(
+            riskAns.trim().toLowerCase(),
+          )
+            ? (riskAns.trim().toLowerCase() as "low" | "medium" | "high" | "critical")
+            : result.manifest.risk_level;
+          result.manifest.risk_level = risk;
+          result.manifest.requires_confirmation =
+            risk === "high" || risk === "critical";
+
+          // Network
+          const netAns = await ask(
+            `  Network [allowed/denied] (default: ${result.manifest.sandbox?.network ?? "denied"}): `,
+          );
+          if (netAns.trim() === "allowed") {
+            result.manifest.sandbox = {
+              ...result.manifest.sandbox,
+              network: "allowed",
+            };
+          }
+
+          // Schedule
+          const schedAns = await ask(
+            `  Cron schedule (default: none): `,
+          );
+          if (schedAns.trim()) {
+            result.manifest.schedule = schedAns.trim();
+          }
+
+          // Postconditions
+          const postAns = await ask(
+            `  Postcondition [none/json_field/file_exists] (default: none): `,
+          );
+          if (postAns.trim() === "json_field") {
+            const field = await ask(`    JSON field name: `);
+            const equals = await ask(`    Expected value: `);
+            result.manifest.postconditions = [
+              { type: "json_field", field: field.trim(), equals: equals.trim() },
+            ];
+          } else if (postAns.trim() === "file_exists") {
+            const fpath = await ask(`    File path: `);
+            result.manifest.postconditions = [
+              { type: "file_exists", path: fpath.trim() },
+            ];
+          }
+
+          rl.close();
+          writeManifest(result.manifest);
+        } else if (interactive) {
+          console.error(
+            `${statusMark("warn")} --interactive requires a terminal (TTY). Using defaults.`,
+          );
+        }
+
         console.log(`${statusMark("done")} Skill "${name}" generated:`);
         for (const f of result.files) console.log(`  ✓ ${f}`);
         console.log(`  Risk level: ${result.manifest.risk_level}`);
         console.log(
           `  Network:    ${result.manifest.sandbox?.network ?? "denied"}`,
         );
+        if (result.manifest.schedule)
+          console.log(`  Schedule:   ${result.manifest.schedule}`);
+        if (result.manifest.postconditions?.length)
+          console.log(
+            `  Postcondition: ${result.manifest.postconditions[0].type}`,
+          );
         console.log(`\n  Preview:  orion run ${name} --dry-run`);
         console.log(`  Run:      orion run ${name}`);
       } catch (err) {
