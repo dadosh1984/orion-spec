@@ -4,6 +4,30 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.48.0] — 2026-08-12
+
+Six-phase modernization: stability, observability, skill-first router,
+real file watchers, and UX polish.
+
+- **Phase 1 (stability)**: `scriptExt()` DRY helper; hazard-scan cache by
+  sha256; normalized idempotent cache (JSON.stringify with script+args+env);
+  atomic cron via O_EXCL lockfile; safe `run delete` requires `--yes` in
+  non-TTY; `postconditions` wired into `verifyRun` after successful execution.
+- **Phase 2 (observability)**: `run list` shows risk icons, sourceChange,
+  requires_confirmation; `run show` — full colorized card; new sub-commands:
+  `run explain <name>` (skill summary + token ROI), `run log <name>` (last 20
+  events), `run stats` (token economy dashboard, top-10 by saved).
+- **Phase 3 (skill-first router)**: `run diff <a> <b>` — line-level diff with
+  color; `run repair --auto` hints forge re-generation; `think` checks
+  `findExistingSkill` before creating a new change.
+- **Phase 4 (real watch)**: `run watch start/stop` spawns real `fs.watch` via
+  detached child process; removed dead `startFileWatcher` and top-level `watch`
+  collision from `ORION_COMMANDS`.
+- **Phase 5 (UX)**: dry-run shows human-readable preview; `run new` warns about
+  auto-selected runtime in non-TTY; `run --help` prints full sub-command help.
+- **Phase 6 (release)**: bump 0.47.0 → 0.48.0; `.gitignore` excludes
+  `.reasonix/` and `Qwen_text_*`.
+
 ## [0.47.0] — 2026-08-12
 
 Deep audit implemented across five phases (A–E): Windows compatibility,
