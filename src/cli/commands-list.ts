@@ -8,7 +8,7 @@ export const ORION_COMMANDS: ReadonlyArray<string> = Object.freeze([
   "backup", "restore", "review", "archive", "doctor", "learn",
   "track", "scale", "tdd", "metrics", "mcp", "serve", "plugin",
   "config", "clean", "profile", "help", "version", "shell",
-  "env", "history", "diff", "watch", "completion",
+  "env", "history", "diff", "completion",
   "run",
 ]);
 

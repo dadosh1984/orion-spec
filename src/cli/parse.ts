@@ -70,6 +70,8 @@ Commands:
   run <name>              Execute a saved offline script (v0.39)
   run cache               Show spec-driven script cache (v0.39)
   run watch <name> <dir>  Watch directory and run skill on changes (v0.43)
+  run watch start <name> <dir> [pattern]  Start real fs.watch (v0.48)
+  run watch stop <name>   Stop a running watcher (v0.48)
   run watchers            List file watchers (v0.43)
   run unwatch <name>      Remove file watcher (v0.43)
   run repair <name>       Mark skill for repair (v0.42)

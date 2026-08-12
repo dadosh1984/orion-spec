@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { join } from "node:path";
+import { execSync, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { statusMark, paint } from "../utils/term.js";
 import { confirmAction, lineDiff } from "./helpers.js";
@@ -34,16 +35,67 @@ export async function runDispatch(args: string[]): Promise<number> {
 
   switch (sub) {
     case "watch": {
-      if (!name) return fail("run watch requires: orion run watch <name> <dir> <pattern>");
-      const watchDir = rest[0];
-      const pattern = rest[1] || "*";
-      if (!watchDir) return fail("run watch requires a directory to watch");
-      try {
-        addFileWatcher(name, watchDir, pattern, name);
-        console.log(`${statusMark("done")} Watcher "${name}" added: ${watchDir} (${pattern}) → orion run ${name}`);
-      } catch (err) {
-        console.error(`orion: ${statusMark("error")} ${err instanceof Error ? err.message : String(err)}`);
-        return 1;
+      // run watch start <name> <dir> [pattern] — start real fs.watch (v0.48)
+      // run watch stop <name> — stop a running watcher
+      // run watch (no sub) — alias for watchers
+      if (name === "start") {
+        const wName = rest[0];
+        const watchDir = rest[1];
+        const pattern = rest[2] || "*";
+        if (!wName || !watchDir) return fail("run watch start requires: orion run watch start <name> <dir> [pattern]");
+        if (!existsSync(watchDir)) return fail(`directory not found: ${watchDir}`);
+        try {
+          addFileWatcher(wName, watchDir, pattern, wName);
+          // Spawn a detached background watcher process (v0.48).
+          const child = spawn(
+            process.execPath,
+            [join(import.meta.dirname ?? ".", "..", "..", "dist", "cli", "index.js"), "run", "watch", "--daemon", wName, watchDir, pattern],
+            { detached: true, stdio: "ignore", cwd: process.cwd() },
+          );
+          child.unref();
+          console.log(`${statusMark("done")} Watcher "${wName}" started: ${watchDir} (${pattern}) → orion run ${wName}`);
+          console.log(`  Stop: orion run watch stop ${wName}`);
+        } catch (err) {
+          console.error(`orion: ${statusMark("error")} ${err instanceof Error ? err.message : String(err)}`);
+          return 1;
+        }
+        return 0;
+      }
+      if (name === "stop") {
+        const wName = rest[0];
+        if (!wName) return fail("run watch stop requires a watcher name");
+        removeFileWatcher(wName);
+        console.log(`${statusMark("done")} Watcher "${wName}" stopped.`);
+        return 0;
+      }
+      // --daemon: internal mode — runs fs.watch in foreground (v0.48).
+      if (name === "--daemon") {
+        const wName = rest[0];
+        const watchDir = rest[1];
+        const pattern = rest[2] || "*";
+        if (!wName || !watchDir) return fail("internal: --daemon requires name dir [pattern]");
+        const { watch } = await import("node:fs");
+        const re = new RegExp(pattern.replace(/\*/g, ".*"));
+        process.stderr.write(`[watcher] ${wName} watching ${watchDir}/${pattern}\n`);
+        watch(watchDir, { recursive: false }, (_e, fn) => {
+          if (fn && re.test(fn)) {
+            try {
+              execSync(`"${process.execPath}" "${join(import.meta.dirname ?? ".", "..", "..", "dist", "cli", "index.js")}" run ${wName}`, { stdio: "inherit", timeout: 60_000 });
+            } catch { /* watcher continues */ }
+          }
+        });
+        // Keep process alive.
+        return new Promise(() => {});
+      }
+      // Fallback: show watchers.
+      const all = listWatchers();
+      if (all.length === 0) {
+        console.log(`${statusMark("info")} No file watchers registered.`);
+      } else {
+        console.log(`${statusMark("info")} File watchers (${all.length}):`);
+        for (const w of all) {
+          console.log(`  ${w.name.padEnd(16)} ${w.watchDir.padEnd(24)} ${w.pattern} → ${w.skillName}`);
+        }
       }
       return 0;
     }

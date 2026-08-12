@@ -1,11 +1,10 @@
 /**
  * Router v2 + Verifier v2 + Scheduler v2 (v0.43).
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, watch, readdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { classifyTask } from "./classify.js";
-import { runScript } from "./runtime.js";
 
 // ─── Router ───────────────────────────────────────────
 
@@ -120,11 +119,3 @@ export function addFileWatcher(name: string, watchDir: string, pattern: string, 
 export function removeFileWatcher(name: string): void { writeWatchers(readWatchers().filter((e) => e.name !== name)); }
 
 export function listWatchers(): WatcherEntry[] { return readWatchers(); }
-
-export function startFileWatcher(watchDir: string, pattern: string, skillName: string): { close: () => void } {
-  const re = new RegExp(pattern.replace(/\*/g, ".*"));
-  const w = watch(watchDir, { recursive: false }, (_e, fn) => {
-    if (fn && re.test(fn)) { const r = runScript(skillName); if (!r.ok) process.stderr.write(`[watcher] ${skillName} failed: ${r.output.slice(0, 200)}\n`); }
-  });
-  return { close: () => w.close() };
-}
