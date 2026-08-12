@@ -60,7 +60,7 @@ export async function run(ctx) {
     if (results.length > 0) {
       const seen = new Set();
       const uniq = results.filter((r) => {
-        const id = (r.href.split("/")[4] || "") + r.href.split("skuId=")[1] || r.href;
+        const id = (r.href.split("/")[3] || r.href).split("?")[0]; // product id, ignore skuId
         if (seen.has(id)) return false;
         seen.add(id);
         return true;

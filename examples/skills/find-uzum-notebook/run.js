@@ -95,7 +95,7 @@ export async function run(ctx) {
   // Deduplicate by product id
   const seen = new Set();
   const uniq = items.filter((r) => {
-    const id = (r.href.split("/")[4] || "") + (r.href.split("skuId=")[1] || "");
+    const id = (r.href.split("/")[3] || r.href).split("?")[0]; // product id, ignore skuId
     if (seen.has(id)) return false;
     seen.add(id);
     return true;
