@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { writeFileSafe } from "../../utils/file.js";
-import { formatBytes } from "../../utils/format.js";
+import { humanBytes } from "../../utils/format.js";
 import { OrionTrack } from "../../core/track.js";
 import { compress } from "../../core/compress.js";
 import { economyStats } from "../../core/compress.js";
@@ -654,7 +654,7 @@ export function economyCheck(): GuardCheckResult {
   const stats = track.getStats();
   const eco = economyStats();
   const budget = 0.6 * maxSize;
-  const base = `cache ${formatBytes(stats.size)} of ${formatBytes(maxSize)} (${stats.count} entries)`;
+  const base = `cache ${humanBytes(stats.size)} of ${humanBytes(maxSize)} (${stats.count} entries)`;
   const ledger =
     eco.entries > 0
       ? `≈ ${eco.savedTokens} tok saved across ${eco.entries} compress op(s)`

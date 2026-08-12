@@ -5,8 +5,8 @@ import { redactValue } from "../src/utils/redact.js";
 import { fail } from "../src/utils/term.js";
 import {
   collectTsFiles,
-  humanBytes,
 } from "../src/utils/file.js";
+import { humanBytes } from "../src/utils/format.js";
 import {
   MAX_BUDGET,
   ORION_HOME,

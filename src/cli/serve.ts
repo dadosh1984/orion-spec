@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { OrionTrack } from "../core/track.js";
-import { humanBytes } from "../utils/file.js";
+import { humanBytes } from "../utils/format.js";
 import { isLoopbackHost } from "../utils/net.js";
 export { isLoopbackHost } from "../utils/net.js";
 import { generateToken } from "../utils/crypto.js";

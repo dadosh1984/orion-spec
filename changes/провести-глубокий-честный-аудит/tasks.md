@@ -9,9 +9,9 @@
 - [x] [fact] Кросс-платформенный запуск: `python3` → `python` fallback на Windows
 
 ## Фаза B — Дубли и мёртвый код
-- [ ] [fact] Слить `humanBytes` (file.ts) и `formatBytes` (format.ts) в единый `humanBytes`, убрать дубль
-- [ ] [fact] Вычистить накопленные регрессионные артефакты в `src/tasks/*` (e2e-мусор прошлых форджей)
-- [ ] [fact] Удалить неиспользуемые экспорты в `src/utils/*` (прогон по дереву использования)
+- [x] [fact] Слить `humanBytes` (file.ts) и `formatBytes` (format.ts) в единый `humanBytes`, убрать дубль
+- [x] [fact] Вычистить накопленные регрессионные артефакты в `src/tasks/*` (e2e-мусор прошлых форджей)
+- [x] [fact] Удалить неиспользуемые экспорты в `src/utils/*` (прогон по дереву использования)
 
 ## Фаза C — User-friendly терминал
 - [ ] [fact] Заменить сырой `JSON.stringify` на красивые tree/table в `commands.ts` (mcp, overview, self-audit, export), флаг `--json` для машинного вывода

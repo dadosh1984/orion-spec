@@ -1,5 +1,5 @@
-/** Human-readable byte size (B/KB/MB). */
-export function formatBytes(bytes: number): string {
+/** Human-readable byte size (B/KB/MB). Canonical formatter (v0.47). */
+export function humanBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${bytes} B`;

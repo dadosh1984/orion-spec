@@ -1,6 +1,6 @@
 import { lessonsStats, listLessons, rankedLessons } from "../core/lessons.js";
 import { listDebt } from "../core/debt.js";
-import { formatBytes } from "../utils/format.js";
+import { humanBytes } from "../utils/format.js";
 import { OrionTrack } from "../core/track.js";
 import { CliOptions, printOut, fail } from "./helpers.js";
 
@@ -28,7 +28,7 @@ export async function trackCommand(
       printOut(
         opts,
         { ...stats, lessons: lessons.count, openDebt: open.length },
-        `cache: ${stats.count} entries, ${formatBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"} (schema v${stats.schemaVersion}) | lessons: ${lessons.count}${lessons.lastTs ? ` (last ${new Date(lessons.lastTs).toISOString()})` : ""}${debtText}`,
+        `cache: ${stats.count} entries, ${humanBytes(stats.size)}, last prune ${stats.lastPrune ?? "never"} (schema v${stats.schemaVersion}) | lessons: ${lessons.count}${lessons.lastTs ? ` (last ${new Date(lessons.lastTs).toISOString()})` : ""}${debtText}`,
       );
       return 0;
     }

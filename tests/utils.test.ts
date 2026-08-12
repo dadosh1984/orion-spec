@@ -6,7 +6,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readCapped, humanBytes } from "../src/utils/file.js";
+import { readCapped } from "../src/utils/file.js";
+import { humanBytes } from "../src/utils/format.js";
 
 let dir: string;
 
