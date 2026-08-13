@@ -36,4 +36,10 @@
  * - env fingerprint is now ENFORCED in matchSkill: a top skill whose stored
  *   fingerprint differs from the current runtime is demoted to ambiguous even
  *   on a high BM25 score (Phase-4 guard, not just a recorded field).
+ *
+ * A1 — safe promotion (--approve):
+ * - missLogForStep() returns all historical I/O for a repeated signature.
+ * - `orion run match --approve "<sig>"` scaffolds changes/<slug>/ seeded with
+ *   replay-verify tasks (historical resolution expectations); requires >= 3
+ *   repeats and a manual entry.js + forge --save-as. Auto-register is impossible.
  */

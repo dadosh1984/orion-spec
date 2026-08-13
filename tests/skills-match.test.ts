@@ -19,6 +19,7 @@ import {
   logSkillMiss,
   readMissLog,
   promotionCandidates,
+  missLogForStep,
   missLogFile,
 } from "../src/core/skillMissLog.js";
 
@@ -218,6 +219,27 @@ describe("skill miss-log (Phase 1 infrastructure)", () => {
 
   it("log file is JSON-lines under ORION_MISS_LOG_DIR", () => {
     expect(missLogFile()).toContain("skill-miss-log.jsonl");
+  });
+
+  it("missLogForStep returns all historical I/O for a repeated signature (safe-promotion replay data)", () => {
+    for (let i = 0; i < 3; i++) {
+      logSkillMiss({
+        step: "convert dbf to xlsx for the payroll",
+        domain: "onec",
+        reason: "below-threshold",
+        topScore: null,
+        resolution: `salary-output-${i}.xlsx`,
+      });
+    }
+    // Case-insensitive signature match.
+    const history = missLogForStep("CONVERT dbf to xlsx FOR the payroll");
+    expect(history.length).toBe(3);
+    expect(history[0].resolution).toBe("salary-output-0.xlsx");
+    expect(history.every((h) => h.domain === "onec")).toBe(true);
+  });
+
+  it("missLogForStep returns [] for an unseen signature", () => {
+    expect(missLogForStep("never logged this")).toEqual([]);
   });
 });
 

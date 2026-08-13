@@ -61,3 +61,11 @@
 - [x] [fact] env-fingerprint теперь живёт: matchSkill понижает до ambiguous skill с отличающимся отпечатком, даже при высоком BM25-score (иначе — декларация без последствий)
 - [x] [assumption] тесты: stale → ambiguous, fresh → matched, tier bm25/exact
 - [x] [control] full vitest 70 / 778, eslint/tsc зелёные
+
+## A1 — безопасный промоушен (--approve + replay-сид)
+
+- [x] [fact] `orion run match --approve "<sig>"`: из повторной сигнатуры miss-log создаёт change-скелет `changes/<slug>/` с replay-задачами (историч. вход→ожидаемый выход)
+- [x] [fact] НЕ авто-register: требует ≥3 повторов И ручной `entry.js` → `forge --save-as`. Тихое создание скрипта невозможно
+- [x] [fact] `missLogForStep()` — собирает все историч. I/O по сигнатуре (данные для replay-верификации)
+- [x] [assumption] тесты missLogForStep (случай-независимость, неизвестная сигнатура → [])
+- [x] [control] full vitest 70 файлов / 780 тестов, eslint/tsc зелёные, live-прогон --approve создаёт скелет

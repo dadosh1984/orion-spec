@@ -89,3 +89,18 @@ export function promotionCandidates(minRepeats = 3): Array<{
   }
   return out.sort((a, b) => b.repeat - a.repeat);
 }
+
+/**
+ * All historical miss-log entries for a step signature (exact normalized
+ * text) — the input→output pairs (step + resolution) the replay-verification
+ * step must satisfy before a script is promoted. Returns [] if the signature
+ * never occurred.
+ */
+export function missLogForStep(
+  step: string,
+): SkillMissEntry[] {
+  const key = step.trim().toLowerCase();
+  return readMissLog().filter(
+    (e) => e.step.trim().toLowerCase() === key,
+  );
+}

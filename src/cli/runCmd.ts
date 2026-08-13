@@ -568,17 +568,78 @@ export async function runDispatch(args: string[]): Promise<number> {
     }
 
     case "match": {
-      // Skill matching + miss-log + promotion candidates (Phase 1/2).
+      // Skill matching + miss-log + promotion (Phase 1/2/3).
       //   orion run match "<atomic step>"  → BM25 (tier/score) + log miss if none
       //   orion run match --shadow <step>   → compare BM25 vs naive on a step
       //   orion run match --promote          → repeated misses promotable
+      //   orion run match --approve "<sig>" → scaffold a change from miss-log
+      //                                        (safe promotion; replay-verified)
       const wantsPromote =
         rest.includes("--promote") || name === "--promote" || name === "--candidates";
       const wantsShadow = rest.includes("--shadow") || name === "--shadow";
+      const wantsApprove = rest.includes("--approve") || name === "--approve";
       const { matchSkill, shadowCompare } = await import(
         "../core/skillsMatch.js",
       );
       const { logSkillMiss } = await import("../core/skillMissLog.js");
+
+      if (wantsApprove) {
+        // Safe promotion (v0.52): promote a repeated miss-log signature to a
+        // change scaffold seeded with the historical input→output pairs, so
+        // the reuse of a skill is never silent. The agent writes entry.js,
+        // then `forge --save-as` (which requires a real entry) registers it.
+        // No auto-promote, no silent script. Replay data is recorded so the
+        // generated script can be verified against past resolutions before it
+        // becomes a skill.
+        const { missLogForStep } = await import(
+          "../core/skillMissLog.js",
+        );
+        const sig = (name === "--approve" ? rest.join(" ") : rest.filter((a) => a !== "--approve").join(" ")).trim();
+        if (!sig) return fail('usage: orion run match --approve "<step signature>"');
+        const history = missLogForStep(sig);
+        if (history.length < 3) {
+          return fail(`Signature "${sig}" occurs only ${history.length}× in the miss-log — need ≥ 3 to consider promotion.`);
+        }
+        const { significantWords } = await import("../core/titles.js");
+        const slug = significantWords(sig, 3).join("-") || "promoted-skill";
+        const { mkdirSync, writeFileSync, existsSync } = await import("node:fs");
+        const { join: jn } = await import("node:path");
+        const dir = jn("changes", slug);
+        if (existsSync(dir)) return fail(`changes/${slug} already exists — pick a different signature or remove it first.`);
+        mkdirSync(jn(dir, "snippets"), { recursive: true });
+        const domain = history[0].domain ?? "general";
+        const proposal = {
+          title: slug,
+          goal: sig,
+          platform: "",
+          constraints: `promoted from miss-log: ${history.length}× repeat, domain=${domain}`,
+          budget: "",
+          clarity: "clear",
+          language: /[а-яё]/i.test(sig) ? "ru" : "en",
+          complexity: "easy",
+          depth: 1,
+          plannedSteps: 2,
+        };
+        writeFileSync(jn(dir, "proposal.json"), JSON.stringify(proposal, null, 2), "utf8");
+        const steps = history.map((h, i) => `- [ ] [fact] replay #${i + 1}: step="${h.step}" → expected="${h.resolution ?? "(unknown output — rerun the LLM once to capture it)"}"`);
+        const tasks = `# Tasks — ${slug}
+
+Replay-verified promotion seed from the miss-log. The generated script must
+reproduce each historical resolution on the matching inputs before it is
+registered with \`forge --save-as\`. Write \`entry.js\`, then run
+\`orion forge ${slug} --save-as ${slug}\`.
+
+${steps.join("\n")}
+
+- [ ] [fact] implement ${sig} so every replay (above) passes
+- [ ] [control] write changes/${slug}/entry.js, then \`orion forge ${slug} --save-as ${slug}\`
+`;
+        writeFileSync(jn(dir, "tasks.md"), tasks, "utf8");
+        console.log(`${statusMark("done")} Promotion scaffold created: ${slug}`);
+        console.log(`  history: ${history.length}× · domain=${domain}`);
+        console.log(`  next: write changes/${slug}/entry.js, then orion forge ${slug} --save-as ${slug}`);
+        return 0;
+      }
 
       if (wantsPromote) {
         const { promotionCandidates } = await import("../core/skillMissLog.js");
@@ -590,6 +651,7 @@ export async function runDispatch(args: string[]): Promise<number> {
           for (const c of cands) {
             console.log(`\n  ✦ ×${c.repeat}  ${c.entry.step}`);
             console.log(`    domain: ${c.entry.domain} | last resolve: ${c.entry.resolution ?? "—"}`);
+            console.log(`    promote: orion run match --approve "${c.entry.step}"`);
           }
         }
         return 0;

@@ -14,7 +14,7 @@
     {
       "step": "test",
       "status": "PASS",
-      "detail": "[orion] 1 failing line(s):\n🧠 orion lesson recorded — forge: task not green: Implement add — expected 2 to equal 3\n Test Files  70 passed (70)\n      Tests  778 passed | 2 skipped (780)\n   Duration  24.48s (transform 11.05s, setup 0ms, import 22.70s, tests 133.04s, environment 26ms)\n\n[orion: −38686 B (−99.3%) ≈ 9672 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+      "detail": "[orion] 1 failing line(s):\n🧠 orion lesson recorded — forge: task not green: Implement add — expected 2 to equal 3\n Test Files  70 passed (70)\n      Tests  780 passed | 2 skipped (782)\n   Duration  23.96s (transform 5.91s, setup 0ms, import 16.58s, tests 136.65s, environment 28ms)\n\n[orion: −38686 B (−99.3%) ≈ 9672 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
     },
     {
       "step": "drift",
@@ -29,7 +29,7 @@
     {
       "step": "economy",
       "status": "PASS",
-      "detail": "cache 33.9 KB of 100.0 MB (97 entries) — within budget; ≈ 1136438 tok saved across 589 compress op(s)"
+      "detail": "cache 34.5 KB of 100.0 MB (98 entries) — within budget; ≈ 1146109 tok saved across 592 compress op(s)"
     },
     {
       "step": "security",
@@ -48,6 +48,6 @@
     }
   ],
   "allPass": true,
-  "generatedAt": "2026-08-13T19:20:58.031Z",
-  "contextHash": "80ed3ac59e7e"
+  "generatedAt": "2026-08-13T19:27:57.914Z",
+  "contextHash": "1c7dbedf41ee"
 }
