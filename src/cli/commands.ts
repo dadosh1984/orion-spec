@@ -67,6 +67,36 @@ import {
 import { McpServer, toolManifest } from "../core/mcp.js";
 import { findPluginForCommand, loadPluginHandler } from "../core/plugins.js";
 
+/**
+ * Build the `orion --help` command section from the LIVE registry (v0.52,
+ * B1). Single source of truth: help lists exactly what main() will dispatch,
+ * so it can never drift into listing deprecated commands. Call AFTER
+ * registerAllCommands(), inside main().
+ */
+function buildHelp(
+  registry?: Map<string, { name: string; description: string; aliases?: string[] }>,
+): string {
+  const head = `orion — self-contained AI-agent toolkit
+
+Usage:
+  orion <command> [args...] [flags...]
+
+Commands:`;
+  const lines: string[] = [];
+  if (registry && registry.size > 0) {
+    for (const spec of registry.values()) {
+      const aliasNote = spec.aliases?.length
+        ? `  (aliases: ${spec.aliases.join(", ")})`
+        : "";
+      lines.push(`  ${spec.name.padEnd(10)} ${spec.description}${aliasNote}`);
+    }
+  } else {
+    lines.push(`  (no commands registered)`);
+  }
+  const flags = `\n\nFlags:\n  --no-cache   Skip all cache reads/writes\n  --no-color   Disable colored/emoji output (NO_COLOR is honoured too, v0.31)\n  --dry        Preview instead of executing\n  --json       Machine-readable output\n  --port N     Listen port for serve (default 4780)\n  --host H     Bind host for serve (default 127.0.0.1)\n  --token T    Bearer token for serve (auto-generated when host is not loopback)\n  --ui         Serve the HTML dashboard at / (default for serve)\n  --lang en|ru Template language override for draft (v0.27)`;
+  return head + "\n" + lines.join("\n") + flags;
+}
+
 /** Command dispatcher. */
 export async function main(argv: string[]): Promise<number> {
   const { cmd, args, opts } = parseArgs(argv);
@@ -98,6 +128,7 @@ export async function main(argv: string[]): Promise<number> {
   // Also rewrite `cmd` to the canonical name so the legacy switch below
   // sees the same value the registry would have dispatched.
   let canonical = cmd;
+  let helpText = HELP; // static fallback; replaced by dynamic registry help
   try {
     const { registerAllCommands, ORION_REGISTRY } = await import(
       "./bootstrap.js"
@@ -113,6 +144,8 @@ export async function main(argv: string[]): Promise<number> {
     if (spec) {
       return await spec.handler(args, opts);
     }
+    // B1: dynamic help from the live registry (needs registration first).
+    helpText = buildHelp(ORION_REGISTRY as never);
   } catch {
     /* bootstrap failure must not break the legacy switch */
   }
@@ -126,7 +159,7 @@ export async function main(argv: string[]): Promise<number> {
     case "help":
     case "--help":
     case "-h":
-      console.log(HELP);
+      console.log(helpText);
       return 0;
 
     case "guard-prompt": {
@@ -968,7 +1001,7 @@ export async function main(argv: string[]): Promise<number> {
       // one argv entry with spaces — that is a prompt too (v0.8.1).
       const prompt = args.length > 0 ? [cmd, ...args].join(" ") : cmd;
       if (args.length === 0 && !cmd.includes(" ")) {
-        console.log(`orion: unknown command "${cmd}"\n\n${HELP}`);
+        console.log(`orion: unknown command "${cmd}"\n\n${helpText}`);
         return 1;
       }
       const proposal = await think(

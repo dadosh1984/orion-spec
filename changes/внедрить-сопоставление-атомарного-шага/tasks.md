@@ -79,3 +79,10 @@
 - [x] [fact] A2: `EconomyEntry.source` добавлен — ROI по конкретному промоушену, не «вообще»
 - [x] [assumption] тесты `tests/promotion.test.ts`: propose/replay-block/replay-pass/approve-refused/approve-ok (5)
 - [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные, live-прогон state-machine
+
+## B1/C1 — правда в интерфейсе (справка + парсинг)
+
+- [x] [fact] B1: `orion --help` теперь генерируется из живого `ORION_REGISTRY` (8 команд), а не из захардкоженной константы с 44 устаревшими командами
+- [x] [fact] C1: парсинг argv переписан на `node:util` `parseArgs` (zero-deps, без кастомного цикла); командно-специфичные флаги (--diff/--assumptions/--tasks/...) сохраняются в args для handlers
+- [x] [assumption] smoke: `--help`=8, `--json`, `--version`, deprecated-алиасы, `run match --promote`
+- [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные

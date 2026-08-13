@@ -560,6 +560,16 @@ git push origin main
 >   привязывается к конкретному промоушену через `approveProposal`→appendEconomy.
 > - live-прогон: propose→replay-WRONG(BLOCKED)→replay-FIXED(PASS 1.0)→approve→
 >   economy row с source. Гейт: 71 файл/785 тестов, allPass: true.
+>
+> **B1/C1 — ПРАВДА В ИНТЕРФЕЙСЕ (2026-08-14):**
+> - B1: `orion --help` генерируется из живого `ORION_REGISTRY` (8 команд),
+>   а не из константы с 44 deprecated. Справка больше не врёт.
+> - C1: парсинг argv на `node:util` `parseArgs` (zero-deps); командно-
+>   специфичные флаги (--diff/--assumptions/--tasks/...) сохраняются в args
+>   для handlers (архитектурный нюанс: node:util глотает их в values, поэтому
+>   args реконструируются, сохраняя порядок и флаги handler-уровня).
+> - smoke: --help=8, --json, --version, deprecated-алиасы, run match --promote.
+>   Гейт: 71 файл/785 тестов, allPass: true.
 **Философия:** всё гениальное — в простоте. Никакой тяжёлой модели:
 шлюз + рекурсивный сплит + счётчик листьев.
 

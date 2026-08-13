@@ -1,3 +1,4 @@
+import { parseArgs as nodeParseArgs } from "node:util";
 import { CliOptions } from "./helpers.js";
 
 export const HELP = `orion — self-contained AI-agent toolkit
@@ -142,7 +143,7 @@ export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
     route: "__hidden__",
   });
 
-/** Parse argv into a command plus options. */
+/** Parse argv into a command plus options (v0.52, C1: node:util parseArgs). */
 export function parseArgs(argv: string[]): {
   cmd: string;
   args: string[];
@@ -157,85 +158,110 @@ export function parseArgs(argv: string[]): {
     port: 0,
     ui: true,
   };
+
+  const parsed = nodeParseArgs({
+    args: argv,
+    strict: false,
+    allowPositionals: true,
+    options: {
+      "no-cache": { type: "boolean" },
+      "no-color": { type: "boolean" },
+      dry: { type: "boolean" },
+      watch: { type: "boolean" },
+      json: { type: "boolean" },
+      npm: { type: "boolean" },
+      ui: { type: "boolean" },
+      "version": { type: "boolean" },
+      V: { type: "boolean" },
+      port: { type: "string" },
+      host: { type: "string" },
+      session: { type: "string" },
+      parallel: { type: "string" },
+      token: { type: "string" },
+      lang: { type: "string" },
+      "save-as": { type: "string" },
+    },
+  });
+
+  const values = parsed.values as Record<string, string | boolean | undefined>;
+  opts.noCache = values["no-cache"] === true;
+  if (values["no-color"] === true) process.env.ORION_COLOR = "0";
+  opts.dry = values.dry === true;
+  opts.watch = values.watch === true;
+  opts.json = values.json === true;
+  opts.npm = values.npm === true;
+  if (values.ui === true) opts.ui = true;
+
+  const port = values.port as string | undefined;
+  if (port !== undefined) {
+    const pn = Number(port);
+    if (!Number.isInteger(pn) || pn <= 0) throw new Error("--port requires a positive integer");
+    opts.port = pn;
+  }
+  const host = values.host as string | undefined;
+  if (host !== undefined) {
+    if (!host || host.startsWith("-")) throw new Error("--host requires a hostname or IP");
+    opts.host = host;
+  }
+  const session = values.session as string | undefined;
+  if (session !== undefined) {
+    if (!session || session.startsWith("-")) throw new Error("--session requires a path to a .jsonl session file");
+    opts.session = session;
+  }
+  const parallel = values.parallel as string | undefined;
+  if (parallel !== undefined) {
+    const pn = Number(parallel);
+    if (!parallel || parallel.startsWith("-") || !Number.isInteger(pn) || pn < 1) {
+      throw new Error("--parallel requires a positive integer, e.g. --parallel 3");
+    }
+    opts.parallel = pn;
+  }
+  const token = values.token as string | undefined;
+  if (token !== undefined) {
+    if (!token || token.startsWith("-")) throw new Error("--token requires a non-empty token value");
+    opts.token = token;
+  }
+  const lang = values.lang as string | undefined;
+  if (lang !== undefined) {
+    if (lang !== "en" && lang !== "ru") throw new Error('--lang requires "en" or "ru"');
+    opts.lang = lang as "en" | "ru";
+  }
+  const saveAs = values["save-as"] as string | undefined;
+  if (saveAs !== undefined) {
+    if (!saveAs || saveAs.startsWith("-")) throw new Error("--save-as requires a script name");
+    opts.saveAs = saveAs;
+  }
+
+  const isVersion =
+    parsed.values.version === true ||
+    (parsed.values.V as boolean | undefined) === true ||
+    argv.includes("--version") ||
+    argv.includes("-V");
+  if (isVersion) return { cmd: "version", args: [], opts };
+
+  // Command-specific flags (--diff, --assumptions, --tasks, --watch, --stats,
+  // --audit, --archive, --review, --promote, --approve, ...) are consumed by
+  // the COMMAND HANDLERS by scanning `args`, not by the top-level parser.
+  // node:util parseArgs swallows unknown flags into values, so we rebuild
+  // `args` from the original argv: the command token + the global flags we
+  // already extracted are dropped, everything else — including handler-level
+  // flags and their values — is preserved in order.
+  const consumed = new Set<string>([
+    "--no-cache", "--no-color", "--dry", "--watch", "--json", "--npm", "--ui",
+    "--version", "-V", "--port", "--host", "--session", "--parallel",
+    "--token", "--lang", "--save-as",
+  ]);
+  const valueFlags = new Set(["--port", "--host", "--session", "--parallel", "--token", "--lang", "--save-as"]);
+  const positionals = parsed.positionals;
+  const cmd = positionals[0] ?? "";
   const args: string[] = [];
-  let cmd = "";
+  let skipNext = false;
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--version" || arg === "-V") {
-      cmd = "version";
-      continue;
-    }
-    if (cmd === "" && !arg.startsWith("-")) {
-      cmd = arg;
-    } else if (arg === "--no-cache") {
-      opts.noCache = true;
-    } else if (arg === "--no-color") {
-      process.env.ORION_COLOR = "0";
-    } else if (arg === "--dry") {
-      opts.dry = true;
-    } else if (arg === "--watch") {
-      opts.watch = true;
-    } else if (arg === "--json") {
-      opts.json = true;
-    } else if (arg === "--npm") {
-      opts.npm = true;
-    } else if (arg === "--port") {
-      const value = Number(argv[i + 1]);
-      if (!Number.isInteger(value) || value <= 0) {
-        throw new Error("--port requires a positive integer");
-      }
-      opts.port = value;
-      i++;
-    } else if (arg === "--host") {
-      const value = argv[i + 1];
-      if (!value || value.startsWith("-")) {
-        throw new Error("--host requires a hostname or IP");
-      }
-      opts.host = value;
-      i++;
-    } else if (arg === "--session") {
-      const value = argv[i + 1];
-      if (!value || value.startsWith("-")) {
-        throw new Error("--session requires a path to a .jsonl session file");
-      }
-      opts.session = value;
-      i++;
-    } else if (arg === "--parallel") {
-      const value = argv[i + 1];
-      const n = Number(value);
-      if (!value || value.startsWith("-") || !Number.isInteger(n) || n < 1) {
-        throw new Error(
-          "--parallel requires a positive integer, e.g. --parallel 3",
-        );
-      }
-      opts.parallel = n;
-      i++;
-    } else if (arg === "--token") {
-      const value = argv[i + 1];
-      if (!value || value.startsWith("-")) {
-        throw new Error("--token requires a non-empty token value");
-      }
-      opts.token = value;
-      i++;
-    } else if (arg === "--ui") {
-      opts.ui = true;
-    } else if (arg === "--lang") {
-      const value = argv[i + 1];
-      if (value !== "en" && value !== "ru") {
-        throw new Error('--lang requires "en" or "ru"');
-      }
-      opts.lang = value;
-      i++;
-    } else if (arg === "--save-as") {
-      const value = argv[i + 1];
-      if (!value || value.startsWith("-")) {
-        throw new Error("--save-as requires a script name");
-      }
-      opts.saveAs = value;
-      i++;
-    } else {
-      args.push(arg);
-    }
+    const tok = argv[i];
+    if (skipNext) { skipNext = false; continue; }
+    if (i === 0 && positionals[0] === tok) continue; // skip the cmd token
+    if (consumed.has(tok)) { if (valueFlags.has(tok)) skipNext = true; continue; }
+    args.push(tok);
   }
   return { cmd, args, opts };
 }
