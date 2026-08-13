@@ -30,4 +30,10 @@
  *   with a different threshold — two paths would disagree).
  * - createScript/generator/--save-as fill domain (resolveDomain) +
  *   environmentFingerprint at creation time.
+ *
+ * Follow-up from external code review (v0.52):
+ * - tier regression tests added (bm25 vs exact) — `tier` was never asserted.
+ * - env fingerprint is now ENFORCED in matchSkill: a top skill whose stored
+ *   fingerprint differs from the current runtime is demoted to ambiguous even
+ *   on a high BM25 score (Phase-4 guard, not just a recorded field).
  */

@@ -126,9 +126,37 @@ describe("BM25 skill matching (v0.51, no ML)", () => {
     const r = matchSkill("transform the spreadsheet into json output");
     expect(r.kind).not.toBe("none");
   });
-});
 
-describe("shadow-migration (v0.51)", () => {
+  it("tier=bm25 when the step does NOT literally name the skill (regression for the tier tautology)", () => {
+    // Step tokens do not equal the skill name, yet BM25 confidently matches.
+    writeRegistry([skill({ name: "dbf-to-xlsx", description: "convert a dbf table to an xlsx spreadsheet", tags: ["dbf", "xlsx"] })]);
+    const r = matchSkill("convert dbf into xlsx file", { skills: undefined });
+    if (r.kind === "matched") expect(r.tier).toBe("bm25");
+    // A matched step must NOT be labelled "exact" when the name differs.
+    if (r.kind === "matched") expect(r.skill.name).not.toBe("dbf-to-xlsx convert dbf into xlsx file");
+  });
+
+  it("tier=exact when every token of the skill name is in the step", () => {
+    writeRegistry([skill({ name: "csv-to-json", description: "convert a CSV spreadsheet to JSON", tags: ["csv", "json"] })]);
+    const r = matchSkill("csv to json", { skills: undefined });
+    if (r.kind === "matched") expect(r.tier).toBe("exact");
+  });
+
+  it("demotes a matched skill whose env fingerprint is stale (never silently run it)", () => {
+    // Registry-less: pass the skill list directly so we control the stale
+    // fingerprint. The step strongly matches this skill, yet the stored env
+    // (e.g. 1C_TI before a migration) differs from the current runtime.
+    const stale = skill({ name: "dbf-to-xlsx", environmentFingerprint: "runtime=v99.0.0" });
+    const r = matchSkill("convert dbf to xlsx file", { skills: [stale] });
+    expect(r.kind).toBe("ambiguous");
+  });
+
+  it("matched when the env fingerprint matches current (fresh skill)", () => {
+    const fresh = skill({ name: "dbf-to-xlsx", environmentFingerprint: undefined });
+    const r = matchSkill("dbf to xlsx make", { skills: [fresh] });
+    expect(r.kind).toBe("matched");
+  });
+});describe("shadow-migration (v0.51)", () => {
   it("shadowCompare runs BM25 and naive on the same cases", () => {
     writeRegistry([
       skill({ name: "csv-to-json", description: "convert csv to json files" }),

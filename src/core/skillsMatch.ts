@@ -252,21 +252,39 @@ export function matchSkill(
   // Exact name match: every normalized token of the skill name appears in
   // the step's query → the user literally named the skill. Strongest signal,
   // beats the BM25 margin. Strict on all name tokens (not a prefix), so
-  // "csv" does not match "csv-to-json". (v0.51 bugfix — the old OR clause
-  // was a tautology that made `tier` always "exact".)
-  const nameTokens = tokenize(top.skill.name);
+  // Exact name match: the skill name's SEPARATOR-split terms (dashes /
+  // underscores / spaces) all appear in the step query → the user literally
+  // named the skill. "csv-to-json" splits to {csv,to,json}, so a step
+  // "convert csv to json" is NOT exact (missing verb) while "csv to json"
+  // IS. (v0.51 bugfix — the old OR clause was a tautology that made `tier`
+  // always "exact".)
+  const nameTerms = normalize(top.skill.name)
+    .split(/[-_\s]+/)
+    .filter((t) => t.length > 1);
   const querySet = new Set(query);
   const exact =
-    nameTokens.length > 0 &&
-    query.length >= nameTokens.length &&
-    nameTokens.every((t) => querySet.has(t));
+    nameTerms.length > 0 &&
+    query.length >= nameTerms.length &&
+    nameTerms.every((t) => querySet.has(t));
   const tier: MatchTier = exact ? "exact" : "bm25";
 
   // Unambiguous: top is clearly better than #2 (error asymmetry → be strict).
-  if (scored.length < 2 || top.score >= second * 2) {
-    return { kind: "matched", skill: top.skill, tier, score: top.score };
+  // ENV-FINGERPRINT GUARD (Phase 4): if the top skill was registered against
+  // a different environment (e.g. schema 1C_TI before a 1C_TI→1C_TI_NEW
+  // migration), it would "confidently" match on description yet silently
+  // break on the new backing data. So a fingerprint mismatch downgrades to
+  // ambiguous regardless of BM25 score — never silently run a stale skill.
+  const currentEnv = environmentFingerprint({ runtime: process.version });
+  const topSkill = top.skill;
+  const stale =
+    topSkill.environmentFingerprint != null &&
+    topSkill.environmentFingerprint !== "(unknown)" &&
+    topSkill.environmentFingerprint !== currentEnv;
+  if (!stale && (scored.length < 2 || top.score >= second * 2)) {
+    return { kind: "matched", skill: topSkill, tier, score: top.score };
   }
-  // Ambiguous: return a short-list for cheap async LLM verification.
+  // Ambiguous: return a short-list for cheap async LLM verification. (A stale
+  // skill is demoted into this list so a fresher candidate can win.)
   const n = 3;
   return {
     kind: "ambiguous",

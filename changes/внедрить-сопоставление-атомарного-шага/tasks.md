@@ -54,3 +54,10 @@
 - [x] [fact] fix #3 — `createScript`/generator/--save-as заполняют `domain`(resolveDomain) + `environmentFingerprint` при создании
 - [x] [assumption] тесты router переведены с findExistingSkill на matchSkill
 - [x] [control] full vitest 70 файлов / 774 теста, eslint/tsc зелёные, live-проверка tier=bm25 + domain/envfp заполнены
+
+## Каркас по проверке пользователя (реальные баги + регрессия)
+
+- [x] [fact] tier-регрессия: добавлены тесты tier=bm25 (шаг не называет skill) и tier=exact (все термины имени в запросе) — раньше tier вообще не тестировался
+- [x] [fact] env-fingerprint теперь живёт: matchSkill понижает до ambiguous skill с отличающимся отпечатком, даже при высоком BM25-score (иначе — декларация без последствий)
+- [x] [assumption] тесты: stale → ambiguous, fresh → matched, tier bm25/exact
+- [x] [control] full vitest 70 / 778, eslint/tsc зелёные
