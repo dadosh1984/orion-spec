@@ -9,6 +9,7 @@ import { OrionTrack } from "../../core/track.js";
 import { renderTemplate, TemplateLang } from "../../core/templates.js";
 import { readProfile } from "../../core/profile.js";
 import { extractCore, extractCoreClause } from "../think/refine.js";
+import { atomicTree, type AtomicLeaf } from "./atomic.js";
 import type { ArtifactSet, Proposal } from "../../type.js";
 
 /**
@@ -242,14 +243,36 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
  * `##`/`###` headings are ignored by readTasks, so they add hierarchy
  * without breaking the forge loop.
  *
- *   depth 0 (abstract) / 1 (easy) → flat checklist (current behaviour)
- *   depth 2 (medium)               → 2 big steps, each with its subtasks
- *   depth 3 (hard)                 → 2 big steps, each split into
- *                                    2 medium steps, then subtasks
- *
- * When depth < 2 or there are too few tasks to group meaningfully, the
- * flat checklist is returned unchanged — a backward-compatible fallback.
+ * Approximation to the full strategy: the depth-derived step budget maps
+ * the task list onto a tree. Honest atomicity-driven decomposition
+ * happens here — each step is recursively split to an atomic leaf
+ * (one action / verifiable / no hidden decision), with a depth ceiling
+ * that turns residual ambiguity into `[ask-user]` clarifying questions.
  */
+export function renderAtomicTree(leaves: AtomicLeaf[], title: string): string {
+  // Group leaves by recursion depth so the tree reads top-down, then emit
+  // `##`/`###` headings for levels > 0 (leaf checks remain unindented).
+  const byDepth = new Map<number, AtomicLeaf[]>();
+  for (const l of leaves) {
+    const arr = byDepth.get(l.depth) ?? [];
+    arr.push(l);
+    byDepth.set(l.depth, arr);
+  }
+  const maxLevel = Math.max(0, ...byDepth.keys());
+  const blocks: string[] = [];
+  for (let level = 1; level <= maxLevel; level++) {
+    const group = byDepth.get(level) ?? [];
+    if (!group.length) continue;
+    const heading =
+      level === 1 ? `## ✦ ${title} — big step` : `### ${title} — level ${level}`;
+    blocks.push(heading);
+    for (const l of group) blocks.push(`- [ ] [${l.mark}] ${l.text}`);
+  }
+  // Guards: also emit any stray depth-0 leaves so nothing is dropped.
+  for (const l of byDepth.get(0) ?? []) blocks.push(`- [ ] [${l.mark}] ${l.text}`);
+  return blocks.join("\n");
+}
+
 export function renderTasksBody(
   tasks: DerivedTask[],
   depth: 0 | 1 | 2 | 3,
@@ -258,43 +281,22 @@ export function renderTasksBody(
   const flat = tasks.map((t) => `- [ ] [${t.mark}] ${t.text}`);
   if (depth < 2 || tasks.length < 2) return flat.join("\n");
 
-  const half = Math.ceil(tasks.length / 2);
-  const big1 = tasks.slice(0, half);
-  const big2 = tasks.slice(half);
-  // NOTE: forge's readTasks regex requires `- [ ]` at the actual line
-  // start (`^- \[( |x)\]`). Leading indentation would make checkboxes
-  // invisible to forge, so hierarchy is conveyed ONLY via `##`/`###`
-  // headings; every task line is unindented.
-  const fmt = (t: DerivedTask) => `- [ ] [${t.mark}] ${t.text}`;
+  // Purpose-built plans (maintenance RED→fix→verify) are already atomic by
+  // design — do not re-split them. Detect via the RED/GREEN markers that
+  // uniquely tag `deriveTasks` maintenance output.
+  if (tasks.some((t) => /\(RED\)|\(GREEN\)/.test(t.text))) return flat.join("\n");
 
-  if (depth === 2) {
-    return (
-      `## ✦ ${title} — big step 1\n` +
-      big1.map(fmt).join("\n") +
-      `\n## ✦ ${title} — big step 2\n` +
-      big2.map(fmt).join("\n")
-    );
-  }
+  // Honest atomic decomposition (v0.51): recursively split each step until
+  // it is atomic (one action / verifiable / no hidden decision), with a
+  // depth ceiling that turns residual ambiguity into an [ask-user] leaf.
+  // forge's readTasks regex needs `- [ ]` at the actual line start, so
+  // hierarchy is conveyed via `##`/`###` headings; every leaf is unindented.
+  const leaves = atomicTree(
+    tasks.map((t) => ({ text: t.text, mark: t.mark })),
+    { depth },
+  );
 
-  // depth 3: two big steps, each with two medium groups.
-  const med1 = big1.slice(0, Math.ceil(big1.length / 2));
-  const med2 = big1.slice(Math.ceil(big1.length / 2));
-  const med3 = big2.slice(0, Math.ceil(big2.length / 2));
-  const med4 = big2.slice(Math.ceil(big2.length / 2));
-  const blocks: string[] = [];
-  for (const [bigName, meds] of [
-    ["big step 1", [med1, med2]],
-    ["big step 2", [med3, med4]],
-  ] as const) {
-    blocks.push(`## ✦ ${title} — ${bigName}`);
-    for (let i = 0; i < meds.length; i++) {
-      const med = meds[i];
-      if (!med.length) continue;
-      blocks.push(`### ${title} — ${bigName} · medium ${i + 1}`);
-      blocks.push(...med.map(fmt));
-    }
-  }
-  return blocks.join("\n");
+  return renderAtomicTree(leaves, title);
 }
 
 /**

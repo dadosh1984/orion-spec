@@ -1,0 +1,19 @@
+{
+  "title": "json-output-mode-orion",
+  "goal": "add a --json output mode to the orion ls command so the change list is machine-readable",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "clear",
+  "language": "en",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2,
+  "appliesLessons": [
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:ba70e22c8595",
+    "add-a-first-class-orion-verify-change-command-implementing-a-who:out:8d1ea76ccecb",
+    "фаза-49-0-32:forge:efed95ef151c",
+    "фаза-48-0-31:forge:4729e0ba684e",
+    "фаза-47-0-30:forge:c905acc2ec25"
+  ]
+}

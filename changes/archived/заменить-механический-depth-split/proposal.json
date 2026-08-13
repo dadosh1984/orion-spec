@@ -1,0 +1,16 @@
+{
+  "title": "заменить-механический-depth-split",
+  "goal": "Заменить механический depth-split в renderTasksBody на честное атомарное рекурсивное дробление: дерево спускается по критериям атомарности (одно действие инструмента / проверяемый результат / нет скрытых суждений), упор в потолок глубины 4-5 превращает остаточную неопределённость в уточняющий вопрос пользователю, каждый атомарный лист матчится через существующий findExistingSkill для повторного использования дешёвых детерминированных skills. Deliverable: atomic decomposition generator в draft + integration leaf-to-skill.",
+  "platform": "zero-runtime-deps, замена механического depth-split в renderTasksBody, сохранить - [ ] листья read-safe для forge, criteria атомарности + потолок глубины 4-5 + [ask-user] на потолке, leaf→findExistingSkill (уже есть), тесты",
+  "constraints": "compact",
+  "budget": "compact",
+  "clarity": "vague",
+  "language": "ru",
+  "appliesLessons": [
+    "довести-стратегию-съесть-слона:shield:76ef425afa46",
+    "orion-spec:session:1546e29f7205",
+    "скилл-onec-converter-migration:forge:684890ea40c4",
+    "скилл-onec-converter-migration:forge:9b6fcea6b6bd",
+    "скилл-onec-converter-migration:forge:56cc53ac3e99"
+  ]
+}
