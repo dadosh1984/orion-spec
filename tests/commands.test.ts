@@ -193,20 +193,7 @@ describe("main dispatcher", () => {
     expect(await main(["think"])).toBe(1);
   });
 
-  it("handles track set/get/status/clear round-trips", async () => {
-    expect(await main(["track", "set", "k", "v"])).toBe(0);
-    expect(await main(["track", "get", "k"])).toBe(0);
-    expect(await main(["track", "status"])).toBe(0);
-    expect(await main(["track", "clear"])).toBe(0);
-  });
-
-  it("returns 1 for unknown track sub-commands", async () => {
-    expect(await main(["track", "bogus"])).toBe(1);
-  });
-
   it("returns 1 for missing argument guards across commands", async () => {
-    expect(await main(["track", "get"])).toBe(1);
-    expect(await main(["track", "set"])).toBe(1);
     expect(await main(["draft"])).toBe(1);
     expect(await main(["forge"])).toBe(1);
     expect(await main(["shield"])).toBe(1);
@@ -216,7 +203,7 @@ describe("main dispatcher", () => {
   });
 
   it("handles the --json flag via printOut", async () => {
-    const out = await main(["track", "status", "--json"]);
+    const out = await main(["ls", "--stats", "--json"]);
     expect(out).toBe(0);
   });
 
@@ -332,16 +319,6 @@ describe("forge --parallel (v0.16)", () => {
     expect(() => parseArgs(["forge", "demo", "--parallel"])).toThrow();
     expect(() => parseArgs(["forge", "demo", "--parallel", "0"])).toThrow();
     expect(() => parseArgs(["forge", "demo", "--parallel", "abc"])).toThrow();
-  });
-});
-
-describe("track set reserved namespaces (v0.23)", () => {
-  it("refuses shield:/tdd:/forge: keys — hand-written PASS would fake a gate", async () => {
-    expect(await main(["track", "set", "shield:test", "PASS:abc"])).toBe(1);
-    expect(await main(["track", "set", "tdd:demo", "DONE"])).toBe(1);
-    expect(await main(["track", "set", "forge:task", "DONE"])).toBe(1);
-    // Ordinary keys still work.
-    expect(await main(["track", "set", "my:key", "v"])).toBe(0);
   });
 });
 

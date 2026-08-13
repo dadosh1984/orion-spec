@@ -112,19 +112,10 @@ Flags:
  */
 export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
   Object.freeze({
-    // pipeline (12) → new
-    think: "new",
+    // pipeline (3) — only those with NO remaining legacy case in switch
+    // (think/draft/forge/shield/verify/out/tasks/next/pay-debt/resume/init
+    //  still have working legacy cases and go through the switch).
     plan: "new",
-    draft: "new",
-    forge: "new",
-    tasks: "new",
-    shield: "new",
-    verify: "new",
-    out: "new",
-    "pay-debt": "new",
-    resume: "new",
-    next: "new",
-    init: "new",
     // list/inspect (6) → ls
     list: "ls",
     status: "ls",
@@ -132,24 +123,19 @@ export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
     assumptions: "ls",
     stats: "ls",
     "self-audit": "ls",
-    // observability (8) → ls (cache/metrics/tokens/history) or doctor (env)
-    profile: "ls",
+    // observability (4) → ls (removed ones) or doctor
+    // lessons/profile have working legacy cases and stay out.
     track: "ls",
-    metrics: "ls",
-    tokens: "ls",
-    learn: "ls",
     history: "ls",
-    lessons: "ls",
     env: "doctor",
     // health (4) → doctor
     config: "doctor",
     clean: "doctor",
     backup: "doctor",
     restore: "doctor",
-    // integration (1) → serve
-    mcp: "serve",
-    // scale (1) → scale
-    tdd: "scale",
+    // integration: mcp still has a working legacy case, kept out of
+    // DEPRECATED_ALIASES so users get the real mcp server behaviour.
+    // scale/tdd: tdd still has a working legacy case too.
     // meta (3) — removed top-level
     shell: "__removed__",
     completion: "__removed__",

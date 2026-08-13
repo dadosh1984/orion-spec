@@ -97,8 +97,9 @@ export const lsHandler: CommandHandler = async (args, opts) => {
     return 0;
   }
 
-  // --cache: track stats
-  if (args.includes("--cache")) {
+  // --cache: track stats. Also accept `status` as a sub-command for
+  // compatibility with the deprecated `orion track status` alias.
+  if (args.includes("--cache") || args[0] === "status" || args[0] === "stats") {
     const track = OrionTrack.init();
     const stats = track.getStats();
     printOut(opts, stats, `${statusMark("info")} Cache: ${stats.count} entries, ${stats.size} bytes`);

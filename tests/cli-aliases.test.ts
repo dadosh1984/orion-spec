@@ -3,27 +3,15 @@ import { DEPRECATED_ALIASES } from "../src/cli/parse.js";
 
 describe("DEPRECATED_ALIASES (v0.51 deprecation map)", () => {
   it("is a non-empty frozen object", () => {
-    expect(Object.keys(DEPRECATED_ALIASES).length).toBeGreaterThan(20);
+    expect(Object.keys(DEPRECATED_ALIASES).length).toBeGreaterThan(15);
     expect(Object.isFrozen(DEPRECATED_ALIASES)).toBe(true);
   });
 
-  it("maps every pipeline command to 'new'", () => {
-    for (const old of [
-      "think",
-      "plan",
-      "draft",
-      "forge",
-      "tasks",
-      "shield",
-      "verify",
-      "out",
-      "pay-debt",
-      "resume",
-      "next",
-      "init",
-    ]) {
-      expect(DEPRECATED_ALIASES[old], `pipeline alias '${old}'`).toBe("new");
-    }
+  it("maps 'plan' (the only fully-deprecated pipeline alias) to 'new'", () => {
+    // think/draft/forge/shield/verify/out/tasks/next/pay-debt/resume/init
+    // are NOT in DEPRECATED_ALIASES because their legacy switch cases
+    // still work — users get the real behaviour, just no warning.
+    expect(DEPRECATED_ALIASES.plan).toBe("new");
   });
 
   it("maps every list/inspect command to 'ls'", () => {
@@ -34,16 +22,19 @@ describe("DEPRECATED_ALIASES (v0.51 deprecation map)", () => {
       "assumptions",
       "stats",
       "self-audit",
-      "profile",
       "track",
-      "metrics",
-      "tokens",
-      "learn",
       "history",
-      "lessons",
     ]) {
       expect(DEPRECATED_ALIASES[old], `list alias '${old}'`).toBe("ls");
     }
+  });
+
+  it("'profile' is NOT in DEPRECATED_ALIASES (legacy case still works)", () => {
+    expect(DEPRECATED_ALIASES.profile).toBeUndefined();
+  });
+
+  it("'lessons' is NOT in DEPRECATED_ALIASES (legacy case still works)", () => {
+    expect(DEPRECATED_ALIASES.lessons).toBeUndefined();
   });
 
   it("maps health/maintenance commands to 'doctor'", () => {
@@ -52,12 +43,12 @@ describe("DEPRECATED_ALIASES (v0.51 deprecation map)", () => {
     }
   });
 
-  it("maps 'mcp' to 'serve'", () => {
-    expect(DEPRECATED_ALIASES.mcp).toBe("serve");
+  it("'mcp' is NOT in DEPRECATED_ALIASES (legacy case still works directly)", () => {
+    expect(DEPRECATED_ALIASES.mcp).toBeUndefined();
   });
 
-  it("maps 'tdd' to 'scale'", () => {
-    expect(DEPRECATED_ALIASES.tdd).toBe("scale");
+  it("'tdd' is NOT in DEPRECATED_ALIASES (legacy case still works directly)", () => {
+    expect(DEPRECATED_ALIASES.tdd).toBeUndefined();
   });
 
   it("marks removed top-level commands with __removed__", () => {

@@ -61,25 +61,27 @@ walkthrough and [Commands Reference](docs/commands.md) for every command.
 | `shield` | Runs the guard‑rails: lint, type‑check, unit tests, drift‑check, YAGNI signal, cache‑economy budget, security scan and project policy gates. Each step caches `PASS`; a report lands in `reports/<id>/`. |
 | `out`    | Writes the final `result.md`: a verdict assembled from tasks, guard report and artifacts — including any lessons learned. |
 
-### Supporting commands
+### Supporting commands (v0.51+ — 8 total)
+
+The CLI has been shrunk from 43 top-level commands to **8**. Every other
+command from earlier versions is now a **deprecated alias** that prints
+a warning and forwards to one of these:
 
 | Command | Purpose |
 | ------- | ------- |
-| `orion review <id>` | Deterministic, zero‑LLM change review (proposal, tasks, snippets, tests, spec↔symbol drift). |
-| `orion next` | Decides the next action from context, ranks alternatives cheapest‑first, stops on budget‑exceeded or a detected toxic loop. |
-| `orion resume <id>` | Continues an interrupted workflow from its checkpoint. |
-| `orion pay-debt <id>` | Re‑syncs the YAGNI debt ledger and reports what closed. |
-| `orion track status\|prune\|get\|set\|clear` | Cache statistics and key/value access. |
-| `orion scale <file> [--dry]` | Applies the YAGNI ladder to a source file. |
-| `orion tdd start\|implement\|refactor\|finalize <task>` | The RED‑GREEN‑REFACTOR loop for a single task. |
-| `orion verify <id> [--json]` | Evidence pass — checks spec criteria exist in the code (a signal, never a gate). |
-| `orion metrics [--session <f>]` | Benchmark and token‑economy report. |
-| `orion serve [--port N] [--ui] [--token T]` | Zero‑dependency web dashboard. |
-| `orion profile` | Shows/edits your user‑adaptation profile. |
-| `orion profile set <k> <v>` | Set a profile field manually (language/platform/budget, v0.37). |
-| `orion config [show\|set]` | View or edit orionTdd.json/orionTrack.json (v0.37). |
-| `orion clean [cache\|reports\|dist\|coverage\|all]` | Remove cache and temporary artifacts (v0.37). |
-| `orion status [--watch]` | Live table of all changes, 2s refresh (v0.37). |
+| `orion new "<prompt>"` | Pipeline driver: runs think→draft→forge→shield→out (or `--step=<name>`, `--pipeline`, `--dry`, `--from=<id>`). Replaces the old `think`/`draft`/`forge`/`shield`/`out`/`verify`/`tasks`/`next`/`pay-debt`/`resume`/`init`/`plan` commands. |
+| `orion ls` | List/inspect changes. Flags: `--watch` (live refresh), `--diff <a> <b>`, `--assumptions <id>`, `--stats`, `--audit`, `--cache`, `--profile`, `--lessons` (with `export`/`import`). Replaces `list`/`status`/`compare`/`stats`/`self-audit`/`track`/`profile`/`lessons`/`history`/`metrics`/`tokens`/`learn`. |
+| `orion change <id>` | Per-change ops. Flags: `--tasks`, `--review`, `--archive`, `--diff`, `--changelog`, `--resume`, `--next`, `--pay-debt`, `--verify`, `--shield`, `--out`, `--export`, `--import`. |
+| `orion run` | Offline scripts (22 sub-commands: `new`, `generate`, `show`, `edit`, `delete`, `schedule`, `watch`, `repair`, `explain`, `log`, `stats`, `cache`, …). |
+| `orion scale <file>` | YAGNI ladder (with `--dry`). `--stage=tdd` runs a TDD step (replaces `orion tdd`). |
+| `orion doctor` | Health/init/repair. Flags: `--init`, `--config`, `--clean`, `--backup`, `--restore`, `--env`. Replaces `init`/`config`/`clean`/`backup`/`restore`/`env`. |
+| `orion serve` | Web dashboard (default) + `orion serve mcp` (MCP stdio server for AI agents). Replaces `serve`/`mcp`. |
+| `orion plugin` | Plugin manager: `list`, `install`, `remove`, `new`. |
+
+**Migration from v0.50:** every old command still works (e.g. `orion list`,
+`orion think`, `orion shield my-id`, `orion mcp`) but prints a deprecation
+warning. They will be removed in v0.52. `orion shell`, `orion completion`,
+and `orion route` are **already removed** — they had no real users.
 
 Full details and flags are in [docs/commands.md](docs/commands.md).
 

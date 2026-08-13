@@ -1,0 +1,9 @@
+{
+  "title": "v0-51-cli-shrink-43-to-8",
+  "goal": "Сжать CLI Orion с 43 top-level команд до 8 (вариант B из inventory) с сохранением 100% функциональности через sub-commands и алиасы обратной совместимости. 4 жёстких: new, ls, change, run. 2 почти жёстких: doctor, serve. 2 опциональных: scale, plugin.",
+  "platform": "node >= 22, ESM, zero runtime dependencies",
+  "constraints": "Zero runtime dependencies; build green; lint clean; 695+ tests pass; существующие алиасы old-name→new-name обязательны (1 релиз v0.51, soft deprecation); --help укладывается в 1 экран; CHANGELOG обновлён; docs/commands.md синхронизирован",
+  "budget": "compact",
+  "clarity": "specific",
+  "language": "ru"
+}

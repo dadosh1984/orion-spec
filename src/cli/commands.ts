@@ -14,7 +14,6 @@ import { parseArgs, HELP, DEPRECATED_ALIASES } from "./parse.js";
 export { parseArgs } from "./parse.js";
 export type { CliOptions } from "./helpers.js";
 import { printOut, fail, lineDiff, confirmAction } from "./helpers.js";
-import { trackCommand } from "./trackCmd.js";
 import { tddCommand } from "./tddCmd.js";
 import { pluginCommand } from "./pluginCmd.js";
 import { OrionTrack } from "../core/track.js";
@@ -37,7 +36,6 @@ import { payDebt } from "../skills/pay-debt/handler.js";
 import { reviewChange } from "../skills/review/handler.js";
 import { archiveChange } from "../skills/archive/handler.js";
 import { scanChanges, listTable, projectStats } from "./overviewCmd.js";
-import { planCmd } from "./planCmd.js";
 import { compareCmd, assumptionsCmd } from "./compareCmd.js";
 import { selfAudit } from "./selfauditCmd.js";
 import { backupCmd, restoreCmd } from "./backupCmd.js";
@@ -57,14 +55,9 @@ import { startServer, readVersion } from "./serve.js";
 import { configCmd } from "./configCmd.js";
 import { cleanCmd } from "./cleanCmd.js";
 import { statusWatch } from "./statusWatchCmd.js";
-import { completionScript } from "./completionCmd.js";
-import { shell } from "./shellCmd.js";
 import { diffCmd } from "./diffCmd.js";
 import { envCmd } from "./envCmd.js";
-import { historyCmd } from "./historyCmd.js";
 import { runDispatch } from "./runCmd.js";
-import { tokensDispatch } from "./tokensCmd.js";
-import { routeDispatch } from "./routeCmd.js";
 import { createScript, scriptPath, writeManifest } from "../core/runtime.js";
 import {
   metricsReport,
@@ -102,12 +95,21 @@ export async function main(argv: string[]): Promise<number> {
   // v0.51: route canonical (non-deprecated) top-level commands through
   // the new ORION_REGISTRY. Unknown commands still fall through to the
   // legacy switch for plugin discovery and back-compat shims.
+  // Also rewrite `cmd` to the canonical name so the legacy switch below
+  // sees the same value the registry would have dispatched.
+  let canonical = cmd;
   try {
     const { registerAllCommands, ORION_REGISTRY } = await import(
       "./bootstrap.js"
     );
     registerAllCommands();
-    const spec = ORION_REGISTRY.get(cmd);
+    if (cmd && Object.prototype.hasOwnProperty.call(DEPRECATED_ALIASES, cmd)) {
+      const target = DEPRECATED_ALIASES[cmd];
+      if (target && !target.startsWith("__")) {
+        canonical = target;
+      }
+    }
+    const spec = ORION_REGISTRY.get(canonical);
     if (spec) {
       return await spec.handler(args, opts);
     }
@@ -115,7 +117,7 @@ export async function main(argv: string[]): Promise<number> {
     /* bootstrap failure must not break the legacy switch */
   }
 
-  switch (cmd) {
+  switch (canonical) {
     case "version": {
       console.log(`orion ${readVersionSafe()}`);
       return 0;
@@ -474,9 +476,6 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
 
-    case "track":
-      return await trackCommand(args, opts, track);
-
     case "profile": {
       // User adaptation (v0.26): show the memory.md analogue. Renders the
       // file as-is (it is already human-readable markdown) or an honest
@@ -538,18 +537,6 @@ export async function main(argv: string[]): Promise<number> {
       }
       printOut(opts, { path: profilePath() }, profileView());
       return 0;
-    }
-
-    case "plan": {
-      const prompt = args.join(" ").trim();
-      if (!prompt) {
-        return fail(
-          "plan requires a prompt, e.g. orion plan build a CLI converter",
-        );
-      }
-      const result = planCmd(prompt);
-      console.log(result.text);
-      return result.ok ? 0 : 1;
     }
 
     case "compare": {
@@ -840,12 +827,6 @@ export async function main(argv: string[]): Promise<number> {
       return result.ok ? 0 : 1;
     }
 
-    case "route":
-      return routeDispatch(args);
-
-    case "tokens":
-      return tokensDispatch(args);
-
     case "run":
       // Pass --dry-run flag to runDispatch
       if (opts.dry && !args.includes("--dry-run")) {
@@ -853,21 +834,10 @@ export async function main(argv: string[]): Promise<number> {
       }
       return runDispatch(args);
 
-    case "shell": {
-      await shell();
-      return 0;
-    }
-
     case "env": {
       const envResult = envCmd();
       console.log(envResult.text);
       return envResult.ok ? 0 : 1;
-    }
-
-    case "history": {
-      const histResult = historyCmd(args);
-      console.log(histResult.text);
-      return histResult.ok ? 0 : 1;
     }
 
     case "diff": {
@@ -876,14 +846,6 @@ export async function main(argv: string[]): Promise<number> {
       const diffResult = diffCmd(diffId);
       console.log(diffResult.text);
       return diffResult.ok ? 0 : 1;
-    }
-
-    case "completion": {
-      const shell = args[0] ?? "bash";
-      console.log(completionScript(shell));
-      return shell === "bash" || shell === "zsh" || shell === "powershell"
-        ? 0
-        : 1;
     }
 
     case "clean": {

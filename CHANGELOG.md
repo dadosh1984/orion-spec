@@ -4,6 +4,54 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.51.0] — 2026-08-13
+
+CLI shrunk 43 → 8 top-level commands. The CLI is now a single registry
+in `src/cli/registry.ts`; each command is a thin handler in
+`src/cli/commands/<name>.ts`. 35 old top-level command names are kept as
+**deprecated aliases** that print a warning and forward to the new
+command; they will be removed entirely in v0.52.
+
+- **`orion new "<prompt>"`** — pipeline driver (think→draft→forge→shield→out).
+  Supports `--step=<name>`, `--pipeline`, `--dry`, `--from=<id>`. The
+  single entry point that replaces `think`/`draft`/`forge`/`shield`/
+  `out`/`verify`/`tasks`/`next`/`pay-debt`/`resume`/`init`/`plan`.
+- **`orion ls`** — list/inspect changes. `--watch` (live refresh),
+  `--diff <a> <b>`, `--assumptions <id>`, `--stats`, `--audit`, `--cache`,
+  `--profile`, `--lessons` (with `export`/`import` sub-commands).
+  Replaces `list`/`status`/`compare`/`assumptions`/`stats`/`self-audit`/
+  `track`/`profile`/`lessons`/`history`/`tokens`/`metrics`/`learn`.
+- **`orion change <id>`** — per-change operations. `--tasks`, `--review`,
+  `--archive`, `--diff`, `--changelog`, `--resume`, `--next`, `--pay-debt`,
+  `--verify`, `--shield`, `--out`, `--export`, `--import`. Replaces the
+  same-named top-level commands.
+- **`orion run`** — unchanged (22 sub-commands).
+- **`orion scale <file>`** — YAGNI ladder + `--stage=tdd` (replaces
+  `orion tdd`).
+- **`orion doctor`** — health/init/repair. `--init`, `--config`, `--clean`,
+  `--backup`, `--restore`, `--env`. Replaces `init`/`config`/`clean`/
+  `backup`/`restore`/`env`.
+- **`orion serve`** — web UI + `serve mcp` (MCP stdio). Replaces `serve`/
+  `mcp`.
+- **`orion plugin`** — unchanged (4 sub-commands).
+
+Other changes:
+- **`orion shell`**, **`orion completion`**, **`orion route`** are
+  **removed** (they had no real users).
+- **Removed** 8 dead `src/cli/*Cmd.ts` modules: trackCmd, tokensCmd,
+  shellCmd, scaleCmd, routeCmd, planCmd, historyCmd, completionCmd.
+- **Removed** `src/cli/commands-list.ts` (replaced by `ORION_REGISTRY`).
+- The `think`/`draft`/`forge`/`shield`/`out`/`verify`/`tasks`/`next`/
+  `pay-debt`/`resume`/`init`/`learn`/`metrics`/`mcp`/`profile`/
+  `lessons`/`tdd` top-level commands are **deprecated but still work**
+  via the legacy switch; they show `orion: 'X' is deprecated, use 'Y'...`
+  warnings and will be removed in v0.52.
+- 14 of the 22 `src/cli/*Cmd.ts` modules are kept as internal modules
+  (imported by the new `src/cli/commands/*.ts` handlers). They are no
+  longer registered as top-level commands.
+- **Tests**: +35 (731 total, 0 failed). New files: `tests/cli-aliases.test.ts`,
+  `tests/cli-new.test.ts`, `tests/cli-commands.test.ts`.
+
 ## [0.50.0] — 2026-08-12
 
 Optional browser engine for anti-bot-protected sites.

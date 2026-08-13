@@ -48,8 +48,20 @@ pnpm run format              # prettier --write (run before committing; format m
 
 ## Architecture
 
-- `src/cli/index.ts` → `commands.ts` — CLI dispatcher (all top-level commands),
-  `parse.ts` (help/flags), `commands-list.ts` (master command list + autocomplete).
+- `src/cli/index.ts` → `commands.ts` — CLI dispatcher (entry, deprecated
+  alias warnings, legacy switch as fallback for plugin discovery).
+- `src/cli/registry.ts` + `src/cli/bootstrap.ts` (v0.51) — single
+  source of truth for top-level commands: `ORION_REGISTRY: Map<string,
+  CommandSpec>`. `registerAllCommands()` is idempotent and called from
+  `commands.ts:main()` before the legacy switch.
+- `src/cli/commands/<name>.ts` (v0.51) — 8 thin handlers
+  (`new`/`ls`/`change`/`run`/`scale`/`doctor`/`serve`/`plugin`).
+  Adding a new top-level command = 1 entry in `bootstrap.ts` + 1 file
+  in `commands/`. 14 of the 22 `src/cli/*Cmd.ts` modules are kept as
+  internal modules that the new handlers delegate to.
+- `src/cli/parse.ts` — argv parser + `DEPRECATED_ALIASES` map
+  (old names → new canonical names; 19 entries, prints deprecation
+  warning to stderr before the legacy switch handles them).
 - `src/cli/runCmd.ts` — `orion run` sub-commands (list/new/show/edit/delete/
   schedule/stats/explain/log/diff/generate/repair/watch + direct execution).
 - `src/core/runtime.ts` — script storage + `runScript()` (**async**, v0.50);

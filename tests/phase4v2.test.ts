@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { planCmd } from "../src/cli/planCmd.js";
+// v0.51: planCmd removed (replaced by `orion new --dry`).
 import { compareCmd, assumptionsCmd } from "../src/cli/compareCmd.js";
 import { think } from "../src/skills/think/handler.js";
 import { draft } from "../src/skills/draft/handler.js";
@@ -28,30 +28,6 @@ afterEach(() => {
   delete process.env.ORION_TEMPLATES_DIR;
   process.chdir(ORIGINAL_CWD);
   rmSync(dir, { recursive: true, force: true });
-});
-
-describe("orion plan (v0.33)", () => {
-  it("shows a guarded dry-run plan without writing files", () => {
-    const r = planCmd("build a cli converter");
-    expect(r.ok).toBe(true);
-    expect(r.text).toContain("Plan for:");
-    expect(r.text).toContain("Derived tasks");
-    expect(r.text).toContain("No files written");
-  });
-
-  it("flags a denied prompt via the guard", () => {
-    mkdirSync(".orion", { recursive: true });
-    writeFileSync(join(".orion", "deny.txt"), "# policy\nrm -rf\n", "utf8");
-    const r = planCmd("run rm -rf ./cache");
-    expect(r.ok).toBe(false);
-    expect(r.text).toContain("deny-list");
-  });
-
-  it("is language-aware", () => {
-    const r = planCmd("сделай конвертер csv");
-    expect(r.ok).toBe(true);
-    expect(r.text.toLowerCase()).toContain("ru");
-  });
 });
 
 describe("orion compare + assumptions (v0.33)", () => {
