@@ -99,6 +99,22 @@ export async function main(argv: string[]): Promise<number> {
     );
   }
 
+  // v0.51: route canonical (non-deprecated) top-level commands through
+  // the new ORION_REGISTRY. Unknown commands still fall through to the
+  // legacy switch for plugin discovery and back-compat shims.
+  try {
+    const { registerAllCommands, ORION_REGISTRY } = await import(
+      "./bootstrap.js"
+    );
+    registerAllCommands();
+    const spec = ORION_REGISTRY.get(cmd);
+    if (spec) {
+      return await spec.handler(args, opts);
+    }
+  } catch {
+    /* bootstrap failure must not break the legacy switch */
+  }
+
   switch (cmd) {
     case "version": {
       console.log(`orion ${readVersionSafe()}`);
