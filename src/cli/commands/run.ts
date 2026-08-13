@@ -1,10 +1,16 @@
 /**
- * `orion run` (v0.51) — offline scripts placeholder.
- * Full implementation in T9: re-export `runDispatch` from runCmd.ts.
+ * `orion run` (v0.51) — offline scripts.
+ *
+ * Re-exports the existing `runDispatch` from `runCmd.ts`. The 22
+ * sub-commands (`run new`, `run generate`, `run show`, `run edit`,
+ * `run delete`, `run schedule`, `run unschedule`, `run scheduled`,
+ * `run list`, `run cache`, `run watch`, `run watchers`, `run unwatch`,
+ * `run repair`, `run explain`, `run log`, `run stats`, etc.) are
+ * unchanged. This handler is the single top-level entry point.
  */
-import { fail } from "../helpers.js";
+import { runDispatch } from "../runCmd.js";
 import type { CommandHandler } from "../registry.js";
 
-export const runHandler: CommandHandler = (_args, _opts) => {
-  return fail("orion run: not implemented yet (T9)");
+export const runHandler: CommandHandler = async (args) => {
+  return await runDispatch(args);
 };

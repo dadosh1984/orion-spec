@@ -61,7 +61,8 @@ describe("CLI branches (v0.25 coverage)", () => {
   });
 
   it("scale fails honestly on a missing file and dry-runs an existing one", async () => {
-    await expect(main(["scale", join(dir, "nope.ts")])).rejects.toThrow();
+    // v0.51: scale returns exit code 1 on a missing file (not a throw).
+    expect(await main(["scale", join(dir, "nope.ts")])).toBe(1);
     const { writeFileSync } = await import("node:fs");
     const f = join(dir, "a.ts");
     writeFileSync(f, "export const a = 1;\n", "utf8");

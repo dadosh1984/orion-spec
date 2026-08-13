@@ -86,19 +86,24 @@ describe("orion new (v0.51 pipeline driver)", () => {
 });
 
 describe("registry bootstrap (v0.51)", () => {
-  it("registers 'new' but not yet the other 7 commands (T7-T13 pending)", async () => {
+  it("registers all 8 top-level commands (T6-T13 complete)", async () => {
     const { registerAllCommands, ORION_REGISTRY } = await import(
       "../src/cli/bootstrap.js"
     );
     registerAllCommands();
-    expect(ORION_REGISTRY.has("new")).toBe(true);
-    expect(ORION_REGISTRY.has("ls")).toBe(false);
-    expect(ORION_REGISTRY.has("change")).toBe(false);
-    expect(ORION_REGISTRY.has("run")).toBe(false);
-    expect(ORION_REGISTRY.has("scale")).toBe(false);
-    expect(ORION_REGISTRY.has("doctor")).toBe(false);
-    expect(ORION_REGISTRY.has("serve")).toBe(false);
-    expect(ORION_REGISTRY.has("plugin")).toBe(false);
+    expect(ORION_REGISTRY.size).toBe(8);
+    for (const name of [
+      "new",
+      "ls",
+      "change",
+      "run",
+      "scale",
+      "doctor",
+      "serve",
+      "plugin",
+    ]) {
+      expect(ORION_REGISTRY.has(name), `command '${name}' should be registered`).toBe(true);
+    }
   });
 
   it("is idempotent: calling registerAllCommands twice does not duplicate", async () => {

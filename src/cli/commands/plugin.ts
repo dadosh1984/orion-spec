@@ -1,10 +1,12 @@
 /**
- * `orion plugin` (v0.51) — plugin manager placeholder.
- * Full implementation lands in T13: re-export `pluginCommand`.
+ * `orion plugin` (v0.51) — plugin manager.
+ *
+ * Re-exports the existing `pluginCommand` from `pluginCmd.ts`. The
+ * 4 sub-commands (`new`, `install`, `list`, `remove`) are unchanged.
  */
-import { fail } from "../helpers.js";
+import { pluginCommand } from "../pluginCmd.js";
 import type { CommandHandler } from "../registry.js";
 
-export const pluginHandler: CommandHandler = (_args, _opts) => {
-  return fail("orion plugin: not implemented yet (T13)");
+export const pluginHandler: CommandHandler = async (args, opts) => {
+  return await pluginCommand(args, opts);
 };
