@@ -492,6 +492,17 @@ git push origin main
 > листьев, потолок maxDepth=4 → остаточная неопределённость в `[ask-user]`.
 > `renderTasksBody` использует atomicTree; maintenance RED→fix→verify планы
 > не дробятся повторно. Gage: 69 файлов/758 тестов зелёные, shield allPass: true.
+>
+> **СДЕЛАНО (2026-08-13, change `внедрить-сопоставление-атомарного-шага`, Фаза 1 + часть 2):**
+> - `src/core/skillsMatch.ts`: BM25/TF-IDF скоринг (self-contained, без сети),
+>   домен-фильтр до матчинга, консервативные пороги USE_SKILL/CANDIDATES/NO_MATCH
+>   (ложное срабатывание дороже ложного отказа); `environmentFingerprint()`
+> - `src/core/skillMissLog.ts`: миss-лог с первого дня (JSONL) + promotionCandidates
+> - `RunManifest`: добавлены tags / domain / environmentFingerprint
+> - CLI: `orion run match "<шаг>"` — BM25 + авто-лог промахов; `run match --promote` — кандидаты
+> - Оставлено на следующую итерацию: `orion run --approve` (подтверждение+replay),
+>   счётчик метрики steps_via_skill vs llm. Фазы 3 (эмбеддинги) и 4 (инвалидация)
+>   — только при сигнале из миss-лога. Гейт: 70 файлов/768 тестов, allPass: true.
 **Философия:** всё гениальное — в простоте. Никакой тяжёлой модели:
 шлюз + рекурсивный сплит + счётчик листьев.
 

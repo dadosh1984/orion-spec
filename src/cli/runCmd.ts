@@ -550,6 +550,47 @@ export async function runDispatch(args: string[]): Promise<number> {
       return 0;
     }
 
+    case "match": {
+      // Skill matching + miss-log + promotion candidates (Phase 1/2).
+      //   orion run match "<atomic step>"   → BM25 + log if no confident match
+      //   orion run match --promote          → repeated misses promotable
+      const wantsPromote =
+        rest.includes("--promote") || name === "--promote" || name === "--candidates";
+      if (wantsPromote) {
+        const { promotionCandidates } = await import("../core/skillMissLog.js");
+        const cands = promotionCandidates(3);
+        if (cands.length === 0) {
+          console.log(`${statusMark("info")} No promotion candidates yet — log accumulates misses to find repeated signatures.`);
+        } else {
+          console.log(`\n${paint(`${cands.length} promotion candidate(s)`, "cyan")} (repeat ≥ 3) — review before promoting:`);
+          for (const c of cands) {
+            console.log(`\n  ✦ ×${c.repeat}  ${c.entry.step}`);
+            console.log(`    domain: ${c.entry.domain} | last resolve: ${c.entry.resolution ?? "—"}`);
+          }
+        }
+        return 0;
+      }
+      if (!name) {
+        return fail('usage: orion run match "<atomic step>"');
+      }
+      const { matchSkill } = await import("../core/skillsMatch.js");
+      const { logSkillMiss } = await import("../core/skillMissLog.js");
+      const step = rest.filter((a) => !a.startsWith("--")).join(" ") || name;
+      const r = matchSkill(step);
+      if (r.decision === "USE_SKILL") {
+        console.log(`${statusMark("done")} Match → ${paint(r.skill.name, "green")} (score ${r.score.toFixed(2)}), domain=${r.skill.domain}`);
+        console.log(`  Run: orion run ${r.skill.name}`);
+      } else if (r.decision === "CANDIDATES") {
+        console.log(`${statusMark("info")} Borderline — verify one of these before running (cheap, no full model run):`);
+        r.candidates.forEach((c, i) => console.log(`  ${i + 1}. ${c.name} (score ${r.scores[i]?.toFixed(2) ?? "—"})`));
+        logSkillMiss({ step, domain: "general", reason: "borderline", topScore: r.scores[0] ?? null });
+      } else {
+        console.log(`${statusMark("error")} No confident match — sending step to LLM.`);
+        logSkillMiss({ step, domain: "general", reason: "below-threshold", topScore: null });
+      }
+      return 0;
+    }
+
     case "new": {
       if (!name) return fail("usage: orion run new <name> [--node|--python]");
       // Runtimes: explicit --node/--python win; else TTY asks; else detect

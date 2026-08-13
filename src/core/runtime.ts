@@ -49,6 +49,16 @@ export interface RunManifest {
   schedule: string | null;
   /** Source change id if created via `forge --save-as`. */
   sourceChange?: string;
+  /** Search tags — vocabulary the BM25 matcher scores against (v0.51). */
+  tags?: string[];
+  /** Domain this skill belongs to (onec | contracts | general ...). The
+   * BM25 matcher filters by domain BEFORE scoring to avoid cross-domain
+   * false positives like «создать запись» across unrelated contexts. */
+  domain?: string;
+  /** Fingerprint of the runtime environment this skill was built against
+   * (e.g. schema 1C_TI vs 1C_TI_NEW). Phase 4 invalidates skills whose
+   * backing environment drifts — recorded now, enforced later. */
+  environmentFingerprint?: string;
   /** Spec-driven output validation schema (v0.39). */
   outputSchema?: {
     required?: string[];
@@ -241,6 +251,7 @@ export function createScript(
   name: string,
   runtime: "bash" | "node" | "python",
   description: string,
+  meta?: { tags?: string[]; domain?: string; environmentFingerprint?: string },
 ): RunManifest {
   const dir = join(scriptsDir(), name);
   if (existsSync(manifestPath(name))) {
@@ -273,6 +284,9 @@ export function createScript(
     lastRun: null,
     runCount: 0,
     schedule: null,
+    tags: meta?.tags,
+    domain: meta?.domain ?? "general",
+    environmentFingerprint: meta?.environmentFingerprint,
   };
   writeManifest(m);
   return m;
