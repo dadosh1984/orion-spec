@@ -218,6 +218,7 @@ const CONTEXT_OUTPUTS = new Set([
   "result.md",
   "forge-report.md",
   "forge-report.json",
+  "receipt.json",
 ]);
 
 /**

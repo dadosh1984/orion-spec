@@ -93,3 +93,13 @@
 - [x] [fact] 2.2: `out` авто-вызывает pay-debt (детерминированно, игл ledger) и пишет секцию "YAGNI debt (auto-repaid on out)" в result.md
 - [x] [fact] pay-debt больше не отдельный dispatch; standalone — тонкий триггер → тот же handler (throw на missing change); `change --pay-debt` оставлен
 - [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные, live: init→doctor, out auto-repay с секцией Debt
+
+## 2.3 — Honest Receipt (killer-feature)
+
+- [x] [fact] `src/skills/out/receipt.ts`: receipt из реальных данных guard (drift/test/hazard) + честный "not measured" для coverage
+- [x] [fact] поля: change, ts (stable), spec↔source, tests, coverage, hazards, sha256
+- [x] [fact] text-блок в result.md + машиночитаемый `receipt.json`
+- [x] [fact] receipt.ts не в projectHash (CONTEXT_OUTPUTS) — out не ядовит freshness; ts из guard/артефактов (идемпотентен)
+- [x] [fact] coverage: берётся только из реального coverage/coverage-final.json; иначе "not measured"
+- [x] [assumption] тесты tests/receipt.test.ts (6): не-измеримый coverage, стабильный sha256, парсинг test, текст-блок, идемпотентность
+- [x] [control] full vitest 72 файла / 791 тест, eslint/tsc зелёные

@@ -9,6 +9,7 @@ import {
 } from "../../core/lessons.js";
 import { recordCalibration } from "../../core/calibration.js";
 import { estimateChangeCost } from "../next/handler.js";
+import { buildReceipt, renderReceiptText, receiptJson } from "./receipt.js";
 import type { GuardReport, Proposal } from "../../type.js";
 
 /** Result of the `out` skill. */
@@ -21,6 +22,8 @@ export interface OutResult {
   tasksDone: number;
   tasksTotal: number;
   artifacts: string[];
+  /** Path to the machine-readable Honest Receipt (v0.52, 2.3). */
+  receiptPath: string;
   /** True when the guard verdict may be outdated (v0.10). */
   staleGuard: boolean;
 }
@@ -123,6 +126,10 @@ export async function out(
     debt = null; // debt repayment is best-effort; never break `out`
   }
 
+  // 2.3: Honest Receipt (v0.52) — every field measured or honestly
+  // "not measured"; never a fabricated coverage/count.
+  const receipt = buildReceipt(changeId, guard);
+
   const summary = [
     `# Result — ${changeId}`,
     "",
@@ -179,6 +186,12 @@ export async function out(
           "",
         ]
       : []),
+    ...[
+      "## Honest Receipt",
+      "",
+      `\`\`\`\n${renderReceiptText(receipt)}\n\`\`\``,
+      "",
+    ],
     "## Next steps",
     "",
     !guardOk
@@ -193,6 +206,8 @@ export async function out(
 
   const resultPath = `changes/${changeId}/result.md`;
   await writeFileSafe(resultPath, summary);
+  // 2.3: also write the machine-readable receipt for tooling/CI.
+  await writeFileSafe(`changes/${changeId}/receipt.json`, receiptJson(receipt));
   // Calibration (v0.18, H): a SUCCESS verdict records the change's actual
   // weight — Σ change file bytes ÷ 4, the honest ≈ bytes/4 proxy — next
   // to the estimate next would give. Future estimates learn from reality.
@@ -206,6 +221,7 @@ export async function out(
   return {
     changeId,
     resultPath,
+    receiptPath: `changes/${changeId}/receipt.json`,
     allPass: status === "SUCCESS",
     summary,
     status,

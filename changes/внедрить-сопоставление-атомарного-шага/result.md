@@ -1,11 +1,11 @@
 # Result — внедрить-сопоставление-атомарного-шага
 
 - **Status:** INCOMPLETE
-- **Tasks:** 44/49 done
-**Guard:** lint:PASS, type:PASS, test:PASS, drift:PASS, yagni:PASS, economy:PASS, security:PASS, policy:PASS, verifiability:PASS — **STALE**: the change moved after the last `orion shield` run (2026-08-13T19:49:49.120Z)
+- **Tasks:** 48/53 done
+**Guard:** lint:PASS, type:PASS, test:PASS, drift:PASS, yagni:PASS, economy:PASS, security:PASS, policy:PASS, verifiability:PASS — **STALE**: the change moved after the last `orion shield` run (2026-08-13T20:00:19.559Z)
 - **Budget:** compact
 - **Constraints:** compact
-- **Generated:** 2026-08-13T19:49:49.120Z
+- **Generated:** 2026-08-13T20:00:19.559Z
 
 ## Checklist
 
@@ -58,6 +58,10 @@
 - [x] [fact] C1: парсинг argv переписан на `node:util` `parseArgs` (zero-deps, без кастомного цикла); командно-специфичные флаги (--diff/--assumptions/--tasks/...) сохраняются в args для handlers
 - [x] [assumption] smoke: `--help`=8, `--json`, `--version`, deprecated-алиасы, `run match --promote`
 - [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные
+- [x] [fact] 2.1: `orion init` — убран отдельный case; `init` стал deprecated-алиасом → `doctor --init` (inject --init). Логика initRepo — один источник в doctor.ts
+- [x] [fact] 2.2: `out` авто-вызывает pay-debt (детерминированно, игл ledger) и пишет секцию "YAGNI debt (auto-repaid on out)" в result.md
+- [x] [fact] pay-debt больше не отдельный dispatch; standalone — тонкий триггер → тот же handler (throw на missing change); `change --pay-debt` оставлен
+- [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные, live: init→doctor, out auto-repay с секцией Debt
 
 ## Guard report
 
@@ -70,12 +74,12 @@
 🧠 orion lesson recorded — forge: task not green: Implement add — expected 2 to equal 3
  Test Files  71 passed (71)
       Tests  785 passed | 2 skipped (787)
-   Duration  24.05s (transform 6.62s, setup 0ms, import 16.51s, tests 135.84s, environment 22ms)
+   Duration  24.44s (transform 8.36s, setup 0ms, import 18.19s, tests 138.49s, environment 25ms)
 
 [orion: −38686 B (−99.3%) ≈ 9672 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
 | drift | PASS | matched 1 exported capabilities |
 | yagni | PASS | 1 snippet(s) within repo norms (median 95 LOC, 3 imports) |
-| economy | PASS | cache 35.6 KB of 100.0 MB (100 entries) — within budget; ≈ 1165452 tok saved across 598 compress op(s) |
+| economy | PASS | cache 36.6 KB of 100.0 MB (102 entries) — within budget; ≈ 1175124 tok saved across 601 compress op(s) |
 | security | PASS | no obvious issues |
 | policy | PASS | no .orion/policy.json — no project gates to enforce |
 | verifiability | PASS | oracles: ci, lint, test-runner, type-check · verifiability level 3 — strong checks present |
@@ -94,6 +98,20 @@
 - Paid during this out: none
 - Still owed: none — no open debt
 - Open debt entries after: 0
+
+## Honest Receipt
+
+```
+╭─ Honest Receipt ──────────────────────╮
+│ change:        внедрить-сопоставление-атомарного
+│ ts:            2026-08-13T20:00:19.559Z
+│ spec ↔ source: 1/1 symbols matched
+│ tests:         785 passing, 2 skipped
+│ coverage:      not measured
+│ hazards:       0 destructive patterns
+│ sha256:        98bc3708364c
+╰───────────────────────────────────────╯
+```
 
 ## Next steps
 

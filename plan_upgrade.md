@@ -580,7 +580,17 @@ git push origin main
 >   тонкий триггер → тот же handler (throws на missing change); `change --pay-debt`
 >   остаётся. Теперь `out` стабилен для Honest Receipt (2.3).
 >   Гейт: 71 файл/785 тестов, allPass: true.
-**Философия:** всё гениальное — в простоте. Никакой тяжёлой модели:
+>
+> **2.3 — HONEST RECEIPT (2026-08-14, killer-feature):**
+> - `src/skills/out/receipt.ts`: визуальный сертификат из РЕАЛЬНЫХ данных -
+>   drift (spec↔source), test (passed/skipped), hazards (security); coverage
+>   честно "not measured" без coverage/coverage-final.json.
+> - text-блок в result.md (ASCII box) + машиночитаемый `changes/<id>/receipt.json`.
+> - ts детерминирован (guard.generatedAt или mtime артефактов без result.md/
+>   receipt.json) — `out` идемпотентен. `receipt.json` в CONTEXT_OUTPUTS — out
+>   не ядовит freshness guard.
+> - тесты receipt.test.ts (6). Гейт: 72 файла/791 тест, allPass: true.
+>   v2 (lessons/cost/badge) отложено намеренно.**Философия:** всё гениальное — в простоте. Никакой тяжёлой модели:
 шлюз + рекурсивный сплит + счётчик листьев.
 
 ### Главный принцип (исправленная логика)

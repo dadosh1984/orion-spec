@@ -1,0 +1,9 @@
+{
+  "change": "внедрить-сопоставление-атомарного-шага",
+  "ts": "2026-08-13T20:00:19.559Z",
+  "specSource": "1/1 symbols matched",
+  "tests": "785 passing, 2 skipped",
+  "coverage": "not measured",
+  "hazards": "0 destructive patterns",
+  "sha256": "98bc3708364c"
+}
