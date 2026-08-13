@@ -1,8 +1,38 @@
-# Changelog
-
 All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
+
+## [0.52.0] — 2026-08-14
+
+Skills-first architecture took shape: prompt → complexity classifier → honest
+atomic decomposition → BM25 skill matching with a miss-log.
+
+- **«Eat an elephant» complexity classifier** (`src/skills/think/complexity.ts`):
+  zero-LLM deterministic banding of a prompt into abstract/easy/medium/hard
+  with a derivation depth (0-3) and planned step budget.
+- **Atomic decomposition** (`src/skills/draft/atomic.ts`): `renderTasksBody`
+  replaces the mechanical depth-split with recursive splitting to atomic
+  leaves (one action / verifiable / no hidden decision), a deadlock ceiling
+  (default 4) that turns residual ambiguity into `[ask-user]` clarifying
+  questions. Maintenance RED→fix→verify plans bypass re-split.
+- **BM25 skill matching** (`src/core/skillsMatch.ts`): `matchSkill` is a pure,
+  synchronous, deterministic core returning `matched`/`none`/`ambiguous`, with
+  scores normalized to [0,1] (score/max) and conservative thresholds honoring
+  error asymmetry (a false positive costs more than a false reject). Domain
+  filtering happens BEFORE scoring. `resolveAmbiguous` is a separate async
+  (LLM stays outside orion — zero runtime deps is design).
+- **Miss-log** (`src/core/skillMissLog.ts`): every non-confident match is
+  logged (step, domain, reason, topScore) from day one; `promotionCandidates()`
+  surfaces repeated (≥3) signatures for review-gated promotion.
+- **Unified matching path**: `router.routeRequest` and `think`/`draft` skill
+  hints now all use BM25 `matchSkill`; the old naive `findExistingSkill` was
+  deleted (two matchers with different thresholds would disagree).
+- **Explicit domain resolution** (`resolveDomain`): `.orion/config.json` →
+  `ORION_DOMAIN` env → `"general"` fallback; `createScript`/generator/`--save-as`
+  now fill `domain` + `environmentFingerprint` at creation.
+- **Shadow migration**: `orion run match --shadow "<step>"` compares BM25 vs the
+  legacy naive scorer on the same case so the naive path is removed with data,
+  not blindly.
 
 ## [0.51.0] — 2026-08-13
 
@@ -838,3 +868,4 @@ Framework-agnostic TDD + short task slugs.
 - Initial release: CLI, `orion-track` cache, YAGNI ladder (`orion-scale`),
   TDD engine (`orion-tdd-core`), and the `think → draft → forge → shield →
   out` skills.
+
