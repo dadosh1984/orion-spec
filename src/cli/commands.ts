@@ -9,7 +9,7 @@ import {
   checkForUpdate,
   updateBanner,
 } from "../core/updateCheck.js";
-import { parseArgs, HELP } from "./parse.js";
+import { parseArgs, HELP, DEPRECATED_ALIASES } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
 export type { CliOptions } from "./helpers.js";
@@ -78,6 +78,26 @@ import { findPluginForCommand, loadPluginHandler } from "../core/plugins.js";
 export async function main(argv: string[]): Promise<number> {
   const { cmd, args, opts } = parseArgs(argv);
   const track = OrionTrack.init();
+
+  // v0.51: deprecated alias notice. When the user runs an old command
+  // name, print a one-line warning to stderr before the legacy case
+  // branch runs. Aliases will be removed entirely in v0.52.
+  if (cmd && Object.prototype.hasOwnProperty.call(DEPRECATED_ALIASES, cmd)) {
+    const target = DEPRECATED_ALIASES[cmd];
+    if (target === "__removed__") {
+      console.error(
+        `orion: '${cmd}' was removed in v0.51; use 'orion new' or 'orion doctor' instead`,
+      );
+      return 1;
+    }
+    if (target === "__hidden__") {
+      console.error(`orion: '${cmd}' is not a public command`);
+      return 1;
+    }
+    console.error(
+      `orion: '${cmd}' is deprecated, use '${target}' (will be removed in v0.52)`,
+    );
+  }
 
   switch (cmd) {
     case "version": {

@@ -104,6 +104,58 @@ Flags:
   --lang en|ru Template language override for draft (v0.27)
 `;
 
+/**
+ * Deprecated top-level aliases (v0.51). Each entry maps an old command
+ * name to its v0.51+ canonical name. When a user runs the old name, the
+ * dispatcher prints a deprecation warning and forwards to the canonical
+ * handler. These aliases will be removed in v0.52.
+ */
+export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
+  Object.freeze({
+    // pipeline (12) → new
+    think: "new",
+    plan: "new",
+    draft: "new",
+    forge: "new",
+    tasks: "new",
+    shield: "new",
+    verify: "new",
+    out: "new",
+    "pay-debt": "new",
+    resume: "new",
+    next: "new",
+    init: "new",
+    // list/inspect (6) → ls
+    list: "ls",
+    status: "ls",
+    compare: "ls",
+    assumptions: "ls",
+    stats: "ls",
+    "self-audit": "ls",
+    // observability (8) → ls (cache/metrics/tokens/history) or doctor (env)
+    profile: "ls",
+    track: "ls",
+    metrics: "ls",
+    tokens: "ls",
+    learn: "ls",
+    history: "ls",
+    lessons: "ls",
+    env: "doctor",
+    // health (4) → doctor
+    config: "doctor",
+    clean: "doctor",
+    backup: "doctor",
+    restore: "doctor",
+    // integration (1) → serve
+    mcp: "serve",
+    // scale (1) → scale
+    tdd: "scale",
+    // meta (3) — removed top-level
+    shell: "__removed__",
+    completion: "__removed__",
+    route: "__hidden__",
+  });
+
 /** Parse argv into a command plus options. */
 export function parseArgs(argv: string[]): {
   cmd: string;
