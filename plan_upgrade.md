@@ -570,6 +570,16 @@ git push origin main
 >   args реконструируются, сохраняя порядок и флаги handler-уровня).
 > - smoke: --help=8, --json, --version, deprecated-алиасы, run match --promote.
 >   Гейт: 71 файл/785 тестов, allPass: true.
+>
+> **2.1/2.2 — СТРУКТУРА ПЕРЕД HONEST RECEIPT (2026-08-14):**
+> - 2.1: `init` skill как отдельный dispatch убран; `orion init` → deprecated
+>   алиас, форвард на `doctor --init` (с inject --init). Логика initRepo — один
+>   источник в doctor.ts.
+> - 2.2: `out` авто-вызывает pay-debt (детерминированно, игл ledger) и пишет
+>   секцию "YAGNI debt (auto-repaid on out)" в result.md. Standalone pay-debt —
+>   тонкий триггер → тот же handler (throws на missing change); `change --pay-debt`
+>   остаётся. Теперь `out` стабилен для Honest Receipt (2.3).
+>   Гейт: 71 файл/785 тестов, allPass: true.
 **Философия:** всё гениальное — в простоте. Никакой тяжёлой модели:
 шлюз + рекурсивный сплит + счётчик листьев.
 

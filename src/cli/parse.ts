@@ -134,6 +134,7 @@ export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
     clean: "doctor",
     backup: "doctor",
     restore: "doctor",
+    init: "doctor",
     // integration: mcp still has a working legacy case, kept out of
     // DEPRECATED_ALIASES so users get the real mcp server behaviour.
     // scale/tdd: tdd still has a working legacy case too.

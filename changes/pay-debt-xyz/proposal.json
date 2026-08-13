@@ -1,0 +1,16 @@
+{
+  "title": "pay-debt-xyz",
+  "goal": "pay-debt xyz",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "en",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2,
+  "appliesLessons": [
+    "v0.18-calibration-debt-budget-indicator:out:35b3dc35f407",
+    "v0.18-calibration-debt-budget-indicator:out:77d000f38947"
+  ]
+}

@@ -86,3 +86,10 @@
 - [x] [fact] C1: парсинг argv переписан на `node:util` `parseArgs` (zero-deps, без кастомного цикла); командно-специфичные флаги (--diff/--assumptions/--tasks/...) сохраняются в args для handlers
 - [x] [assumption] smoke: `--help`=8, `--json`, `--version`, deprecated-алиасы, `run match --promote`
 - [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные
+
+## 2.1/2.2 — структура стойкая до Honest Receipt
+
+- [x] [fact] 2.1: `orion init` — убран отдельный case; `init` стал deprecated-алиасом → `doctor --init` (inject --init). Логика initRepo — один источник в doctor.ts
+- [x] [fact] 2.2: `out` авто-вызывает pay-debt (детерминированно, игл ledger) и пишет секцию "YAGNI debt (auto-repaid on out)" в result.md
+- [x] [fact] pay-debt больше не отдельный dispatch; standalone — тонкий триггер → тот же handler (throw на missing change); `change --pay-debt` оставлен
+- [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные, live: init→doctor, out auto-repay с секцией Debt

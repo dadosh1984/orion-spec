@@ -32,7 +32,6 @@ import { forge, forgeParallel, readTasks } from "../skills/forge/handler.js";
 import { shield } from "../skills/shield/handler.js";
 import { out } from "../skills/out/handler.js";
 import { nextStep } from "../skills/next/handler.js";
-import { payDebt } from "../skills/pay-debt/handler.js";
 import { reviewChange } from "../skills/review/handler.js";
 import { archiveChange } from "../skills/archive/handler.js";
 import { scanChanges, listTable, projectStats } from "./overviewCmd.js";
@@ -46,7 +45,6 @@ import {
   resetProfile,
   updateProfile,
 } from "../core/profile.js";
-import { initRepo } from "../skills/init/handler.js";
 import { changelogFor, changelogAll } from "./changelogCmd.js";
 import { resume } from "../skills/resume/handler.js";
 import { verifyChange, formatVerifyReport } from "../core/verify.js";
@@ -138,6 +136,11 @@ export async function main(argv: string[]): Promise<number> {
       const target = DEPRECATED_ALIASES[cmd];
       if (target && !target.startsWith("__")) {
         canonical = target;
+        // `orion init` is a bare alias to doctor; inject --init so it runs
+        // the scaffold, not the health check (v0.52, 2.1).
+        if (target === "doctor" && cmd === "init" && !args.includes("--init")) {
+          args.unshift("--init");
+        }
       }
     }
     const spec = ORION_REGISTRY.get(canonical);
@@ -461,11 +464,16 @@ export async function main(argv: string[]): Promise<number> {
     }
 
     case "pay-debt": {
+      // Thin manual trigger (v0.52): `out` auto-pays debt; this keeps the
+      // standalone name working by forwarding to the per-change handler (which
+      // throws on a missing change). Removed from the registry as a separate
+      // skill; only auto-invoked by `out` or requested via `change --pay-debt`.
       const changeId = args[0];
       if (!changeId)
         return fail(
           "pay-debt requires a change id, e.g. orion pay-debt my-csv-tool",
         );
+      const { payDebt } = await import("../skills/pay-debt/handler.js");
       const result = payDebt(changeId);
       printOut(
         opts,
@@ -474,7 +482,7 @@ export async function main(argv: string[]): Promise<number> {
           ? `Debt paid: ${result.paid.length} snippet(s) closed`
           : result.stillOwed.length > 0
             ? `${result.stillOwed.length} snippet(s) still owe — run orion scale <file> to pay them`
-            : "No open debt — ledger is clean",
+            : "No open debt",
       );
       return 0;
     }
@@ -734,25 +742,6 @@ export async function main(argv: string[]): Promise<number> {
             : "No changes with result.md yet — run orion out <title> first.",
         );
       }
-      return 0;
-    }
-
-    case "init": {
-      const res = initRepo();
-      printOut(
-        opts,
-        { created: res.created, existing: res.existing },
-        [
-          res.created.length
-            ? `Created:\n${res.created.map((f) => "  ✓ " + f).join("\n")}`
-            : "Nothing to create — all present",
-          res.existing.length
-            ? `Already present (kept): ${res.existing.join(", ")}`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      );
       return 0;
     }
 

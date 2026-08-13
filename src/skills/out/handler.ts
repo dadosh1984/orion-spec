@@ -106,6 +106,23 @@ export async function out(
       ? `**Guard:** ${guardDetail} — legacy report without a freshness snapshot; re-run \`orion shield\` for a definitive verdict`
       : `**Guard:** ${guardDetail}`;
 
+  // 2.2: `out` auto-repays yagni debt (v0.52) before writing the receipt.
+  // Deterministic — recomputes shield's own yagni signal and syncs the
+  // ledger; pays nothing it cannot prove. The result is surfaced in the
+  // receipt below.
+  let debt: {
+    paid: string[];
+    stillOwed: string[];
+    openAfter: number;
+  } | null = null;
+  try {
+    const { payDebt } = await import("../pay-debt/handler.js");
+    const r = payDebt(changeId);
+    debt = { paid: r.paid, stillOwed: r.stillOwed, openAfter: r.openAfter };
+  } catch {
+    debt = null; // debt repayment is best-effort; never break `out`
+  }
+
   const summary = [
     `# Result — ${changeId}`,
     "",
@@ -147,6 +164,20 @@ export async function out(
       : []),
     ...(status === "SUCCESS"
       ? lessonsSection(changeId, proposal?.goal ?? "")
+      : []),
+    ...(debt
+      ? [
+          "## YAGNI debt (auto-repaid on out)",
+          "",
+          debt.paid.length
+            ? `- Paid during this out: ${debt.paid.map((d) => `\`${d}\``).join(", ")}`
+            : "- Paid during this out: none",
+          debt.stillOwed.length
+            ? `- Still owed (over yagni threshold): ${debt.stillOwed.length} snippet(s)`
+            : "- Still owed: none — no open debt",
+          `- Open debt entries after: ${debt.openAfter}`,
+          "",
+        ]
       : []),
     "## Next steps",
     "",
