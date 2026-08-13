@@ -22,6 +22,7 @@ import {
 } from "./refine.js";
 import { guardPrompt } from "./guard.js";
 import { classifyTask, formatClassifyResult } from "../../core/classify.js";
+import { classifyComplexity } from "./complexity.js";
 
 /** One guided question in the `think` flow. */
 export interface Question {
@@ -88,6 +89,9 @@ export async function think(
   const { title, existing } = await resolveTitle(base, ask, track);
   if (existing) return existing;
 
+  // v0.51 «eat an elephant» complexity classifier (zero-LLM).
+  const cx = classifyComplexity(base, assessment.language);
+
   const proposal: Proposal = {
     title,
     goal: base,
@@ -96,6 +100,9 @@ export async function think(
     budget: "",
     clarity: assessment.clarity,
     language: assessment.language,
+    complexity: cx.complexity,
+    depth: cx.depth,
+    plannedSteps: cx.plannedSteps,
   };
 
   // Context decides: interactive terminals (or an injected ask, i.e. tests
