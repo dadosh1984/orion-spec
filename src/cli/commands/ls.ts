@@ -163,8 +163,9 @@ export const lsHandler: CommandHandler = async (args, opts) => {
     return 0;
   }
 
-  // Default: list all changes.
+  // Default: list all changes. Honour the global --json flag so the
+  // change list is machine-readable (matches the documented --json flag).
   const rows = scanChanges();
-  console.log(listTable(rows));
+  printOut(opts, rows, listTable(rows));
   return 0;
 };

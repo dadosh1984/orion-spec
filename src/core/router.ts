@@ -11,6 +11,7 @@ import {
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { classifyTask } from "./classify.js";
+import { classifyComplexity } from "../skills/think/complexity.js";
 
 // ─── Router ───────────────────────────────────────────
 
@@ -81,6 +82,15 @@ export function routeRequest(prompt: string): RouterDecision {
       confidence: 0.95,
       reason: `${cat.label}. ${cat.reason}`,
     };
+  // «Eat an elephant» gate: abstract (non-executable) prompts are not a
+  // deliverable — answer directly, never send through forge/decomposition.
+  if (classifyComplexity(prompt).complexity === "abstract") {
+    return {
+      action: "DIRECT_AI",
+      confidence: 0.9,
+      reason: `Abstract prompt (complexity=abstract) — answer directly, no forge.`,
+    };
+  }
   if (cat.category <= 3)
     return {
       action: "CREATE_NEW_SKILL",

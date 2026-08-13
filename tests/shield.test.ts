@@ -193,6 +193,27 @@ describe("shield skill", () => {
     expect(drift?.status).toBe("PASS");
   });
 
+  it("drift passes for exports outside src/tasks (e.g. src/core/router)", async () => {
+    // The drift gate was narrowed to src/tasks only; a source-feature
+    // (draft/router) change could then never pass shield. v0.51: scan all
+    // src/**/*.ts so spec headings can reference any real exported symbol.
+    mkdirSync(join("changes", "demo", "specs", "router"), { recursive: true });
+    mkdirSync("src/core", { recursive: true });
+    writeFileSync(
+      join("changes", "demo", "specs", "router", "spec.md"),
+      "# Spec: routeRequest\n\n## Purpose\nRouter abstract gate\n",
+      "utf8",
+    );
+    writeFileSync(
+      "src/core/router.ts",
+      "export function routeRequest(p: string): string { return p; }",
+      "utf8",
+    );
+    const report = await shield("demo", { noCache: true });
+    const drift = report.checks.find((c) => c.step === "drift");
+    expect(drift?.status).toBe("PASS");
+  });
+
   it("drift check passes when the capability is implemented", async () => {
     mkdirSync(join("changes", "demo", "specs", "core"), { recursive: true });
     mkdirSync("src/tasks", { recursive: true });

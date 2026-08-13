@@ -233,6 +233,71 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
 }
 
 /**
+ * Render the tasks.md body as a decomposition tree when the proposal's
+ * complexity classifier chose a depth >= 2 (strategy «eat an elephant in
+ * small bites», v0.51).
+ *
+ * The `tasks` checklist format is preserved: every leaf stays a `- [ ]`
+ * checkbox, so forge's readTasks regex still parses it. Non-checkbox
+ * `##`/`###` headings are ignored by readTasks, so they add hierarchy
+ * without breaking the forge loop.
+ *
+ *   depth 0 (abstract) / 1 (easy) → flat checklist (current behaviour)
+ *   depth 2 (medium)               → 2 big steps, each with its subtasks
+ *   depth 3 (hard)                 → 2 big steps, each split into
+ *                                    2 medium steps, then subtasks
+ *
+ * When depth < 2 or there are too few tasks to group meaningfully, the
+ * flat checklist is returned unchanged — a backward-compatible fallback.
+ */
+export function renderTasksBody(
+  tasks: DerivedTask[],
+  depth: 0 | 1 | 2 | 3,
+  title: string,
+): string {
+  const flat = tasks.map((t) => `- [ ] [${t.mark}] ${t.text}`);
+  if (depth < 2 || tasks.length < 2) return flat.join("\n");
+
+  const half = Math.ceil(tasks.length / 2);
+  const big1 = tasks.slice(0, half);
+  const big2 = tasks.slice(half);
+  // NOTE: forge's readTasks regex requires `- [ ]` at the actual line
+  // start (`^- \[( |x)\]`). Leading indentation would make checkboxes
+  // invisible to forge, so hierarchy is conveyed ONLY via `##`/`###`
+  // headings; every task line is unindented.
+  const fmt = (t: DerivedTask) => `- [ ] [${t.mark}] ${t.text}`;
+
+  if (depth === 2) {
+    return (
+      `## ✦ ${title} — big step 1\n` +
+      big1.map(fmt).join("\n") +
+      `\n## ✦ ${title} — big step 2\n` +
+      big2.map(fmt).join("\n")
+    );
+  }
+
+  // depth 3: two big steps, each with two medium groups.
+  const med1 = big1.slice(0, Math.ceil(big1.length / 2));
+  const med2 = big1.slice(Math.ceil(big1.length / 2));
+  const med3 = big2.slice(0, Math.ceil(big2.length / 2));
+  const med4 = big2.slice(Math.ceil(big2.length / 2));
+  const blocks: string[] = [];
+  for (const [bigName, meds] of [
+    ["big step 1", [med1, med2]],
+    ["big step 2", [med3, med4]],
+  ] as const) {
+    blocks.push(`## ✦ ${title} — ${bigName}`);
+    for (let i = 0; i < meds.length; i++) {
+      const med = meds[i];
+      if (!med.length) continue;
+      blocks.push(`### ${title} — ${bigName} · medium ${i + 1}`);
+      blocks.push(...med.map(fmt));
+    }
+  }
+  return blocks.join("\n");
+}
+
+/**
  * `orion draft` — generate the full artifact set for a proposal:
  * proposal.md, specs/<capability>/spec.md, design.md, tasks.md, snippets/.
  *
@@ -312,7 +377,7 @@ export async function draft(
     "tasks",
     {
       title,
-      tasks: derived.map((t) => `- [ ] [${t.mark}] ${t.text}`).join("\n"),
+      tasks: renderTasksBody(derived, proposal.depth ?? 0, title),
     },
     title,
     lang,

@@ -443,17 +443,23 @@ function driftCheck(changeId: string): GuardCheckResult {
       detail:
         `invalid capability name(s): ${invalid.join(", ")} — ` +
         `"# Spec:" headings must be valid JS identifiers matching an ` +
-        `export in src/tasks (rename the heading to the exported module's ` +
-        `name, e.g. "# Spec: core" for src/tasks/core.ts)`, //
+        `export in src (rename the heading to the exported module's ` +
+        `name, e.g. "# Spec: renderTasksBody")`, //
     };
   }
 
-  const srcDir = "src/tasks";
+  const srcDir = "src";
   const exports = new Set<string>();
   if (existsSync(srcDir)) {
-    for (const f of readdirSync(srcDir).filter((f) => f.endsWith(".ts"))) {
-      collectExports(readFileSync(join(srcDir, f), "utf8"), exports);
-    }
+    const walk = (dir: string): void => {
+      for (const ent of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, ent.name);
+        if (ent.isDirectory()) walk(p);
+        else if (ent.name.endsWith(".ts"))
+          collectExports(readFileSync(p, "utf8"), exports);
+      }
+    };
+    walk(srcDir);
   }
 
   const missing = expected.filter((cap) => !exports.has(cap));
