@@ -1,5 +1,4 @@
 # Archived changes
 
-Completed Orion changes, moved out of the active backlog.
-
-See each change's result.md for its final guard report.
+Завершённые change'ы переносятся сюда после `orion change <id> --archive`.
+Восстановимы из `git log` (фильтр: `git log --all -- "changes/archived/<id>/"`).

@@ -34,3 +34,12 @@ coverage/
 .orion-vitest-cache/
 cwd/
 .pytest_cache/
+
+# Per-change test artifacts
+changes/*/.orion-vitest-cache/
+changes/*/.pytest_cache/
+changes/*/cwd/
+
+# One-off scratch
+tmp/
+orion-spec docs/
