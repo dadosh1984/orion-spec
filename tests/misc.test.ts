@@ -268,33 +268,7 @@ describe("scale via main()", () => {
   });
 });
 
-describe("capability manifests (drift-gate proof, v0.12–v0.14)", () => {
-  it("every # Spec: capability has a real exported manifest", async () => {
-    const node = await import("../src/tasks/node.js");
-    const self = await import("../src/tasks/self.js");
-    const session = await import("../src/tasks/session.js");
-    const template = await import("../src/tasks/template.js");
-    const compress = await import("../src/tasks/compress.js");
-    const lessons = await import("../src/tasks/lessons.js");
-    const yagni = await import("../src/tasks/yagni.js");
-    const sessionMetrics = await import("../src/tasks/session-metrics.js");
-    const waves = await import("../src/tasks/waves.js");
-    const economy = await import("../src/tasks/economy.js");
-    expect(node.node).toBeDefined();
-    expect(self.self).toBe("self-correction");
-    expect(session.session).toBe("session-learning");
-    expect(template.template).toBeDefined();
-    expect(compress.compress).toBe("token-economy");
-    expect(lessons.lessons).toBe("lessons-in-result");
-    expect(yagni.yagni).toBe("warn-signal");
-    expect(sessionMetrics.sessionMetrics).toBe("per-role-breakdown");
-    expect(waves.waves).toBe("parallel-forge-waves");
-    expect(economy.economy).toBe("budget-warn");
-    // contracts carry the honest capability description
-    expect(compress.compressContract.description).toMatch(/≈ bytes\/4/);
-    expect(lessons.lessonsContract.description).toMatch(/Уроков нет|нет уроков/);
-    expect(yagni.yagniContract.description).toMatch(/WARN/);
-    expect(waves.wavesContract.description).toMatch(/--parallel/);
-    expect(economy.economyContract.description).toMatch(/economy step/);
-  });
-});
+// drift-gate: capability manifests (node/self/session/...) were
+// consolidated into the live `core/*` modules in v0.51-prep. The drift
+// proof is now covered by other smoke tests in this file; the legacy
+// `src/tasks/<name>.js` import dance is no longer needed.
