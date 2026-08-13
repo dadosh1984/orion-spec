@@ -577,70 +577,104 @@ export async function runDispatch(args: string[]): Promise<number> {
       const wantsPromote =
         rest.includes("--promote") || name === "--promote" || name === "--candidates";
       const wantsShadow = rest.includes("--shadow") || name === "--shadow";
-      const wantsApprove = rest.includes("--approve") || name === "--approve";
+      const wantsApprove =
+        rest.includes("--approve") ||
+        rest.includes("--propose") ||
+        rest.includes("--replay") ||
+        name === "--approve" ||
+        name === "--propose" ||
+        name === "--replay";
       const { matchSkill, shadowCompare } = await import(
         "../core/skillsMatch.js",
       );
       const { logSkillMiss } = await import("../core/skillMissLog.js");
 
       if (wantsApprove) {
-        // Safe promotion (v0.52): promote a repeated miss-log signature to a
-        // change scaffold seeded with the historical input→output pairs, so
-        // the reuse of a skill is never silent. The agent writes entry.js,
-        // then `forge --save-as` (which requires a real entry) registers it.
-        // No auto-promote, no silent script. Replay data is recorded so the
-        // generated script can be verified against past resolutions before it
-        // becomes a skill.
-        const { missLogForStep } = await import(
-          "../core/skillMissLog.js",
-        );
-        const sig = (name === "--approve" ? rest.join(" ") : rest.filter((a) => a !== "--approve").join(" ")).trim();
-        if (!sig) return fail('usage: orion run match --approve "<step signature>"');
-        const history = missLogForStep(sig);
-        if (history.length < 3) {
-          return fail(`Signature "${sig}" occurs only ${history.length}× in the miss-log — need ≥ 3 to consider promotion.`);
-        }
+        // Safe promotion state-machine (v0.52): proposed → replayed → approved.
+        const isReplay = rest.includes("--replay") || name === "--replay";
+        const { readProposal, proposeFromMissLog, approveProposal, replayProposal } =
+          await import("../core/promotion.js");
+        const { missLogForStep } = await import("../core/skillMissLog.js");
         const { significantWords } = await import("../core/titles.js");
-        const slug = significantWords(sig, 3).join("-") || "promoted-skill";
         const { mkdirSync, writeFileSync, existsSync } = await import("node:fs");
         const { join: jn } = await import("node:path");
-        const dir = jn("changes", slug);
-        if (existsSync(dir)) return fail(`changes/${slug} already exists — pick a different signature or remove it first.`);
-        mkdirSync(jn(dir, "snippets"), { recursive: true });
+
+        if (isReplay) {
+          const id = (name === "--replay" ? rest.join(" ").trim() : rest.filter((a) => a !== "--replay").join(" ").trim()) || name;
+          if (!id) return fail("usage: orion run match --replay <proposal-id>");
+          const pr = readProposal(id);
+          if (!pr) return fail("Proposal \"" + id + "\" not found — run --propose \"<sig>\" first.");
+          if (!pr.scriptPath || !existsSync(pr.scriptPath)) {
+            return fail("Proposal \"" + id + "\" has no script yet — write " + (pr.scriptPath ?? "the proposed script") + " first, then replay.");
+          }
+          const res = await replayProposal(id, (args) =>
+            (async () => {
+              const { execFileSync } = await import("node:child_process");
+              try {
+                const out = execFileSync(process.execPath, [pr.scriptPath!, ...args], { encoding: "utf8" });
+                return { ok: true, output: out };
+              } catch (e) {
+                return { ok: false, output: String((e as Error).message || e) };
+              }
+            })(),
+          );
+          if (res.state === "replayed") {
+            console.log(statusMark("done") + " Replay PASSED (score " + res.replayScore.toFixed(2) + "). Now: orion run match --approve " + id);
+          } else {
+            console.log(statusMark("error") + " Replay BLOCKED — " + res.drift.length + " drift(s):");
+            for (const d of res.drift) console.log("  ✗ " + d);
+            console.log("  Fix the script, then re-run --replay " + id);
+          }
+          return 0;
+        }
+
+        const approveMode = name === "--approve";
+        if (approveMode) {
+          const id = rest.filter((a) => a !== "--approve").join(" ").trim() || name;
+          const prr = readProposal(id);
+          if (!prr) return fail("Proposal \"" + id + "\" not found.");
+          const ok = await approveProposal(id);
+          if (!ok) return fail("Cannot approve \"" + id + "\": state is \"" + prr.state + "\" — it must be \"replayed\" first.");
+          console.log(statusMark("done") + " Approved \"" + id + "\" — recorded in economy.json (source=promote:" + id + ").");
+          return 0;
+        }
+
+        // Propose: snapshot a repeated miss-log signature + scaffold a change dir.
+        const sig = rest.join(" ").trim() || name;
+        if (!sig) return fail("usage: orion run match --propose \"<step signature>\"");
+        const history = missLogForStep(sig);
+        if (history.length < 3) {
+          return fail("Signature \"" + sig + "\" occurs only " + history.length + "× in the miss-log — need ≥ 3 to consider promotion.");
+        }
+        const slug = significantWords(sig, 3).join("-") || "promoted-skill";
         const domain = history[0].domain ?? "general";
-        const proposal = {
-          title: slug,
-          goal: sig,
-          platform: "",
-          constraints: `promoted from miss-log: ${history.length}× repeat, domain=${domain}`,
-          budget: "",
-          clarity: "clear",
-          language: /[а-яё]/i.test(sig) ? "ru" : "en",
-          complexity: "easy",
-          depth: 1,
-          plannedSteps: 2,
-        };
-        writeFileSync(jn(dir, "proposal.json"), JSON.stringify(proposal, null, 2), "utf8");
-        const steps = history.map((h, i) => `- [ ] [fact] replay #${i + 1}: step="${h.step}" → expected="${h.resolution ?? "(unknown output — rerun the LLM once to capture it)"}"`);
-        const tasks = `# Tasks — ${slug}
-
-Replay-verified promotion seed from the miss-log. The generated script must
-reproduce each historical resolution on the matching inputs before it is
-registered with \`forge --save-as\`. Write \`entry.js\`, then run
-\`orion forge ${slug} --save-as ${slug}\`.
-
-${steps.join("\n")}
-
-- [ ] [fact] implement ${sig} so every replay (above) passes
-- [ ] [control] write changes/${slug}/entry.js, then \`orion forge ${slug} --save-as ${slug}\`
-`;
-        writeFileSync(jn(dir, "tasks.md"), tasks, "utf8");
-        console.log(`${statusMark("done")} Promotion scaffold created: ${slug}`);
-        console.log(`  history: ${history.length}× · domain=${domain}`);
-        console.log(`  next: write changes/${slug}/entry.js, then orion forge ${slug} --save-as ${slug}`);
+        const id = slug + "-" + Date.now().toString(36);
+        proposeFromMissLog(
+          id,
+          sig,
+          domain,
+          history.map((h) => ({ step: h.step, resolution: h.resolution })),
+        );
+        const dir = jn("changes", slug);
+        if (!existsSync(dir)) {
+          mkdirSync(jn(dir, "snippets"), { recursive: true });
+          writeFileSync(jn(dir, "proposal.json"), JSON.stringify({ title: slug, goal: sig, platform: "", constraints: "promoted from miss-log (" + history.length + "×), domain=" + domain }, null, 2), "utf8");
+          const tasksBody = [
+            "# Tasks — " + slug,
+            "",
+            "Write entry.js so it reproduces each recorded resolution. Then:",
+            "",
+            "`orion run match --replay " + id + "` → `orion run match --approve " + id + "`",
+            "",
+          ].join("\n");
+          writeFileSync(jn(dir, "tasks.md"), tasksBody, "utf8");
+        }
+        console.log(statusMark("done") + " Proposal \"" + id + "\" created (" + history.length + "×, domain=" + domain + ").");
+        console.log("  write: changes/" + slug + "/entry.js");
+        console.log("  then:  orion run match --replay " + id);
+        console.log("  then:  orion run match --approve " + id);
         return 0;
       }
-
       if (wantsPromote) {
         const { promotionCandidates } = await import("../core/skillMissLog.js");
         const cands = promotionCandidates(3);

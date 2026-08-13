@@ -549,6 +549,17 @@ git push origin main
 > - `missLogForStep()` — историч. I/O по сигнатуре (данные replay-верификации).
 > - `--promote` теперь показывает и команду `--approve` для каждого кандидата.
 > - Гейт: 70 файлов/780 тестов, allPass: true.
+>
+> **A1/A2 — STATE-MACHINE ПРОМОУШЕН + ECONOMY-SOURCE (2026-08-14):**
+> - `src/core/promotion.ts`: ledger `.orion/proposals/<id>.json`, состояния
+>   proposed→replayed→approved. `orion run match --propose "<sig>"` (снапшот ≥3
+>   повторов), `--replay <id>` (shadow-запуск скрипта на историч. входах; drift
+>   блокирует — state остаётся proposed), `--approve <id>` (только после PASSED
+>   replay). Авто-promote невозможен.
+> - A2: `EconomyEntry.source` {proposalId, promotedAt, replayScore} — ROI
+>   привязывается к конкретному промоушену через `approveProposal`→appendEconomy.
+> - live-прогон: propose→replay-WRONG(BLOCKED)→replay-FIXED(PASS 1.0)→approve→
+>   economy row с source. Гейт: 71 файл/785 тестов, allPass: true.
 **Философия:** всё гениальное — в простоте. Никакой тяжёлой модели:
 шлюз + рекурсивный сплит + счётчик листьев.
 

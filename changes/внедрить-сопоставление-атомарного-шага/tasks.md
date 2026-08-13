@@ -69,3 +69,13 @@
 - [x] [fact] `missLogForStep()` — собирает все историч. I/O по сигнатуре (данные для replay-верификации)
 - [x] [assumption] тесты missLogForStep (случай-независимость, неизвестная сигнатура → [])
 - [x] [control] full vitest 70 файлов / 780 тестов, eslint/tsc зелёные, live-прогон --approve создаёт скелет
+
+## A1/A2 — state-machine промоушен + economy-source
+
+- [x] [fact] `src/core/promotion.ts`: state-machine proposed→replayed→approved с ledger в `.orion/proposals/<id>.json`
+- [x] [fact] `orion run match --propose "<sig>"` — снапшот повторяющейся сигнатуры (≥3) + scaffold changes/
+- [x] [fact] `orion run match --replay <id>` — shadow-запуск скрипта на исторических входах, drift БЛОКИРУЕТ промоушен (state остаётся proposed)
+- [x] [fact] `orion run match --approve <id>` — только после PASSED replay; пишет economy.json с source {proposalId, promotedAt, replayScore}
+- [x] [fact] A2: `EconomyEntry.source` добавлен — ROI по конкретному промоушену, не «вообще»
+- [x] [assumption] тесты `tests/promotion.test.ts`: propose/replay-block/replay-pass/approve-refused/approve-ok (5)
+- [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные, live-прогон state-machine

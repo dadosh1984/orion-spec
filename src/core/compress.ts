@@ -60,6 +60,14 @@ export interface EconomyEntry {
   cached: boolean;
   /** Project scope (package.json name, git-root dir, or cwd basename). */
   project?: string;
+  /** When this row records a skill PROMOTION (v0.52) — ties the economy
+   * ledger to a specific proposed→approved skill so `run stats` can compute
+   * real per-skill ROI. Absent on ordinary compress rows. */
+  source?: {
+    proposalId: string;
+    promotedAt: number;
+    replayScore: number;
+  };
 }
 
 /** Per-project aggregate from the economy ledger (v0.11). */
