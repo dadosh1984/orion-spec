@@ -172,15 +172,15 @@ export async function main(argv: string[]): Promise<number> {
           'think requires a prompt, e.g. orion think "Build a CSV-to-JSON tool"',
         );
       const proposal = await think(prompt, opts);
-      // Skill-first hint (v0.48): check if an existing skill matches the prompt.
+      // Skill-first hint (v0.48→v0.51): unified BM25 matching path.
       try {
-        const { findExistingSkill } = await import("../core/router.js");
-        const existing = findExistingSkill(prompt);
-        if (existing && existing.score >= 3) {
+        const { matchSkill, resolveDomain } = await import("../core/skillsMatch.js");
+        const ex = matchSkill(prompt, { domain: resolveDomain() });
+        if (ex.kind === "matched") {
           console.error(
-            `\n${statusMark("info")} Existing skill found: "${existing.name}" (score: ${existing.score}).`,
+            `\n${statusMark("info")} Existing skill found: "${ex.skill.name}" (tier=${ex.tier}, score: ${ex.score.toFixed(2)}).`,
           );
-          console.error(`  Run with: orion run ${existing.name}`);
+          console.error(`  Run with: orion run ${ex.skill.name}`);
           console.error(
             `  Or continue creating a new change: orion draft ${proposal.title}\n`,
           );
@@ -200,16 +200,16 @@ export async function main(argv: string[]): Promise<number> {
       const title = args[0];
       if (!title)
         return fail("draft requires a title, e.g. orion draft my-csv-tool");
-      // Skill-first hint (v0.49): check for existing skills matching the title.
+      // Skill-first hint (v0.49→v0.51): unified BM25 matching path.
       try {
-        const { findExistingSkill } = await import("../core/router.js");
-        const existing = findExistingSkill(title);
-        if (existing && existing.score >= 5) {
+        const { matchSkill, resolveDomain } = await import("../core/skillsMatch.js");
+        const ex = matchSkill(title, { domain: resolveDomain() });
+        if (ex.kind === "matched") {
           console.error(
-            `\n${statusMark("warn")} Existing skill "${existing.name}" matches (score: ${existing.score}).`,
+            `\n${statusMark("warn")} Existing skill "${ex.skill.name}" matches (tier=${ex.tier}, score: ${ex.score.toFixed(2)}).`,
           );
           console.error(
-            `  Consider: orion run ${existing.name}  (instead of drafting a new change)\n`,
+            `  Consider: orion run ${ex.skill.name}  (instead of drafting a new change)\n`,
           );
         }
       } catch {
@@ -306,11 +306,26 @@ export async function main(argv: string[]): Promise<number> {
             return 1;
           }
 
-          // Создаём скрипт и копируем реальный код
+          // Создаём скрипт и копируем реальный код. v0.51: fill domain +
+          // environmentFingerprint at save time (was "general"/none before).
+          const { meta: skillMetaForSave } = await (async () => {
+            const { resolveDomain, environmentFingerprint } = await import(
+              "../core/skillsMatch.js",
+            );
+            return {
+              meta: {
+                domain: resolveDomain(),
+                environmentFingerprint: environmentFingerprint({
+                  runtime: process.version,
+                }),
+              },
+            };
+          })();
           const m = createScript(
             saveName,
             "node",
             `Forge result for change: ${title}`,
+            skillMetaForSave,
           );
           const entryCode = readFileSync(entryPath, "utf8");
           writeFileSync(scriptPath(saveName), entryCode, "utf8");

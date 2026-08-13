@@ -46,3 +46,11 @@
 - [x] [fact] БАГ-fix `resolveAmbiguous`: multi-candidate возвращает `none` (не топ) — error asymmetry, не угадываем
 - [x] [assumption] тесты `resolveDomain` (env/config/general) + `resolveAmbiguous` (none/matched)
 - [x] [control] full vitest 70 файлов / 774 теста, eslint/tsc зелёные, shield allPass
+
+## Единый матчер + заполнение мета (3 фикса)
+
+- [x] [fact] fix #1 — тавтология `tier`: убран `skills.some(...)`, exact теперь = все токены имени skill в запросе; `tier=bm25` честно выводится
+- [x] [fact] fix #2 — единый путь: `router.routeRequest` и `commands` (think/draft-подсказки) переведены на BM25 `matchSkill`; мёртвый `findExistingSkill` удалён
+- [x] [fact] fix #3 — `createScript`/generator/--save-as заполняют `domain`(resolveDomain) + `environmentFingerprint` при создании
+- [x] [assumption] тесты router переведены с findExistingSkill на matchSkill
+- [x] [control] full vitest 70 файлов / 774 теста, eslint/tsc зелёные, live-проверка tier=bm25 + domain/envfp заполнены

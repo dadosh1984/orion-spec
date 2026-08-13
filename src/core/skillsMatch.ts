@@ -249,12 +249,17 @@ export function matchSkill(
   if (!top) return { kind: "none" };
   if (top.score < high) return { kind: "none" };
 
-  // Exact name match: the cleaned step equals the skill name (or contains it
-  // as a whole token) → strongest possible signal, beats BM25 margin.
-  const whole = query.join(" ");
+  // Exact name match: every normalized token of the skill name appears in
+  // the step's query → the user literally named the skill. Strongest signal,
+  // beats the BM25 margin. Strict on all name tokens (not a prefix), so
+  // "csv" does not match "csv-to-json". (v0.51 bugfix — the old OR clause
+  // was a tautology that made `tier` always "exact".)
+  const nameTokens = tokenize(top.skill.name);
+  const querySet = new Set(query);
   const exact =
-    top.skill.name.toLowerCase() === whole ||
-    skills.some((s) => s.name && normalized[0].skill.name === s.name);
+    nameTokens.length > 0 &&
+    query.length >= nameTokens.length &&
+    nameTokens.every((t) => querySet.has(t));
   const tier: MatchTier = exact ? "exact" : "bm25";
 
   // Unambiguous: top is clearly better than #2 (error asymmetry → be strict).

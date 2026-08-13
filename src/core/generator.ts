@@ -14,6 +14,7 @@ import {
   writeManifest,
   type RunManifest,
 } from "./runtime.js";
+import { resolveDomain, environmentFingerprint } from "./skillsMatch.js";
 
 export interface GeneratedSkill {
   name: string;
@@ -33,8 +34,12 @@ export function generateSkill(
   const dir = join(scriptsDir(), name);
   const files: string[] = [];
 
-  // 1. Создать базовый скрипт
-  const m = createScript(name, runtime, prompt);
+  // 1. Создать базовый скрипт. v0.51: fill domain from the explicit resolver
+  //    (config.json / env) + an environment fingerprint on generation.
+  const m = createScript(name, runtime, prompt, {
+    domain: resolveDomain(),
+    environmentFingerprint: environmentFingerprint({ runtime: process.version }),
+  });
   files.push("run.sh");
 
   // 2. Обогатить manifest

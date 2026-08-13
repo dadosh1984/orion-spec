@@ -21,4 +21,13 @@
  * - resolveAmbiguous(): multi-candidate short-list returns {kind:"none"} —
  *   never picks the top for you (error asymmetry); resolution happens a layer
  *   up (Claude Code / the caller), keeping zero runtime deps.
+ *
+ * Three pre-first-skill fixes (v0.51):
+ * - tier tautology removed: exact <=> all skill-name tokens in the query;
+ *   bm25 tier is now honest (was always "exact").
+ * - unified matching: router.routeRequest and commands (think/draft hints)
+ *   now use matchSkill; dead findExistingSkill deleted (was a second scorer
+ *   with a different threshold — two paths would disagree).
+ * - createScript/generator/--save-as fill domain (resolveDomain) +
+ *   environmentFingerprint at creation time.
  */

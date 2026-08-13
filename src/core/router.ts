@@ -6,12 +6,12 @@ import {
   readFileSync,
   writeFileSync,
   mkdirSync,
-  readdirSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { classifyTask } from "./classify.js";
 import { classifyComplexity } from "../skills/think/complexity.js";
+import { matchSkill, resolveDomain } from "./skillsMatch.js";
 
 // ─── Router ───────────────────────────────────────────
 
@@ -27,52 +27,19 @@ export interface RouterDecision {
   reason: string;
 }
 
-export function findExistingSkill(
-  prompt: string,
-): { name: string; score: number } | null {
-  const dir = join(homedir(), ".orion", "scripts");
-  if (!existsSync(dir)) return null;
-  const words = prompt
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((w) => w.length > 2);
-  let best: { name: string; score: number } | null = null;
-  try {
-    for (const d of readdirSync(dir, { withFileTypes: true })) {
-      if (!d.isDirectory()) continue;
-      const mf = join(dir, d.name, "orion.json");
-      if (!existsSync(mf)) continue;
-      try {
-        const m = JSON.parse(readFileSync(mf, "utf8")) as {
-          name: string;
-          description: string;
-        };
-        let score = 0;
-        const desc = (m.description || "").toLowerCase();
-        for (const w of words) {
-          if (d.name.includes(w)) score += 3;
-          if (desc.includes(w)) score += 1;
-        }
-        if (score > 0 && (!best || score > best.score))
-          best = { name: d.name, score };
-      } catch {
-        /* skip */
-      }
-    }
-  } catch {
-    /* skip */
-  }
-  return best;
-}
-
 export function routeRequest(prompt: string): RouterDecision {
-  const existing = findExistingSkill(prompt);
-  if (existing && existing.score >= 5) {
+  // Unified matching path (v0.51): BM25 `matchSkill`, same as `orion run
+  // match`. Old naive `findExistingSkill` had a separate threshold (score >= 5)
+  // and no IDF — two matchers would pick different skills for the same step.
+  // `ambiguous` is NOT auto-resolved here: a short-list for the LLM one layer
+  // up (error asymmetry — never guess). Only a confident `matched` is used.
+  const m = matchSkill(prompt, { domain: resolveDomain() });
+  if (m.kind === "matched") {
     return {
       action: "USE_EXISTING_SKILL",
-      skillName: existing.name,
-      confidence: Math.min(0.9, existing.score / 10),
-      reason: `Found matching skill "${existing.name}" (score: ${existing.score}).`,
+      skillName: m.skill.name,
+      confidence: m.tier === "exact" ? 0.95 : Math.min(0.8, 0.3 + m.score),
+      reason: `Found matching skill "${m.skill.name}" (tier=${m.tier}, score=${m.score.toFixed(2)}).`,
     };
   }
   const cat = classifyTask(prompt);

@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { routeRequest, findExistingSkill, verifyRun } from "../src/core/router.js";
+import { routeRequest, verifyRun } from "../src/core/router.js";
+import { matchSkill, resolveDomain } from "../src/core/skillsMatch.js";
 import { createScript, deleteScript } from "../src/core/runtime.js";
 
 describe("router", () => {
@@ -23,14 +24,14 @@ describe("router", () => {
 
   it("finds existing skill by keyword", () => {
     createScript(NAME, "bash", "backup documents folder");
-    const found = findExistingSkill("backup documents");
-    expect(found).not.toBeNull();
-    if (found) expect(found.name).toBe(NAME);
+    const found = matchSkill("backup documents", { domain: resolveDomain() });
+    expect(found.kind).toBe("matched");
+    if (found.kind === "matched") expect(found.skill.name).toBe(NAME);
   });
 
-  it("returns null for unknown query", () => {
-    const found = findExistingSkill("xyzzy_nonexistent_task_abc");
-    expect(found).toBeNull();
+  it("returns none for unknown query", () => {
+    const found = matchSkill("xyzzy_nonexistent_task_abc", { domain: resolveDomain() });
+    expect(found.kind).toBe("none");
   });
 
   it("routes to USE_EXISTING_SKILL when strong match found", () => {

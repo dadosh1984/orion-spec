@@ -32,6 +32,23 @@ import {
 } from "../core/tokenLedger.js";
 
 /**
+ * Resolve the metadata a newly created skill should carry: its domain (via
+ * the explicit .orion/config.json / ORION_DOMAIN resolution order) and an
+ * environment fingerprint. v0.51 — callers used to call createScript without
+ * meta, so every skill was born "general" with no fingerprint. Now domain &
+ * fingerprint are filled automatically at creation time.
+ */
+async function skillMeta() {
+  const { resolveDomain, environmentFingerprint } = await import(
+  "../core/skillsMatch.js",
+  );
+  return {
+    domain: resolveDomain(),
+    environmentFingerprint: environmentFingerprint({ runtime: process.version }),
+  };
+}
+
+/**
  * `orion run` (v0.39) — автономные локальные скрипты.
  */
 export async function runDispatch(args: string[]): Promise<number> {
@@ -656,9 +673,11 @@ export async function runDispatch(args: string[]): Promise<number> {
           name,
           runtime as "bash" | "node" | "python",
           desc,
+          await skillMeta(),
         );
         console.log(`${statusMark("done")} Script created: ${m.name}`);
         console.log(`  Runtime: ${m.runtime}${explicit ? "" : " (auto)"}`);
+        console.log(`  Domain:  ${m.domain ?? "general"}`);
         console.log(`  Path:    ${scriptPath(name)}`);
         console.log(`  Edit:    orion run edit ${name}`);
       } catch (err) {

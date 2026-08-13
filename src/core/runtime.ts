@@ -285,7 +285,7 @@ export function createScript(
     runCount: 0,
     schedule: null,
     tags: meta?.tags,
-    domain: meta?.domain ?? "general",
+    domain: meta?.domain ?? (process.env.ORION_DOMAIN?.trim() || "general"),
     environmentFingerprint: meta?.environmentFingerprint,
   };
   writeManifest(m);
