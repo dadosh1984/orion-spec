@@ -47,6 +47,32 @@ function scriptsDir(): string {
   return process.env.ORION_SCRIPTS_DIR ?? join(homedir(), ".orion", "scripts");
 }
 
+/**
+ * Resolve the current project's domain for skill matching. Explicit
+ * declaration, never guessed from the repo name (name→domain heuristics are
+ * fragile and silently drift). Resolution order:
+ *   1. <repo-root>/.orion/config.json  →  { "domain": "..." }
+ *   2. ORION_DOMAIN env                →  (tests / CI)
+ *   3. "general"                       →  last-resort fallback (never the
+ *                                         default SOURCE, just the guard)
+ */
+export function resolveDomain(): string {
+  const env = process.env.ORION_DOMAIN;
+  if (env && env.trim()) return env.trim();
+  try {
+    const cfg = join(process.cwd(), ".orion", "config.json");
+    if (existsSync(cfg)) {
+      const parsed = JSON.parse(readFileSync(cfg, "utf8")) as {
+        domain?: string;
+      };
+      if (parsed.domain && parsed.domain.trim()) return parsed.domain.trim();
+    }
+  } catch {
+    /* malformed config → fall through to 'general' */
+  }
+  return "general";
+}
+
 const HTML_TAG = /<[^>]+>/g;
 function normalize(text: string): string {
   return (text || "")
@@ -194,7 +220,7 @@ export function matchSkill(
 ): MatchDecision {
   const query = opts.query ?? tokenize(step);
   if (query.length === 0) return { kind: "none" };
-  const skills = opts.skills ?? readSkills(opts.domain);
+  const skills = opts.skills ?? readSkills(opts.domain ?? resolveDomain());
   if (skills.length === 0) return { kind: "none" };
 
   const { idf, avgLen } = buildIndex(skills);
@@ -255,14 +281,20 @@ export async function resolveAmbiguous(
 ): Promise<MatchDecision> {
   if (candidates.length === 0) return { kind: "none" };
   if (candidates.length === 1) {
-    return { kind: "matched", skill: candidates[0], tier: "bm25", score: 0 }; // no other option
+    // Only one candidate: not ambiguous any more. Return it as matched. The
+    // caller produced a 1-item short-list, so there is nothing to choose.
+    return { kind: "matched", skill: candidates[0], tier: "bm25", score: 0 };
   }
-  // NOTE(v0.51): actual LLM verification (prompting the model to pick from
-  // the short-list) is deliberately left as a pluggable point — the pure
-  // core is testable without mocks; the model call belongs in the caller.
-  // This thin shell returns the top candidate as the current best-effort so
-  // the contract + CLI work end-to-end before any model is wired in.
-  return { kind: "matched", skill: candidates[0], tier: "bm25", score: 0 };
+  // ERROR ASYMMETRY (v0.51): `ambiguous` is precisely the case where we must
+  // NOT guess. Picking the top candidate here would silently run the wrong
+  // skill — the one failure mode that costs more than a false reject. The
+  // LLM stays OUTSIDE orion (zero runtime dependencies is a design choice,
+  // not an oversight), so resolution happens one layer up: the caller that
+  // invoked `orion run match` sees `ambiguous` + the short-list in stdout
+  // and either re-asks the model itself or reruns the concrete skill. Until
+  // that verification is connected, the safe answer is `none` — hand the
+  // step back to the LLM, never pick for it.
+  return { kind: "none" };
 }
 
 /** Well-typed shim so `readSkills` doesn't need to reach into RunManifest. */

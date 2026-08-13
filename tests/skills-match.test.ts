@@ -11,6 +11,8 @@ import {
   matchSkill,
   environmentFingerprint,
   shadowCompare,
+  resolveDomain,
+  resolveAmbiguous,
   type SkillMeta,
 } from "../src/core/skillsMatch.js";
 import {
@@ -188,5 +190,53 @@ describe("skill miss-log (Phase 1 infrastructure)", () => {
 
   it("log file is JSON-lines under ORION_MISS_LOG_DIR", () => {
     expect(missLogFile()).toContain("skill-miss-log.jsonl");
+  });
+});
+
+describe("resolveDomain (v0.51, explicit declaration)", () => {
+  const ORIG_DOMAIN = process.env.ORION_DOMAIN;
+  afterEach(() => {
+    if (ORIG_DOMAIN === undefined) delete process.env.ORION_DOMAIN;
+    else process.env.ORION_DOMAIN = ORIG_DOMAIN;
+  });
+
+  it("env ORION_DOMAIN has priority over config", () => {
+    process.env.ORION_DOMAIN = "contracts";
+    expect(resolveDomain()).toBe("contracts");
+  });
+
+  it("falls back to `general` with no env and no config", () => {
+    delete process.env.ORION_DOMAIN;
+    expect(resolveDomain()).toBe("general");
+  });
+
+  it("reads .orion/config.json domain when env is absent", () => {
+    delete process.env.ORION_DOMAIN;
+    const cfgDir = join(dir, ".orion");
+    mkdirSync(cfgDir, { recursive: true });
+    writeFileSync(join(cfgDir, "config.json"), JSON.stringify({ domain: "onec" }), "utf8");
+    const orig = process.cwd();
+    process.chdir(dir);
+    try {
+      expect(resolveDomain()).toBe("onec");
+    } finally {
+      process.chdir(orig);
+    }
+  });
+});
+
+describe("resolveAmbiguous (v0.51, error asymmetry)", () => {
+  it("returns none for a multi-candidate short-list (never guesses)", async () => {
+    const cs = [
+      skill({ name: "a" }),
+      skill({ name: "b" }),
+    ];
+    const d = await resolveAmbiguous("some step", cs);
+    expect(d.kind).toBe("none");
+  });
+
+  it("returns matched for a single candidate (nothing to choose)", async () => {
+    const d = await resolveAmbiguous("some step", [skill({ name: "only" })]);
+    expect(d.kind).toBe("matched");
   });
 });

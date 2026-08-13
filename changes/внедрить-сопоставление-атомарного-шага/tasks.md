@@ -39,3 +39,10 @@
 - [x] [fact] `resolveAmbiguous` — отдельная async; одна пара функций для run/forge и CLI
 - [x] [fact] `shadowCompare` + `orion run match --shadow` — BM25 vs naive на тех же кейсах (наивный удаляется с данными, не вслепую)
 - [x] [control] full vitest 70 файлов / 769 тестов, eslint/tsc зелёные, shield allPass
+
+## Проверка кодом + фиксы (v0.51)
+
+- [x] [fact] `resolveDomain()`: поряr `.orion/config.json` → `ORION_DOMAIN` env → `general`; убит хардкод домена в runCmd (miss-log и match берут настоящий домен)
+- [x] [fact] БАГ-fix `resolveAmbiguous`: multi-candidate возвращает `none` (не топ) — error asymmetry, не угадываем
+- [x] [assumption] тесты `resolveDomain` (env/config/general) + `resolveAmbiguous` (none/matched)
+- [x] [control] full vitest 70 файлов / 774 теста, eslint/tsc зелёные, shield allPass

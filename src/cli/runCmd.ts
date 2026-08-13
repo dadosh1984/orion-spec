@@ -600,6 +600,8 @@ export async function runDispatch(args: string[]): Promise<number> {
         return fail('usage: orion run match "<atomic step>"');
       }
       const step = rest.filter((a) => !a.startsWith("--")).join(" ") || name;
+      const { resolveDomain } = await import("../core/skillsMatch.js");
+      const domain = resolveDomain();
       const r = matchSkill(step);
       if (r.kind === "matched") {
         console.log(`${statusMark("done")} Match → ${paint(r.skill.name, "green")} (tier=${r.tier}, score ${r.score.toFixed(2)}), domain=${r.skill.domain}`);
@@ -611,12 +613,12 @@ export async function runDispatch(args: string[]): Promise<number> {
         if (decision.kind === "matched") {
           console.log(`${statusMark("info")} Ambiguous → resolved to ${paint(decision.skill.name, "green")} (from: ${r.candidates.map((c) => c.name).join(", ")})`);
         } else {
-          console.log(`${statusMark("info")} Ambiguous — short-list, no decisive resolution: ${r.candidates.map((c) => c.name).join(", ")}`);
+          console.log(`${statusMark("info")} Ambiguous — short-list, NO auto-resolution (error asymmetry): ${r.candidates.map((c) => c.name).join(", ")}`);
         }
-        logSkillMiss({ step, domain: "general", reason: "borderline", topScore: null });
+        logSkillMiss({ step, domain, reason: "borderline", topScore: null });
       } else {
         console.log(`${statusMark("error")} No confident match — sending step to LLM.`);
-        logSkillMiss({ step, domain: "general", reason: "below-threshold", topScore: null });
+        logSkillMiss({ step, domain, reason: "below-threshold", topScore: null });
       }
       return 0;
     }
