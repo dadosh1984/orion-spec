@@ -1,11 +1,11 @@
 # Result — внедрить-сопоставление-атомарного-шага
 
 - **Status:** INCOMPLETE
-- **Tasks:** 48/53 done
-**Guard:** lint:PASS, type:PASS, test:PASS, drift:PASS, yagni:PASS, economy:PASS, security:PASS, policy:PASS, verifiability:PASS — **STALE**: the change moved after the last `orion shield` run (2026-08-13T20:00:19.559Z)
+- **Tasks:** 55/60 done
+**Guard:** lint:PASS, type:PASS, test:PASS, drift:PASS, yagni:PASS, economy:PASS, security:PASS, policy:PASS, verifiability:PASS
 - **Budget:** compact
 - **Constraints:** compact
-- **Generated:** 2026-08-13T20:00:19.559Z
+- **Generated:** 2026-08-13T20:11:49.550Z
 
 ## Checklist
 
@@ -62,6 +62,13 @@
 - [x] [fact] 2.2: `out` авто-вызывает pay-debt (детерминированно, игл ledger) и пишет секцию "YAGNI debt (auto-repaid on out)" в result.md
 - [x] [fact] pay-debt больше не отдельный dispatch; standalone — тонкий триггер → тот же handler (throw на missing change); `change --pay-debt` оставлен
 - [x] [control] full vitest 71 файлов / 785 тестов, eslint/tsc зелёные, live: init→doctor, out auto-repay с секцией Debt
+- [x] [fact] `src/skills/out/receipt.ts`: receipt из реальных данных guard (drift/test/hazard) + честный "not measured" для coverage
+- [x] [fact] поля: change, ts (stable), spec↔source, tests, coverage, hazards, sha256
+- [x] [fact] text-блок в result.md + машиночитаемый `receipt.json`
+- [x] [fact] receipt.ts не в projectHash (CONTEXT_OUTPUTS) — out не ядовит freshness; ts из guard/артефактов (идемпотентен)
+- [x] [fact] coverage: берётся только из реального coverage/coverage-final.json; иначе "not measured"
+- [x] [assumption] тесты tests/receipt.test.ts (6): не-измеримый coverage, стабильный sha256, парсинг test, текст-блок, идемпотентность
+- [x] [control] full vitest 72 файла / 791 тест, eslint/tsc зелёные
 
 ## Guard report
 
@@ -72,14 +79,14 @@
 | type | PASS | ok |
 | test | PASS | [orion] 1 failing line(s):
 🧠 orion lesson recorded — forge: task not green: Implement add — expected 2 to equal 3
- Test Files  71 passed (71)
-      Tests  785 passed | 2 skipped (787)
-   Duration  24.44s (transform 8.36s, setup 0ms, import 18.19s, tests 138.49s, environment 25ms)
+ Test Files  72 passed (72)
+      Tests  791 passed | 2 skipped (793)
+   Duration  24.41s (transform 8.52s, setup 0ms, import 19.24s, tests 134.66s, environment 25ms)
 
 [orion: −38686 B (−99.3%) ≈ 9672 tok — ≈ tokens: bytes/4 estimate (no tokenizer)] |
 | drift | PASS | matched 1 exported capabilities |
 | yagni | PASS | 1 snippet(s) within repo norms (median 95 LOC, 3 imports) |
-| economy | PASS | cache 36.6 KB of 100.0 MB (102 entries) — within budget; ≈ 1175124 tok saved across 601 compress op(s) |
+| economy | PASS | cache 37.2 KB of 100.0 MB (103 entries) — within budget; ≈ 1184795 tok saved across 604 compress op(s) |
 | security | PASS | no obvious issues |
 | policy | PASS | no .orion/policy.json — no project gates to enforce |
 | verifiability | PASS | oracles: ci, lint, test-runner, type-check · verifiability level 3 — strong checks present |
@@ -104,15 +111,15 @@
 ```
 ╭─ Honest Receipt ──────────────────────╮
 │ change:        внедрить-сопоставление-атомарного
-│ ts:            2026-08-13T20:00:19.559Z
+│ ts:            2026-08-13T20:11:49.550Z
 │ spec ↔ source: 1/1 symbols matched
-│ tests:         785 passing, 2 skipped
+│ tests:         791 passing, 2 skipped
 │ coverage:      not measured
 │ hazards:       0 destructive patterns
-│ sha256:        98bc3708364c
+│ sha256:        ce8126963b8c
 ╰───────────────────────────────────────╯
 ```
 
 ## Next steps
 
-The guard report is **stale** — the change moved after the last `orion shield внедрить-сопоставление-атомарного-шага` run. Re-run it before trusting this result.
+Complete the 5 open task(s): `orion forge внедрить-сопоставление-атомарного-шага`.
