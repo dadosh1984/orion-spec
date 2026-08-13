@@ -109,3 +109,30 @@ pnpm run format              # prettier --write (run before committing; format m
 ## Notes
 
 <!-- quick-adds for future sessions -->
+
+### SESSION-SAVE 2026-08-14 (v0.52.0)
+
+**Состояние:** всё закоммичено и запушено (HEAD clean, `orion --version` = 0.52.0).
+Активный change-ленер: `внедрить-сопоставление-атомарного-шага` (задачи 56/60 done,
+shield allPass: true). Остальные 4 задачи — deferred фичи, ниже.
+
+**Сделано в этой сессии (skills-first «съесть слона»):** `classifyComplexity`
+(zero-LLM) + `atomic.ts` честное дробление; `skillsMatch.ts` BM25+IDF
+`matchSkill` PURE/SYNC, нормализация [0,1], домен-фильтр до скоринга,
+env-fingerprint ENFORCED; `skillMissLog.ts` miss-log с первого дня;
+`promotion.ts` state-machine `--propose → --replay → --approve` (silent promote
+невозможен); `resolveDomain()`. A2 `EconomyEntry.source`. B1 `--help` из
+`ORION_REGISTRY`; C1 `parseArgs` на `node:util`. 2.1 `init`→`doctor --init`;
+2.2 `out` авто-pay-debt; 2.3 **Honest Receipt** (`receipt.ts`, text-box +
+receipt.json; coverage честно "not measured").
+
+**Гейт:** 72 файла / 791 тест зелёные.
+
+**ОТКРЫТОЕ (следующая сессия):** 2.4 SVG-badge (`orion badge <id>`);
+D2 npm publish CI (npm 0.36.0 vs local 0.52.0); Фаза 4 AI-agent охват
+(Claude Code + Cursor, не 5); B2 `memory`+`shell` (решить: 8 или 10 команд);
+C2 warning при домен-дрейфе; `oracle`; `new --dry`.
+
+**Рекомендация:** Honest Receipt готов (killer-feature). Быстрейшая отдача —
+2.4 badge или D2 npm-publish. Открытый вопрос: финализировать/заархивировать
+большой skills-change или оставить активным.
