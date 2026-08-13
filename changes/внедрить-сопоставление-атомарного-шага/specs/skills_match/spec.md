@@ -20,8 +20,11 @@
 ## Acceptance criteria
 - [x] BM25: точное совпадение > перефразировки; IDF из каталога scripts/
 - [x] домен-фильтр до скоринга — нет кросс-доменных ложных совпадений
-- [x] пороги: USE_SKILL (уверен) / CANDIDATES (пограничный, LLM-верификация) / NO_MATCH
-- [x] миss-лог пишется для каждого NO_MATCH и пограничного случая
+- [x] `matchSkill` чистый/синхронный/детерминированный: `matched` / `none` / `ambiguous` (шорт-лист) — никогда не зовёт LLM (functional core)
+- [x] скоринг нормализован в [0,1] (score/max) — порог 0.45 осмыслен вне размера корпуса
+- [x] `resolveAmbiguous` — отдельная async; вызывают и run/forge, и `orion run match` (одна пара функций)
+- [x] shadow-migration: `shadowCompare` BM25 vs naive на тех же кейсах + `orion run match --shadow` — решаем с данными, не вслепую
+- [x] миss-лог пишется для каждого `none` и `ambiguous` случая
 - [x] промоушен-кандидаты из лога (`orion run match --promote`)
 - [ ] `orion run --approve` (интерактивное подтверждение + replay перед регистрацией) — следующая итерация
 - [x] отпечаток окружения пишется (инвалидация — Фаза 4)

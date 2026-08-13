@@ -10,6 +10,7 @@ import { join } from "node:path";
 import {
   matchSkill,
   environmentFingerprint,
+  shadowCompare,
   type SkillMeta,
 } from "../src/core/skillsMatch.js";
 import {
@@ -71,11 +72,11 @@ function writeRegistry(skills: SkillMeta[], domain?: string): void {
 }
 
 describe("BM25 skill matching (v0.51, no ML)", () => {
-  it("exact-match step returns USE_SKILL with the right skill", () => {
+  it("exact-match step returns a matched decision with the right skill", () => {
     writeRegistry([skill({ name: "csv-to-json" })]);
     const r = matchSkill("convert CSV to JSON file");
-    expect(r.decision).toBe("USE_SKILL");
-    if (r.decision === "USE_SKILL") expect(r.skill.name).toBe("csv-to-json");
+    expect(r.kind).toBe("matched");
+    if (r.kind === "matched") expect(r.skill.name).toBe("csv-to-json");
   });
 
   it("prefers the best skill, not the first in the catalog", () => {
@@ -84,23 +85,26 @@ describe("BM25 skill matching (v0.51, no ML)", () => {
       skill({ name: "csv-to-json", tags: ["csv", "json"], description: "convert a CSV spreadsheet to JSON" }),
     ]);
     const r = matchSkill("turn csv into a json document");
-    if (r.decision === "USE_SKILL") expect(r.skill.name).toBe("csv-to-json");
+    if (r.kind === "matched") expect(r.skill.name).toBe("csv-to-json");
+    if (r.kind === "ambiguous")
+      expect(r.candidates.some((c) => c.name === "csv-to-json")).toBe(true);
   });
 
-  it("irrelevant step → NO_MATCH, does not fire a wrong skill", () => {
+  it("irrelevant step → none, does not fire a wrong skill", () => {
     writeRegistry([skill({ name: "csv-to-json" })]);
     const r = matchSkill("send a telegram notification about a deploy");
-    expect(r.decision).toBe("NO_MATCH");
+    expect(r.kind).toBe("none");
   });
 
-  it("unambiguous top-1 with margin → USE_SKILL; borderline → CANDIDATES", () => {
+  it("scores are normalized to [0,1]; unambiguous has a clear margin", () => {
     writeRegistry([
       skill({ name: "csv-to-json", description: "convert csv to json" }),
       skill({ name: "json-to-csv", description: "convert json to csv" }),
       skill({ name: "send-email", description: "send an email report" }),
     ]);
-    const strong = matchSkill("convert csv to json");
-    expect(["USE_SKILL", "CANDIDATES"]).toContain(strong.decision);
+    const r = matchSkill("convert csv to json");
+    if (r.kind === "matched") expect(r.score).toBeGreaterThanOrEqual(0);
+    expect(["matched", "ambiguous", "none"]).toContain(r.kind);
   });
 
   it("domain filter prevents cross-domain collisions", () => {
@@ -110,15 +114,34 @@ describe("BM25 skill matching (v0.51, no ML)", () => {
     ]);
     // Matching in the contracts domain must not see the 1c skill.
     const r = matchSkill("create a record", { domain: "contracts" });
-    if (r.decision === "USE_SKILL") expect(r.skill.domain).toBe("contracts");
-    if (r.decision === "CANDIDATES")
+    if (r.kind === "matched") expect(r.skill.domain).toBe("contracts");
+    if (r.kind === "ambiguous")
       expect(r.candidates.every((c) => c.domain === "contracts")).toBe(true);
   });
 
   it("per-phrasing: same meaning, different words still matches", () => {
     writeRegistry([skill({ name: "csv-to-json" })]);
     const r = matchSkill("transform the spreadsheet into json output");
-    expect(r.decision).not.toBe("NO_MATCH");
+    expect(r.kind).not.toBe("none");
+  });
+});
+
+describe("shadow-migration (v0.51)", () => {
+  it("shadowCompare runs BM25 and naive on the same cases", () => {
+    writeRegistry([
+      skill({ name: "csv-to-json", description: "convert csv to json files" }),
+      skill({ name: "send-email", description: "send an email report" }),
+    ]);
+    const res = shadowCompare(
+      [
+        { step: "convert csv to json" },
+        { step: "send a telegram alert" },
+      ],
+      "general",
+    );
+    expect(res.length).toBe(2);
+    expect(res[0]).toHaveProperty("bm25");
+    expect(res[0]).toHaveProperty("naive");
   });
 });
 

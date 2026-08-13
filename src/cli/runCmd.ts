@@ -552,10 +552,17 @@ export async function runDispatch(args: string[]): Promise<number> {
 
     case "match": {
       // Skill matching + miss-log + promotion candidates (Phase 1/2).
-      //   orion run match "<atomic step>"   → BM25 + log if no confident match
+      //   orion run match "<atomic step>"  → BM25 (tier/score) + log miss if none
+      //   orion run match --shadow <step>   → compare BM25 vs naive on a step
       //   orion run match --promote          → repeated misses promotable
       const wantsPromote =
         rest.includes("--promote") || name === "--promote" || name === "--candidates";
+      const wantsShadow = rest.includes("--shadow") || name === "--shadow";
+      const { matchSkill, shadowCompare } = await import(
+        "../core/skillsMatch.js",
+      );
+      const { logSkillMiss } = await import("../core/skillMissLog.js");
+
       if (wantsPromote) {
         const { promotionCandidates } = await import("../core/skillMissLog.js");
         const cands = promotionCandidates(3);
@@ -570,20 +577,43 @@ export async function runDispatch(args: string[]): Promise<number> {
         }
         return 0;
       }
+
+      if (wantsShadow) {
+        // Shadow-migration: show BM25 vs legacy naive on lucid terms so you
+        // can decide (with data) whether BM25 fixes the false positives
+        // before the naive scorer is deleted.
+        const tgt = (name === "--shadow" ? rest.join(" ") : rest.filter((a) => a !== "--shadow").join(" ")).trim();
+        if (!tgt) return fail('usage: orion run match --shadow "<step>"');
+        const res = shadowCompare([{ step: tgt }], undefined)[0];
+        console.log(`\n${paint("shadow: BM25 vs naive", "cyan")}`);
+        console.log(`  step: ${tgt}`);
+        const bm = res.bm25;
+        console.log(
+          `  BM25  → ${bm?.kind === "matched" ? `${bm.skill.name} (tier=${bm.tier}, score=${bm.score.toFixed(2)})` : bm?.kind === "ambiguous" ? `ambiguous: ${bm.candidates.map((c) => c.name).join(", ")}` : "none"}`,
+        );
+        console.log(`  naive → ${res.naive ? `${res.naive.name} (score=${res.naive.score})` : "none"}`);
+        console.log(`  agree → ${res.agree ? "yes" : "NO (decision point)"}`);
+        return 0;
+      }
+
       if (!name) {
         return fail('usage: orion run match "<atomic step>"');
       }
-      const { matchSkill } = await import("../core/skillsMatch.js");
-      const { logSkillMiss } = await import("../core/skillMissLog.js");
       const step = rest.filter((a) => !a.startsWith("--")).join(" ") || name;
       const r = matchSkill(step);
-      if (r.decision === "USE_SKILL") {
-        console.log(`${statusMark("done")} Match → ${paint(r.skill.name, "green")} (score ${r.score.toFixed(2)}), domain=${r.skill.domain}`);
+      if (r.kind === "matched") {
+        console.log(`${statusMark("done")} Match → ${paint(r.skill.name, "green")} (tier=${r.tier}, score ${r.score.toFixed(2)}), domain=${r.skill.domain}`);
         console.log(`  Run: orion run ${r.skill.name}`);
-      } else if (r.decision === "CANDIDATES") {
-        console.log(`${statusMark("info")} Borderline — verify one of these before running (cheap, no full model run):`);
-        r.candidates.forEach((c, i) => console.log(`  ${i + 1}. ${c.name} (score ${r.scores[i]?.toFixed(2) ?? "—"})`));
-        logSkillMiss({ step, domain: "general", reason: "borderline", topScore: r.scores[0] ?? null });
+      } else if (r.kind === "ambiguous") {
+        // Delegate to the async resolver (same function run/forge uses).
+        const { resolveAmbiguous } = await import("../core/skillsMatch.js");
+        const decision = await resolveAmbiguous(step, r.candidates);
+        if (decision.kind === "matched") {
+          console.log(`${statusMark("info")} Ambiguous → resolved to ${paint(decision.skill.name, "green")} (from: ${r.candidates.map((c) => c.name).join(", ")})`);
+        } else {
+          console.log(`${statusMark("info")} Ambiguous — short-list, no decisive resolution: ${r.candidates.map((c) => c.name).join(", ")}`);
+        }
+        logSkillMiss({ step, domain: "general", reason: "borderline", topScore: null });
       } else {
         console.log(`${statusMark("error")} No confident match — sending step to LLM.`);
         logSkillMiss({ step, domain: "general", reason: "below-threshold", topScore: null });

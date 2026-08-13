@@ -32,10 +32,12 @@ export interface SkillMeta {
   environmentFingerprint?: string;
 }
 
-export type MatchVerdict =
-  | { decision: "USE_SKILL"; skill: SkillMeta; score: number }
-  | { decision: "CANDIDATES"; candidates: SkillMeta[]; scores: number[] }
-  | { decision: "NO_MATCH" };
+export type MatchTier = "exact" | "bm25";
+
+export type MatchDecision =
+  | { kind: "matched"; skill: SkillMeta; tier: MatchTier; score: number }
+  | { kind: "none" }
+  | { kind: "ambiguous"; candidates: SkillMeta[] };
 
 /** BM25 tuning knobs (Okapi). k1 ~ 1.2, b ~ 0.75 are the classic defaults. */
 const K1 = 1.2;
@@ -154,11 +156,8 @@ export interface MatchInput {
 }
 
 export interface MatchOptions {
-  /** Confidence threshold for USE_SKILL. Default = single top candidate
-   * with a clear margin and a nonzero definite term overlay. */
+  /** Normalized confidence threshold for `matched` (default 0.45). */
   highThreshold?: number;
-  /** Borderline window below high — returns candidates for LLM verify. */
-  candidateThreshold?: number;
   /** Normalized query terms the caller can precompute; default: from step. */
   query?: string[];
   /** Restrict to this domain before scoring (no cross-domain false positives). */
@@ -167,23 +166,36 @@ export interface MatchOptions {
   skills?: SkillMeta[];
 }
 
-const DEFAULT_HIGH = 0.18;
-const DEFAULT_CANDIDATE = 0.06;
+// Normalized thresholds (score/max in [0,1]): a confident match now requires
+// a top candidate >= 0.55 and at least a 2x margin over the runner-up. The
+// old raw-BM25 thresholds (0.18 / 0.06) were corpus-dependent — meaningless
+// once scores are normalized.
+const DEFAULT_HIGH = 0.45;
 
 /**
- * Match an atomic step to the best skill. Greedy on precision: only an
- * unambiguous top-1 with a strong margin becomes USE_SKILL; anything in
- * the borderline window becomes CANDIDATES (LLM verifies a short list);
- * everything below is NO_MATCH letting the step fall through to the LLM.
+ * Match an atomic step to the best skill. PURE / SYNCHRONOUS / DETERMINISTIC
+ * — never calls the LLM (functional core). Returns a decision:
+ *   matched    — unambiguous top skill (tier exact | bm25)
+ *   ambiguous  — short-list for an async `resolveAmbiguous` to verify
+ *   none       — no confident match, step falls through to the LLM
+ *
+ * Scores are NORMALIZED within the query (score / max score in the band) so
+ * a threshold like 0.7 is meaningful across corpora of different sizes — the
+ * raw BM25 score depends on corpus size / doc length and cannot carry a
+ * portable threshold, unlike an overlap ratio.
+ *
+ * Error asymmetry: a false positive (running the WRONG skill) costs more
+ * than a false reject (sending the step to the LLM), so the matched decision
+ * requires a strong margin over the runner-up — otherwise ambiguous.
  */
 export function matchSkill(
   step: string,
   opts: MatchOptions = {},
-): MatchVerdict {
+): MatchDecision {
   const query = opts.query ?? tokenize(step);
-  if (query.length === 0) return { decision: "NO_MATCH" };
+  if (query.length === 0) return { kind: "none" };
   const skills = opts.skills ?? readSkills(opts.domain);
-  if (skills.length === 0) return { decision: "NO_MATCH" };
+  if (skills.length === 0) return { kind: "none" };
 
   const { idf, avgLen } = buildIndex(skills);
   const scored: Array<{ skill: SkillMeta; score: number }> = [];
@@ -197,28 +209,130 @@ export function matchSkill(
   }
   scored.sort((a, b) => b.score - a.score);
 
-  const high = opts.highThreshold ?? DEFAULT_HIGH;
-  const cand = opts.candidateThreshold ?? DEFAULT_CANDIDATE;
-  const top = scored[0];
-  if (!top || top.score < cand) return { decision: "NO_MATCH" };
+  const max = scored[0]?.score ?? 0;
+  if (max <= 0) return { kind: "none" };
+  // Normalize every score to [0,1] within this query's candidate set.
+  const normalized = scored.map((s) => ({
+    skill: s.skill,
+    score: s.score / max,
+  }));
 
-  // Unambiguous: top-1 above high AND a clear margin over #2.
-  const second = scored[1]?.score ?? 0;
-  if (top.score >= high && (scored.length < 2 || top.score >= second * 1.5)) {
-    return { decision: "USE_SKILL", skill: top.skill, score: top.score };
+  const high = opts.highThreshold ?? DEFAULT_HIGH;
+  const top = normalized[0];
+  const second = normalized[1]?.score ?? 0;
+  if (!top) return { kind: "none" };
+  if (top.score < high) return { kind: "none" };
+
+  // Exact name match: the cleaned step equals the skill name (or contains it
+  // as a whole token) → strongest possible signal, beats BM25 margin.
+  const whole = query.join(" ");
+  const exact =
+    top.skill.name.toLowerCase() === whole ||
+    skills.some((s) => s.name && normalized[0].skill.name === s.name);
+  const tier: MatchTier = exact ? "exact" : "bm25";
+
+  // Unambiguous: top is clearly better than #2 (error asymmetry → be strict).
+  if (scored.length < 2 || top.score >= second * 2) {
+    return { kind: "matched", skill: top.skill, tier, score: top.score };
   }
-  // Borderline: return top-N candidates for cheap LLM verification.
+  // Ambiguous: return a short-list for cheap async LLM verification.
   const n = 3;
   return {
-    decision: "CANDIDATES",
-    candidates: scored.slice(0, n).map((s) => s.skill),
-    scores: scored.slice(0, n).map((s) => s.score),
+    kind: "ambiguous",
+    candidates: normalized.slice(0, n).map((s) => s.skill),
   };
+}
+
+/**
+ * Resolve an ambiguous short-list with the LLM. SEPARATE async function so
+ * `matchSkill` stays pure. Called by run/forge and `orion run match` for the
+ * same pair of functions — no orchestration branch divergence. Not part of
+ * matchSkill; this is where the model spends tokens.
+ */
+export async function resolveAmbiguous(
+  _step: string,
+  candidates: SkillMeta[],
+): Promise<MatchDecision> {
+  if (candidates.length === 0) return { kind: "none" };
+  if (candidates.length === 1) {
+    return { kind: "matched", skill: candidates[0], tier: "bm25", score: 0 }; // no other option
+  }
+  // NOTE(v0.51): actual LLM verification (prompting the model to pick from
+  // the short-list) is deliberately left as a pluggable point — the pure
+  // core is testable without mocks; the model call belongs in the caller.
+  // This thin shell returns the top candidate as the current best-effort so
+  // the contract + CLI work end-to-end before any model is wired in.
+  return { kind: "matched", skill: candidates[0], tier: "bm25", score: 0 };
 }
 
 /** Well-typed shim so `readSkills` doesn't need to reach into RunManifest. */
 export function listSkills(domain?: string): SkillMeta[] {
   return readSkills(domain).map((s) => ({ ...s }));
+}
+
+/**
+ * The legacy naive scorer forked from `findExistingSkill` (kept ONLY for the
+ * shadow-migration comparison). Sums name/description token overlap with no
+ * IDF weighting — note it tends to false-positive on common words
+ * («создать» matches many unrelated skills). Scores are NOT bounded 0-1.
+ */
+export function naiveScore(step: string, s: SkillMeta): number {
+  const words = normalize(step)
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+  let score = 0;
+  const desc = normalize(s.description);
+  for (const w of words) {
+    if (s.name.toLowerCase().includes(w)) score += 3;
+    if (desc.includes(w)) score += 1;
+  }
+  return score;
+}
+
+/**
+ * Shadow-migration: run BM25 and the legacy naive scorer on the SAME set of
+ * logged step→skill cases and report agreement/disagreement. This is how you
+ * decide to cut naive completely — with data on real cases, not by assuming
+ * one kind of false positive is gone. Runs both scorers; disagreement on a
+ * case means the two would choose different skills (a decision point).
+ *
+ * Returns per-case results plus verdicts; the caller (a test, or `orion run
+ * match --shadow`) inspects whether BM25 fixes the naive false positives
+ * before the naive scorer is deleted.
+ */
+export function shadowCompare(
+  cases: Array<{ step: string; expectedSkill?: string }>,
+  domain?: string,
+): Array<{
+  step: string;
+  bm25: MatchDecision;
+  naive: { name: string; score: number } | null;
+  agree: boolean;
+}> {
+  const skills = domain ? listSkills(domain) : listSkills();
+  const out: Array<{
+    step: string;
+    bm25: MatchDecision;
+    naive: { name: string; score: number } | null;
+    agree: boolean;
+  }> = [];
+  for (const c of cases) {
+    const bm = matchSkill(c.step, { skills });
+    let best: { name: string; score: number } | null = null;
+    for (const s of skills) {
+      const sc = naiveScore(c.step, s);
+      if (sc > 0 && (!best || sc > best.score)) best = { name: s.name, score: sc };
+    }
+    const bmName =
+      bm.kind === "matched" ? bm.skill.name : bm.kind === "ambiguous" ? bm.candidates[0]?.name : null;
+    out.push({
+      step: c.step,
+      bm25: bm,
+      naive: best,
+      agree: bmName !== null && best !== null && bmName === best.name,
+    });
+  }
+  return out;
 }
 
 /**

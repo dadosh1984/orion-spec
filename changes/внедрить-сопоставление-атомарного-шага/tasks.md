@@ -31,3 +31,11 @@
 
 - [ ] [assumption] Фаза 3: эмбеддинги — ТОЛЬКО если миss-лог покажет системный провал BM25 на перефразированных шагах
 - [ ] [assumption] Фаза 4: полноценная инвалидация по `environmentFingerprint` — при живом кейсе миграции схемы
+
+## Развилки (v0.51, принято от пользователя)
+
+- [x] [fact] `matchSkill` — чистый/синхронный/детерминированный (matched / none / ambiguous), НЕ зовёт LLM (functional core)
+- [x] [fact] скоринг нормализован в [0,1] (score/max) — порог 0.45 осмыслен вне корпуса
+- [x] [fact] `resolveAmbiguous` — отдельная async; одна пара функций для run/forge и CLI
+- [x] [fact] `shadowCompare` + `orion run match --shadow` — BM25 vs naive на тех же кейсах (наивный удаляется с данными, не вслепую)
+- [x] [control] full vitest 70 файлов / 769 тестов, eslint/tsc зелёные, shield allPass
