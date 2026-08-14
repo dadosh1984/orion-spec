@@ -116,8 +116,10 @@ pnpm run format              # prettier --write (run before committing; format m
 завершены и заархивированы:** внедрить-сопоставление-атомарного-шага (60/60),
 завершить-дистрибуцию (D2), 2-4-svg-бейдж, закрыть-фазу-3-security,
 4-3-oracle, 4-2-replay, 4-1-undo, engineering-debt (B2 memory + C2
-domain-drift), усилить-orion-compare. **На npm: v0.53.0 + v0.54.0 (Latest).**
-Product complete.
+domain-drift), усилить-orion-compare, 4-4-export-trust. **На npm: v0.53.0 ·
+v0.54.0 · v0.55.0 (Latest — «trust, state & comparison»).** Релиз 0.55.0 =
+memory + domain-drift + compare-receipt + export-trust; проверен из npm-
+пакета. Product complete. Следующий минор 0.56.0 = lineage.
 
 **compare сделано:** v0.52 консолидировал compare→ls (alias); вернул
 самостоятельный side-by-side legacy case (parse.ts убрал compare:ls) и усилил
