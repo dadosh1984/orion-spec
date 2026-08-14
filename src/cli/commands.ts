@@ -898,6 +898,12 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
 
+    case "memory": {
+      // B2: one grouped view over profile/cache/lessons/env/metrics state.
+      const { memoryHandler } = await import("./memoryCmd.js");
+      return await memoryHandler(track, args);
+    }
+
     case "config": {
       const result = configCmd(args);
       console.log(result.text);

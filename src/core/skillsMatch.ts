@@ -102,7 +102,9 @@ function readSkills(domain?: string): SkillMeta[] {
     const scriptPath = [exec, execJs, execPy].find((p) => existsSync(p));
     if (!existsSync(mf) || !scriptPath) continue;
     try {
-      const m = JSON.parse(readFileSync(mf, "utf8")) as Partial<RunManifestLike>;
+      const m = JSON.parse(
+        readFileSync(mf, "utf8"),
+      ) as Partial<RunManifestLike>;
       const s: SkillMeta = {
         name: d.name,
         description: m.description ?? "",
@@ -138,7 +140,10 @@ function buildIndex(skills: SkillMeta[]): {
   const df = new Map<string, number>();
   const lens: number[] = [];
   for (const s of skills) {
-    const doc = [...tokenize(s.description), ...s.tags.map((t) => t.toLowerCase())];
+    const doc = [
+      ...tokenize(s.description),
+      ...s.tags.map((t) => t.toLowerCase()),
+    ];
     const uniq = new Set(doc);
     lens.push(doc.length);
     for (const term of uniq) df.set(term, (df.get(term) ?? 0) + 1);
@@ -149,7 +154,9 @@ function buildIndex(skills: SkillMeta[]): {
   for (const [term, f] of df) {
     idf.set(term, Math.log(1 + (docCount - f + 0.5) / (f + 0.5)));
   }
-  const avgLen = lens.length ? lens.reduce((a, b) => a + b, 0) / lens.length : 1;
+  const avgLen = lens.length
+    ? lens.reduce((a, b) => a + b, 0) / lens.length
+    : 1;
   return { idf, avgLen, lens };
 }
 
@@ -220,7 +227,18 @@ export function matchSkill(
 ): MatchDecision {
   const query = opts.query ?? tokenize(step);
   if (query.length === 0) return { kind: "none" };
-  const skills = opts.skills ?? readSkills(opts.domain ?? resolveDomain());
+  const requestedDomain = opts.domain ?? resolveDomain();
+  let skills = opts.skills ?? readSkills(requestedDomain);
+  if (skills.length === 0 && requestedDomain !== "general") {
+    // C2: domain drift — a declared domain with no skills is silent
+    // emptiness otherwise (the domain filter quietly returns nothing). Echo
+    // a real warning on stderr then fall back to general, honest not silent.
+    process.stderr.write(
+      `[warn] Domain "${requestedDomain}" declared (config/env), but no skills found for it. ` +
+        `Check domain naming consistency (e.g. onec/contracts/general); matching fell back to general.\n`,
+    );
+    skills = opts.skills ?? readSkills("general");
+  }
   if (skills.length === 0) return { kind: "none" };
 
   const { idf, avgLen } = buildIndex(skills);
@@ -376,10 +394,15 @@ export function shadowCompare(
     let best: { name: string; score: number } | null = null;
     for (const s of skills) {
       const sc = naiveScore(c.step, s);
-      if (sc > 0 && (!best || sc > best.score)) best = { name: s.name, score: sc };
+      if (sc > 0 && (!best || sc > best.score))
+        best = { name: s.name, score: sc };
     }
     const bmName =
-      bm.kind === "matched" ? bm.skill.name : bm.kind === "ambiguous" ? bm.candidates[0]?.name : null;
+      bm.kind === "matched"
+        ? bm.skill.name
+        : bm.kind === "ambiguous"
+          ? bm.candidates[0]?.name
+          : null;
     out.push({
       step: c.step,
       bm25: bm,
@@ -396,7 +419,9 @@ export function shadowCompare(
  * skill compiled against 1C_TI does not "confidently" match after a 1C_TI→
  * 1C_TI_NEW migration.
  */
-export function environmentFingerprint(signals: Record<string, string>): string {
+export function environmentFingerprint(
+  signals: Record<string, string>,
+): string {
   const stable = Object.entries(signals)
     .filter(([, v]) => typeof v === "string" && v.length > 0)
     .sort(([a], [b]) => (a < b ? -1 : 1))
