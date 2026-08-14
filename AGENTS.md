@@ -183,4 +183,12 @@ Latest).** Реальные прогоны A/B/C из npm прошли: 8 ком
 rate-limit 4-й 429); C (oracle abstract change не создан, export/verify-trust,
 tamper FAIL). **Найден и исправлен реальный баг: truncated warn молчал при
 overflow-в-одном-chunk (cap+spill работали, флаг truncated не вставал) —
-починено в main (fix commit), в next миноре.** Product production-ready.
+починено в main (fix commit), в next миноре.** **ПЕРЕХОД К ИСПОЛЬЗОВАНИЮ (следующая фаза разработки):** skill-first контур
+задуман энdauraby реальными данными — «использовать» и «развивать» теперь одно
+действие. Первый реальный проект (архетип CSV-утилита, /tmp/orion-proj1):
+oracle → medium/4 steps; new → draft → 6 задач в `cli-перевести-серию-csv`
+(ЕС-structure: CLI entry, CSV headers, JSON serialization, tests, README).
+Forge ждёт 6 сниппетов (пишет агент), потом RED-GREEN-REFACTOR. Miss-log пока
+пуст (0 кандидатов) — норма на нулевых данных. Наблюдать за `run match
+--promote` + `economy.source` после первых промоушенов. Не менять порог 3 до
+первых реальных промоушенов (зафиксировано).
