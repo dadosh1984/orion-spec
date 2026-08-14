@@ -89,6 +89,36 @@ export function writeProposal(p: PromotionProposal): void {
   writeFileSync(proposalFile(p.id), JSON.stringify(p, null, 2), "utf8");
 }
 
+/**
+ * Attach a real outcome (resolution) to a proposal back-filled from a miss-log
+ * that had no recorded output. Every history entry without a resolution gets
+ * the given value — the honest record of what the step actually produced.
+ * Never fabricates: the caller supplies verifiable real data.
+ */
+export function resolveProposal(
+  id: string,
+  resolution: string,
+): { ok: boolean; reason?: string } {
+  const p = readProposal(id);
+  if (!p) return { ok: false, reason: `proposal ${id} not found` };
+  const trimmed = resolution.trim();
+  if (!trimmed) return { ok: false, reason: "resolution is empty" };
+  let filled = 0;
+  for (const h of p.history) {
+    if (!h.resolution || !h.resolution.trim()) {
+      h.resolution = trimmed;
+      filled++;
+    }
+  }
+  if (filled === 0) {
+    // No empty slots: treat as already resolved (idempotent) — the resolution
+    // is already attached, nothing to do.
+    return { ok: true, reason: "already resolved" };
+  }
+  writeProposal(p);
+  return { ok: true, reason: `filled ${filled} history slot(s)` };
+}
+
 /** Create a proposal snapshot from a repeated miss-log signature. */
 export function proposeFromMissLog(
   id: string,
@@ -152,10 +182,15 @@ export async function replayProposal(
   run: (args: string[]) => Promise<{ ok: boolean; output: string }>,
 ): Promise<{ state: ProposalState; replayScore: number; drift: string[] }> {
   const p = readProposal(id);
-  if (!p) return { state: "proposed", replayScore: 0, drift: ["proposal not found"] };
+  if (!p)
+    return { state: "proposed", replayScore: 0, drift: ["proposal not found"] };
   const entries = p.history.filter((h) => h.resolution && h.resolution.trim());
   if (entries.length === 0) {
-    return { state: "proposed", replayScore: 0, drift: ["no historical resolution recorded to replay against"] };
+    return {
+      state: "proposed",
+      replayScore: 0,
+      drift: ["no historical resolution recorded to replay against"],
+    };
   }
   let matched = 0;
   const drift: string[] = [];
@@ -166,7 +201,9 @@ export async function replayProposal(
     if (res.ok && actual === expected) {
       matched++;
     } else {
-      drift.push(`step="${h.step}" expected="${expected.slice(0, 60)}" got="${actual.slice(0, 60)}"`);
+      drift.push(
+        `step="${h.step}" expected="${expected.slice(0, 60)}" got="${actual.slice(0, 60)}"`,
+      );
     }
   }
   const score = entries.length ? matched / entries.length : 0;

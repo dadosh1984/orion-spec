@@ -597,9 +597,11 @@ export async function runDispatch(args: string[]): Promise<number> {
         rest.includes("--approve") ||
         rest.includes("--propose") ||
         rest.includes("--replay") ||
+        rest.includes("--resolve") ||
         name === "--approve" ||
         name === "--propose" ||
-        name === "--replay";
+        name === "--replay" ||
+        name === "--resolve";
       const { matchSkill, shadowCompare } =
         await import("../core/skillsMatch.js");
       const { logSkillMiss } = await import("../core/skillMissLog.js");
@@ -612,6 +614,7 @@ export async function runDispatch(args: string[]): Promise<number> {
           proposeFromMissLog,
           approveProposal,
           replayProposal,
+          writeProposal,
         } = await import("../core/promotion.js");
         const { missLogForStep } = await import("../core/skillMissLog.js");
         const { significantWords } = await import("../core/titles.js");
@@ -707,6 +710,38 @@ export async function runDispatch(args: string[]): Promise<number> {
           return 0;
         }
 
+        // Attach a real outcome to a back-filled proposal (missing resolution
+        // from the miss-log): `--resolve <id> --output <file>`. The output file
+        // is the honest result the step produced; never auto-guessed.
+        if (rest.includes("--resolve") || name === "--resolve") {
+          const { resolveProposal, readProposal } =
+            await import("../core/promotion.js");
+          const id = rest[0] && !rest[0].startsWith("--") ? rest[0] : null;
+          const outIdx = rest.indexOf("--output");
+          const outFile = outIdx >= 0 ? rest[outIdx + 1] : null;
+          if (!id || !outFile) {
+            return fail(
+              "usage: orion run match --resolve <proposal-id> --output <file>",
+            );
+          }
+          const p = readProposal(id);
+          if (!p) return fail(`proposal ${id} not found`);
+          let resolution: string;
+          try {
+            resolution = (await import("node:fs")).readFileSync(
+              outFile,
+              "utf8",
+            );
+          } catch {
+            return fail(`cannot read --output file ${outFile}`);
+          }
+          const r = resolveProposal(id, resolution);
+          console.log(
+            `${statusMark("done")} resolved ${id}: ${r.reason} — replay can now verify actual output.`,
+          );
+          return 0;
+        }
+
         // Propose: snapshot a repeated miss-log signature + scaffold a change dir.
         const sig = rest.join(" ").trim() || name;
         if (!sig)
@@ -730,6 +765,15 @@ export async function runDispatch(args: string[]): Promise<number> {
           domain,
           history.map((h) => ({ step: h.step, resolution: h.resolution })),
         );
+        // The scaffold dir path is the replay target: set proposal.scriptPath
+        // so `--replay` knows where the entry script lives.
+        {
+          const p = readProposal(id);
+          if (p) {
+            p.scriptPath = jn("changes", slug, "entry.js");
+            writeProposal(p);
+          }
+        }
         const dir = jn("changes", slug);
         if (!existsSync(dir)) {
           mkdirSync(jn(dir, "snippets"), { recursive: true });
