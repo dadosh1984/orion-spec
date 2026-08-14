@@ -10,10 +10,6 @@ overrides:
 importers:
 
   .:
-    dependencies:
-      orion-spec:
-        specifier: 'link:'
-        version: 'link:'
     devDependencies:
       '@types/node':
         specifier: ^26.1.2

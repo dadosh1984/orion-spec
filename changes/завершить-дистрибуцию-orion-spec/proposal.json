@@ -1,0 +1,16 @@
+{
+  "title": "завершить-дистрибуцию-orion-spec",
+  "goal": "Завершить дистрибуцию orion-spec на npm (D2): устранить разрыв npm 0.36.0 ↔ локально 0.52.0. Конкретно: (1) убрать псевдо-зависимость \"orion-spec\": \"link:\" из package.json (она не должна попасть в published tarball и ломает чистоту зависимостей); (2) проверить/починить release.yml npm-publish workflow (provenance, strict-version guard, idempotent no-op уже есть — подтвердить, что build публикует именно dist с Honest Receipt); (3) обновить README бейдж версии npm; (4) создать тег v0.52.0 + GitHub Release и, при наличии NPM_TOKEN/GH_TOKEN, реально опубликовать 0.52.0 в npm (проверить npm view orion-spec version = 0.52.0 и что npm install -g orion-spec ставит актуальную версию с Honest Receipt). Критерий: глобальная установка и локальный dist совпадают по поведению (orion receipt/out работают).",
+  "platform": "",
+  "constraints": "compact",
+  "budget": "compact",
+  "clarity": "vague",
+  "language": "ru",
+  "appliesLessons": [
+    "first-run-orion-draft-forge-shield-orion:shield:6de650a0dba7",
+    "add-a-schema-version-field-to-the-oriontrack-on-disk-cache-forma-2:shield:47a5558a6a5f",
+    "mcp-сервер-cli-onec:shield:fd51e5a0ce4b",
+    "migrate-tool-e2e-pipeline:shield:7fa3ad4497fa",
+    "orion-spec:session:eb355cdf0851"
+  ]
+}

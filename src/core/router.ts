@@ -1,12 +1,7 @@
 /**
  * Router v2 + Verifier v2 + Scheduler v2 (v0.43).
  */
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-} from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { classifyTask } from "./classify.js";

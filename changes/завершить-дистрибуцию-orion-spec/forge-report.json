@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 1,
+  "skipped": 0,
+  "pending": [
+    "коммит_d2_push"
+  ],
+  "missingSnippets": [
+    "changes/завершить-дистрибуцию-orion-spec/snippets/коммит_d2_push.ts"
+  ],
+  "reportPath": "changes/завершить-дистрибуцию-orion-spec/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 1 pending — add snippets: changes/завершить-дистрибуцию-orion-spec/snippets/коммит_d2_push.ts\nкоммит_d2_push: no exact match — existing: control_pnpm_format.ts, control_pnpm_run.ts, control_полный_гейт.ts, обновить_readme_бейдж.ts, подтвердить_release_yml.ts, проверить_published_tarball.ts, синхронизировать_pnpm_lock.ts, создать_git_тег.ts, убрать_псевдо_зависимость.ts"
+}

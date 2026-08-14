@@ -10,12 +10,7 @@
 
 import { join } from "node:path";
 import { homedir } from "node:os";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 export interface SkillMissEntry {
   ts: string;
@@ -97,7 +92,11 @@ function writeSkillUsage(u: SkillUsage): void {
   const f = usageFile();
   if (!existsSync(f)) mkdirSync(join(f, ".."), { recursive: true });
   try {
-    writeFileSync(f, JSON.stringify({ ...u, updatedAt: new Date().toISOString() }, null, 2), "utf8");
+    writeFileSync(
+      f,
+      JSON.stringify({ ...u, updatedAt: new Date().toISOString() }, null, 2),
+      "utf8",
+    );
   } catch {
     /* non-fatal */
   }
@@ -162,11 +161,7 @@ export function promotionCandidates(minRepeats = 3): Array<{
  * step must satisfy before a script is promoted. Returns [] if the signature
  * never occurred.
  */
-export function missLogForStep(
-  step: string,
-): SkillMissEntry[] {
+export function missLogForStep(step: string): SkillMissEntry[] {
   const key = step.trim().toLowerCase();
-  return readMissLog().filter(
-    (e) => e.step.trim().toLowerCase() === key,
-  );
+  return readMissLog().filter((e) => e.step.trim().toLowerCase() === key);
 }
