@@ -115,11 +115,20 @@ pnpm run format              # prettier --write (run before committing; format m
 **Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
 завершены и заархивированы:** `внедрить-сопоставление-атомарного-шага`
 (60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10), `2-4-svg-бейдж`
-(7/7), `закрыть-фазу-3-security` (7/7). **Релиз v0.53.0 живёт на npm**
-(GitHub Release v0.53.0 Latest; ~проверено npm view=0.53.0, tarball содержит
-update/badge/version). Пирамида собрана + безопасный AI-agent охват.
+(7/7), `закрыть-фазу-3-security` (7/7), `4-3-oracle-честная` (4/4).
+**Релиз v0.53.0 живёт на npm** (shell-injection fix + denyEnv + orion update).
+Пирамида честности замкнута: Receipt=после (badge), **Oracle=до** (new --oracle).
 
-**Security-префикс (3.8/3.13) + Фаза 4 (4.9/4.10) сделано:**
+**Oracle (4.3) сделано:** `orion new --oracle "<промпт>"` — пре-флайт БЕЗ
+создания change (не отдельная top-level команда — соблюдено 8-командное
+сжатие; --oracle в parseNewFlags реюза парсинг `new`). `src/core/oracle.ts`
+`oracleReport(prompt)` чистая/детерминированная: classifyComplexity →
+{kind, depth, plannedSteps}; токены честно: calibrationFactor (>=3 сэмплов) →
+"calibrated ×F over M changes", иначе "not calibrated (<3 samples)" (паттерн
+coverage: not measured). Live: calibrated ×10 over 319 changes; abstract →
+kind=abstract/plannedSteps 0, change не создан.
+`src/tasks/oracle.ts` (drift `# Spec: oracleReport`).
+`tests/oracle.test.ts` (5). Гейт 78 файлов / 829 тестов, shield allPass.
 - **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
   `execFileSync`/`spawnSync` (без shell): runtime.ts run-скрипт
   `execFileSync(bin,[scriptFile])`, runCmd.ts watcher/repair/edit через
@@ -138,11 +147,12 @@ update/badge/version). Пирамида собрана + безопасный AI
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** **4.3 `orion oracle <prompt>`** (честность ДО
-запуска: {kind, leaves, estimatedTokens}, тонкая над реализованным
-сложностным классификатором Фазы 3.5; 2ч по плану); потом остаток Фазы 4
-(undo/replay/TUI — отдельно); B2 `memory`+`shell`; C2 warning при домен-
-дрейфе; `new --dry`. Остальные 12 задач Фазы 3 → 0.53.x патчи по need.
+**ОТКРЫТОЕ (следующая сессия):** остальные 12 задач Фазы 4 (undo 4.1, replay
+4.2, TUI 4.8, oracle полный токен-модель когда появятся реальные данные
+калибровки) — отдельно, не смешивать с охватом; B2 `memory`+`shell`; C2
+warning при домен-дрейфе; `new --dry` (уже есть как флаг). Остальные 12 задач
+Фазы 3 → 0.53.x патчи по need.
 
-**Рекомендация:** `oracle` (4.3) — минимальное усилие, усиливает обе стороны
-честности (Receipt=после, Oracle=до). Дальше: undo/replay либо B2/C2.
+**Рекомендация:** уникальность полна (Receipt + badge + npm 0.53.0 + Oracle
+до/после). Далее: undo/replay (killer для работы с изменением) либо B2/C2
+(инженерный UX). Показывать badge+oracle в README как демонстрацию.
