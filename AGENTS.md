@@ -152,13 +152,22 @@ shield allPass. Накоплено к 0.55.0.
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** lineage 4.5 (change → lesson → next change;
-сначала data model — linkage lesson→change пока не реализован); построчный diff
-артефактов в compare; TUI 4.8 (serve есть); глобальные снапшоты rollback (при
-спросе; undo уже на уровне change).
-**Собрать 0.55.0**: уже накоплено memory + domain-drift + compare-receipt +
-export-trust; добавить lineage → один цельный минор-релиз.
+**ОТКРЫТОЕ (следующая сессия):** **lineage 4.5 → 0.56.0** (provenance, change →
+lesson → next change; ДРУГАЯ история, не в 0.55.0). Набросок data model
+(зафиксирован — решать честность ДО кода):
+```
+lesson.json   += sourceChange: <change-id>        // откуда lesson родился
+proposal.json += borrowedLessons: [<lesson-id>…]  // что повлияло на change
+```
+`orion lineage <lesson-id>`: назад по sourceChange, вперёд по borrowedLessons.
+Тесты: цепочка 3 звена + детекция цикла. **ГЛАВНЫЙ ОТКРЫТЫЙ ВОПРОС (решить до
+кода):** как ЧЕСТНО детектить «lesson повлиял на change» — если эвристика,
+пометить как таковую, иначе lineage соврёт (убьёт пирамиду честности). Не
+блокировать готовые фичи незрелой data model — это правило обеих сторон медали
+(я не патчу ради одной фичи, и не задерживаю готовый набор ради незрелой).
+Построчный diff артефактов в compare; TUI 4.8 (serve есть); глобальные
+снапшоты rollback (при спросе).
 
-**Рекомендация:** 0.55.0 почти готов (4 накопленных фича). lineage (4.5) —
-последний киллер-кандидат для релиза. Иначе можно релить 0.55.0 сейчас с
-export-trust и добить lineage в 0.55.1.
+**Рекомендация:** 0.55.0 (=memory+domain-drift+compare+export-trust, «trust,
+state & comparison») уже готов и будет пушен. После релиза — 0.56.0 lineage,
+начав с письменного ответа «что значит lesson повлиял на change».

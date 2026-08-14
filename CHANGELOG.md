@@ -2,6 +2,34 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.55.0] — 2026-08-14
+
+Trust, state & comparison — a coherent engineering-debt release on top of the
+honesty pyramid: one place to see the pipeline's state, visible domain drift,
+honest side-by-side comparison, and externally verifiable integrity.
+
+### Added
+- **`orion memory`** (B2) — one logical group over the pipeline's state: a
+  single overview of profile (language/platform/budget), cache (entries/bytes),
+  lessons, `ORION_*` env vars and metrics, plus sub-commands `cache` / `lessons`
+  / `env` / `profile`. The existing per-domain commands remain.
+- **`orion compare <a> <b>`** — side-by-side comparison of two changes now
+  includes each change's **Honest Receipt**: status (verified/partial/failing),
+  tests, and coverage only when it was measured (never drawn at "not
+  measured"). Compare was re-unwired from the `ls` alias so its own legacy
+  case drives the full comparison. Read-only.
+- **`orion export-trust <id>`** / **`orion verify-trust <id>`** (4.4) —
+  hash-based external proof for the Honest Receipt (no GPG/SSH/blockchain).
+  `export-trust` writes `changes/<id>/trust.json` (per-artifact sha256 +
+  embedded receipt + a deterministic integrity root); `verify-trust` recomputes
+  on-disk hashes and detects tampering (edits to spec/tests/proposal/tasks).
+
+### Fixed
+- **domain-drift warning** (C2) — `matchSkill` now warns on stderr when a
+  declared domain (config/env) has zero skills and no longer silently returns an
+  empty match; it falls back to `general` with a visible notice. Builds the
+  naming sync (`onec`/`contracts`/`general`) impossible to miss.
+
 ## [0.54.0] — 2026-08-14
 
 Safe + honest + replayable — Phase-4 killer set. Honest on BOTH ends: Oracle
