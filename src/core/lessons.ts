@@ -37,6 +37,8 @@ export interface Lesson {
   pattern?: string;
   /** Relevance score; bumped when a lesson prevents a recurrence (v0.29). */
   score?: number;
+  /** Change this lesson was born from (v0.56 lineage); null/absent = manual. */
+  sourceChange?: string;
 }
 
 /** Payload accepted by `recordLesson` (id and ts are stamped). */

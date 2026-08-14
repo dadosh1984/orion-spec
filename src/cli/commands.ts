@@ -514,6 +514,33 @@ export async function main(argv: string[]): Promise<number> {
       return r.ok ? 0 : 1;
     }
 
+    case "lineage": {
+      const lessonId = args[0];
+      if (!lessonId) return fail("lineage requires a lesson id");
+      const { lineageOf, lessonSourceChange } =
+        await import("../core/lineage.js");
+      if (opts.json) {
+        console.log(JSON.stringify(lineageOf(lessonId), null, 2));
+        return 0;
+      }
+      const src = lessonSourceChange(lessonId);
+      const nodes = lineageOf(lessonId);
+      console.log(`\n${statusMark("info")} Lineage for lesson "${lessonId}":`);
+      console.log(
+        `  ← born from: ${src ? `change "${src}"` : "(not recorded — manual lesson)"}`,
+      );
+      // Forward chain: nodes after the seed lesson (and its source-change, if any).
+      const forward = src ? nodes.slice(2) : nodes.slice(1);
+      if (forward.length === 0) console.log("  → applied to: (none yet)");
+      else {
+        console.log("  → lineage chain (explicit links):");
+        for (const n of forward) {
+          console.log(`      ${paint(n.kind, "dim")} "${n.id}"`);
+        }
+      }
+      return 0;
+    }
+
     case "verify": {
       const changeId = args[0];
       if (!changeId) return fail("verify requires a change id");

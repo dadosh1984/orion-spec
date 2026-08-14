@@ -154,21 +154,24 @@ shield allPass. Накоплено к 0.55.0.
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** **lineage 4.5 → 0.56.0** (provenance, change →
-lesson → next change; ДРУГАЯ история, не в 0.55.0). Набросок data model
-(зафиксирован — решать честность ДО кода):
+**Дизайн lineage (0.56.0) — ПРИНЯТ (явное действие, не эвристика):**
+«lesson повлиял» <=> пользователь явно применил lesson (`orion memory
+lessons apply <id>`, задача 2.5). Эвристика в `orion new` — ТОЛЬКО подсказка,
+никогда не запись. Data model:
 ```
-lesson.json   += sourceChange: <change-id>        // откуда lesson родился
-proposal.json += borrowedLessons: [<lesson-id>…]  // что повлияло на change
+lesson.json   += sourceChange: string|null  // change-id, из которого lesson
+                                            // родился; null если ручной
+proposal.json += borrowedLessons: [{lessonId, appliedAt, note?}]
 ```
-`orion lineage <lesson-id>`: назад по sourceChange, вперёд по borrowedLessons.
-Тесты: цепочка 3 звена + детекция цикла. **ГЛАВНЫЙ ОТКРЫТЫЙ ВОПРОС (решить до
-кода):** как ЧЕСТНО детектить «lesson повлиял на change» — если эвристика,
-пометить как таковую, иначе lineage соврёт (убьёт пирамиду честности). Не
-блокировать готовые фичи незрелой data model — это правило обеих сторон медали
-(я не патчу ради одной фичи, и не задерживаю готовый набор ради незрелой).
-Построчный diff артефактов в compare; TUI 4.8 (serve есть); глобальные
-снапшоты rollback (при спросе).
+sourceChange заполняется при `orion out` SUCCESS → записанный lesson;
+borrowedLessons — ТОЛЬКО при `lessons apply`. `orion lineage <lesson-id>`:
+назад по sourceChange, вперёд по borrowedLessons, ASCII/--json; честно
+«(not recorded — manual lesson)» / «(none yet)»; детекция цикла.**Порядок
+0.56.0: сначала 2.5 lessons apply → потом 4.5 lineage** (lineage данных без
+2.5 не имеет). Не делать автоматич. заполнение при new, не строить граф по
+эвристике, TUI/DOT graph → отдельная задача (не смешивать).
+Тесты честности (5): цепочка 3 звена, детекция цикла, orphan, нет
+borrowedLessons, детерминизм.
 
 **Рекомендация:** 0.55.0 (=memory+domain-drift+compare+export-trust, «trust,
 state & comparison») уже готов и будет пушен. После релиза — 0.56.0 lineage,

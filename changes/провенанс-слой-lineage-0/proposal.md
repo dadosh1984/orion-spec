@@ -1,0 +1,14 @@
+# Предложение — провенанс-слой-lineage-0
+
+## Цель
+Реализовать провенанс-слой lineage для 0.56.0: (2.5) `orion memory lessons apply <id> --to <change> [--note]` + (4.5) `orion lineage <lesson-id>`. Принцип (принят): «lesson повлиял» <=> пользователь ЯВНО применил; эвристика НИКОГДА не пишет. Data model: proposal.json += borrowedLessons[{lessonId, appliedAt, note?}]; lesson.json += sourceChange (born-from). Модуль src/core/lineage.ts: applyLesson (проверяет lesson существует, идемпотентен, пишет proposal.json), readBorrowedLessons, lessonSourceChange, appliedTo, lineageOf (BFS по явным ссылкам: назад по sourceChange, вперёд по borrowedLessons + lessonsBornFrom; cycle-safe via visited; честно orphan «not recorded» / applied-none). Lesson interface += sourceChange; Proposal type += borrowedLessons. CLI: memory lessons apply + `orion lineage <id>` (ASCII/--json). Тесты tests/lineage.test.ts (2.5: apply/exists/idempotent/phantom-refuse; 4.5: цепочка 3 звена, детекция цикла, orphan, applied-none, детерминизм). Гейт green. Это content для 0.56.0.
+
+## Контекст
+
+| Аспект | Значение |
+|--------|----------|
+| Платформа | any |
+| Бюджет | compact |
+| Ограничения | compact |
+
+- **Lessons applied (v0.12):** user-adaptation-memory-profile:forge:a1e8c7f7ceee, user-adaptation-memory-profile:forge:d9c3665cca92, v0-46-устранить-дубли:forge:cfd1274354ba, user-adaptation-memory-profile:forge:cb4cf018a940, mcp-python-1-7:forge:73e3469b3d99

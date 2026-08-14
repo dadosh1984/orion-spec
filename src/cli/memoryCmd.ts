@@ -73,11 +73,39 @@ export async function memoryHandler(
     return 0;
   }
   if (sub === "lessons") {
+    const op = args[1];
+    if (op === "apply") {
+      // 2.5: explicit apply — records borrowedLessons on a change (lineage).
+      const lessonId = args[2];
+      const toIdx = args.indexOf("--to");
+      const changeId = toIdx >= 0 ? args[toIdx + 1] : undefined;
+      const noteIdx = args.indexOf("--note");
+      const note =
+        noteIdx >= 0 && noteIdx + 1 < args.length
+          ? args[noteIdx + 1]
+          : undefined;
+      if (!lessonId || !changeId) {
+        console.log(
+          `${statusMark("error")} lessons apply <lesson-id> --to <change-id> [--note ...]`,
+        );
+        return 1;
+      }
+      const { applyLesson } = await import("../core/lineage.js");
+      const r = applyLesson(changeId, lessonId, note);
+      if (r.ok) {
+        console.log(
+          `${statusMark("done")} lesson "${lessonId}" applied to change "${changeId}"${r.reason ? ` (${r.reason})` : ""}`,
+        );
+        return 0;
+      }
+      console.log(`${statusMark("error")} ${r.reason}`);
+      return 1;
+    }
     const all = readLessons();
     console.log(`lessons: ${all.length} recorded`);
     for (const l of all.slice(0, 8)) {
       console.log(
-        `  ${l.changeId ?? "?"} ${l.step ?? ""} — ${String(l.error ?? "").slice(0, 60)}`,
+        `  ${l.id} ${l.changeId ?? "?"} ${l.step ?? ""} — ${String(l.error ?? "").slice(0, 60)}`,
       );
     }
     if (all.length > 8) console.log(`  … and ${all.length - 8} more`);
