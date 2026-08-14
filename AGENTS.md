@@ -126,6 +126,14 @@ verified/partial/failing, tests, coverage только если измерена
 при not measured; corrupt/absent → «not run»). Read-only. Тесты compare (4) +
 cli-aliases update. Live: verified+coverage vs partial. Гейт 83 файла / 850
 тестов, shield allPass. Накоплено к 0.55.0.
+
+**export-trust (4.4) сделано:** src/skills/out/trust.ts — hash-based proof для
+Honest Receipt (без GPG/SSH/blockchain): `export-trust <id>` пишет trust.json
+{artifacts hashes proposal/tasks/spec/tests + embedded receipt + integrity
+sha256 root}, детерминизм (один change → байт-в-байт); `verify-trust`
+пересчитывает с диска, детектит tamper (изменение spec/tests), exit 1 при
+tamper. Нет trust.json → честно. Тесты trust (5). Гейт 84 файла / 855 тестов,
+shield allPass. Накоплено к 0.55.0.
 - **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
   `execFileSync`/`spawnSync` (без shell): runtime.ts run-скрипт
   `execFileSync(bin,[scriptFile])`, runCmd.ts watcher/repair/edit через
@@ -144,14 +152,13 @@ cli-aliases update. Live: verified+coverage vs partial. Гейт 83 файла /
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** export-trust 4.4 (JSON receipt с подписями
-hash spec+tasks+code для external verification), lineage 4.5 (change → lesson
-→ next change, уникальный угол), compare построчного diff артефактов, TUI 4.8
-(serve уже есть), глобальные снапшоты rollback (если будет спрос — undo уже
-на уровне change). Собрать engineering-debt фиксы → **0.55.0** одним цельным
-минором (накоплены: memory, domain-drift, compare-receipt; готовится export-
-trust/lineage).
+**ОТКРЫТОЕ (следующая сессия):** lineage 4.5 (change → lesson → next change;
+сначала data model — linkage lesson→change пока не реализован); построчный diff
+артефактов в compare; TUI 4.8 (serve есть); глобальные снапшоты rollback (при
+спросе; undo уже на уровне change).
+**Собрать 0.55.0**: уже накоплено memory + domain-drift + compare-receipt +
+export-trust; добавить lineage → один цельный минор-релиз.
 
-**Рекомендация:** дополнить Honest Receipt аудитом от сторонней стороны —
-export-trust (4.4) усиливает «честность измерима внешним», lineage (4.5)
-даёт уникальный угол. Сбирать в 0.55.0 с уже накопленными memory/compare.
+**Рекомендация:** 0.55.0 почти готов (4 накопленных фича). lineage (4.5) —
+последний киллер-кандидат для релиза. Иначе можно релить 0.55.0 сейчас с
+export-trust и добить lineage в 0.55.1.
