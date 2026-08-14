@@ -113,21 +113,20 @@ pnpm run format              # prettier --write (run before committing; format m
 ### SESSION-SAVE 2026-08-14 (v0.52.0 → npm 0.52.0)
 
 **Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
-завершены и заархивированы:** `внедрить-сопоставление-атомарного-шага`
-(60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10), `2-4-svg-бейдж`
-(7/7), `закрыть-фазу-3-security` (7/7), `4-3-oracle-честная` (4/4),
-`4-2-replay-повторный` (4/4), `4-1-undo-безопасная` (4/4).
-**Релизы на npm: v0.53.0 (security) и v0.54.0 (Phase-4 killer, Latest).**
-Полный нарратив «safe + honest + replayable»: Oracle(ДО) + Receipt/badge
-(ПОСЛЕ) + undo(безопасно) + replay(0 токенов).
+завершены и заархивированы:** внедрить-сопоставление-атомарного-шага (60/60),
+завершить-дистрибуцию (D2, 10/10), 2-4-svg-бейдж (7/7), закрыть-фазу-3-security
+(7/7), 4-3-oracle (4/4), 4-2-replay (4/4), 4-1-undo (4/4), engineering-debt
+(B2 memory + C2 domain-drift, 5/5). **На npm: v0.53.0 (security) + v0.54.0
+(Phase-4 killer, Latest).** Полный продукт: Oracle(ДО) + Receipt/badge(ПОСЛЕ)
++ undo(безопасно) + replay(0 токенов) + memory(группа состояния) +
+domain-drift warning.
 
-**Phase-4 killer сделано:** oracle (4.3) `new --oracle` — pre-flight, честный
-токен-статус (not calibrated < 3 samples); replay (4.2) `change --replay` —
-регресс-чек, reproducible 0 tokens / честный drift; undo (4.1) `change
---undo` — безопасная отмена незавершённого (no-junk контракт, никогда
-user-код, отказ на завершённом). Все три — опции existing команд (new/
-change), не новые top-level (соблюдено 8-командное сжатие). Гейт 80 файлов /
-837 тестов. src/tasks/oracle.ts / replay.ts / undo.ts (drift).
+**Engineering debt сделано:** B2 `orion memory` (memoryCmd: сводка
+profile/cache/lessons/env/metrics + сабкоманды cache/lessons/env/profile; не
+9-я top-level, существующие остаются). C2 matchSkill: объявленный домен без
+скиллов → warn на stderr + fallback на general (не тихое none). Без shell
+(не восстанавливали), без TUI. Тесты memory (4) + domain-drift (4). Гейт 82
+файла / 845 тестов, shield allPass. src/tasks/memoryHandler.ts (drift).
 - **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
   `execFileSync`/`spawnSync` (без shell): runtime.ts run-скрипт
   `execFileSync(bin,[scriptFile])`, runCmd.ts watcher/repair/edit через
@@ -146,11 +145,14 @@ change), не новые top-level (соблюдено 8-командное сж
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** B2 `memory`+`shell` (реальный долг, инженерный
-UX); C2 warning при домен-дрейфе; остальные 12 задач Фазы 4 (TUI 4.8, oracle
-полный токен-модель при живых данных калибровки; compare 4.x; rollback с
-глобальными снапшотами исходного кода); патчи Фазы 3 (0.54.x) по need.
+**ОТКРЫТОЕ (следующая сессия):** остаток engineering debt/toчки Фазы 4/3:
+compare (сравнение изменений), глобальные снапшоты rollback (уровень-per-
+change, не только per-task), TUI 4.8 (serve уже даёт веб-панель), оцифрованные
+патчи Фазы 3 (0.54.x). Решение: накопить engineering-debt-фиксы и раздать
+**0.55.0** как обновление (memory + domain-drift + любые доки, если наберётся
+достаточно) — по желанию, не срочно.
 
-**Рекомендация:** Phase-4 killer собран и опубликован (v0.54.0). Далее: B2/C2
-как cleanup без размывания (инженерный UX) — либо TUI (панель) для визуала.
-Показывать badge+oracle в README как демонстрацию пирамиды.
+**Рекомендация:** product complete (v0.54.0). Далее либо compare/snapshots
+(расширение надёжности), либо TUI-панель, либо заняться докой/README с badge
++ oracle как демонстрация. Не раздувать релиз ради фикс-единиц — собирать
+цельно в 0.55.0.
