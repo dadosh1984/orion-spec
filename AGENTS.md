@@ -183,12 +183,11 @@ Latest).** Реальные прогоны A/B/C из npm прошли: 8 ком
 rate-limit 4-й 429); C (oracle abstract change не создан, export/verify-trust,
 tamper FAIL). **Найден и исправлен реальный баг: truncated warn молчал при
 overflow-в-одном-chunk (cap+spill работали, флаг truncated не вставал) —
-починено в main (fix commit), в next миноре.** **ПЕРЕХОД К ИСПОЛЬЗОВАНИЮ (следующая фаза разработки):** skill-first контур
-задуман энdauraby реальными данными — «использовать» и «развивать» теперь одно
-действие. Первый реальный проект (архетип CSV-утилита, /tmp/orion-proj1):
-oracle → medium/4 steps; new → draft → 6 задач в `cli-перевести-серию-csv`
-(ЕС-structure: CLI entry, CSV headers, JSON serialization, tests, README).
-Forge ждёт 6 сниппетов (пишет агент), потом RED-GREEN-REFACTOR. Miss-log пока
-пуст (0 кандидатов) — норма на нулевых данных. Наблюдать за `run match
---promote` + `economy.source` после первых промоушенов. Не менять порог 3 до
-первых реальных промоушенов (зафиксировано).
+починено в main (fix commit), в next миноре.** **Прогресс обучающего контура (2 реальных цикла):** csv2json (эталон, pushed
+в dadosh1984/orion-practice PRIVATE main 31b2881) + json2csv (2-й, локальный
+эталон 70edd89). **`convert csv` получил 2-й мисс (2/3) — следующий однотипный
+шаг сделает его промоушен-кандидатом.** Важный нюанс: miss-log фиксирует
+только шаги через `matchSkill` (`orion run match "<шаг>"`) — ручная реализация
+через node/tsc не пишет миссы. Ключевой механизм: реальные подшаги нужно
+прогонять через `orion run match` для накопления повторов. Порог 3 не менять
+do первых реальных промоушенов.
