@@ -16,6 +16,7 @@ import {
   lessonSourceChange,
   appliedTo,
 } from "../src/core/lineage.js";
+import { recordPattern, recordLesson } from "../src/core/lessons.js";
 
 const ORIG_CWD = process.cwd();
 const ORIG_L = process.env.ORION_LESSONS_FILE;
@@ -218,5 +219,36 @@ describe("4.5 — orion lineage (explicit provenance walk)", () => {
     const a = JSON.stringify(lineageOf("L"));
     const b = JSON.stringify(lineageOf("L"));
     expect(a).toBe(b);
+  });
+});
+
+describe("sourceChange automation (@out) — born-from backward for lineage", () => {
+  it("recordPattern (out SUCCESS) stamps sourceChange = the change that bore it", () => {
+    const l = recordPattern({
+      changeId: "my-change",
+      step: "out",
+      pattern: "SUCCESS: ok",
+      sourceChange: "my-change",
+    });
+    expect(l).not.toBeNull();
+    expect(l!.sourceChange).toBe("my-change");
+    expect(lessonSourceChange(l!.id)).toBe("my-change");
+  });
+
+  it("recordLesson (out INCOMPLETE) stamps sourceChange too", () => {
+    const l = recordLesson({
+      changeId: "bad-change",
+      step: "out",
+      error: "guard not passing",
+      sourceChange: "bad-change",
+    });
+    expect(lessonSourceChange(l.id)).toBe("bad-change");
+  });
+
+  it("a manual/off-out lesson (no sourceChange) stays honest 'not recorded'", () => {
+    const l = recordLesson({ changeId: "manual", step: "review", error: "x" }); // no sourceChange
+    expect(lessonSourceChange(l.id)).toBeNull();
+    const chain = lineageOf(l.id);
+    expect(chain).toEqual([{ kind: "lesson", id: l.id }]); // backward empty, honest
   });
 });

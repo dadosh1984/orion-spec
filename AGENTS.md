@@ -161,11 +161,14 @@ shield allPass. Накоплено к 0.55.0.
 cycle-safe, честно (orphan/applied-none), дем. `orion memory lessons apply
 <id> --to <change>`, `orion lineage <lesson-id>`. Data model:
 proposal.json.borrowedLessons + lesson.json.sourceChange.
-Lesson.sourceChange? / Proposal.borrowedLessons. Тесты lineage (9). Гейт 85
-файлов / 864 теста, shield allPass. СОДЕРЖИМОЕ 0.56.0 готово (lineage +
-анонимия из 0.55). Осталось: release 0.56.0 (CHANGELOG + тег). Потенциальный follow-up 0.56.x: запись sourceChange в out SUCCESS (сейчас lineage читает
-sourceChange только если записан, должен писать при out?) + DOT-граф (4.6
-отдельно).
+Lesson.sourceChange? / Proposal.borrowedLessons. Тесты lineage (12). Гейт 85
+файлов / 867 тестов, shield allPass. СОДЕРЖИМОЕ 0.56.0 готово (lineage +
+анонимия из 0.55). **sourceChange automation СДЕЛАНО**: out (SUCCESS и
+INCOMPLETE) ставит lesson.sourceChange = changeId (fact рождения, без
+эвристики); recordPattern/recordLesson передают sourceChange; ручной lesson
+остаётся «not recorded». Тесты lineage (12) — теперь 3 на sourceChange. Гейт
+85 файлов / 867 тестов. Осталось: release 0.56.0 (CHANGELOG + тег) и DOT-граф
+(4.6 отдельно).
 
 **Рекомендация:** 0.55.0 (=memory+domain-drift+compare+export-trust, «trust,
 state & comparison») уже готов и будет пушен. После релиза — 0.56.0 lineage,

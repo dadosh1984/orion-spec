@@ -83,6 +83,7 @@ export async function out(
           : "guard not passing",
       cause: "out could not produce a SUCCESS verdict",
       fix: `resolve the condition above, then re-run orion out ${changeId}`,
+      sourceChange: changeId, // this change bore the lesson (lineage backward)
     });
   } else {
     // Positive learning (v0.29, T5.6): a SUCCESS is also a lesson — the
@@ -91,6 +92,7 @@ export async function out(
       changeId,
       step: "out",
       pattern: `SUCCESS: ${tasksDone}/${tasksTotal} tasks + non-stale guard → result.md written`,
+      sourceChange: changeId, // the change that produced this success-lesson
     });
   }
 

@@ -133,6 +133,7 @@ export function recordPattern(
     kind: "success",
     pattern: lesson.pattern,
     score: 0,
+    sourceChange: lesson.sourceChange,
   };
   const rows = readLessons();
   const duplicate = rows.some(
