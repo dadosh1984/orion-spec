@@ -9,10 +9,12 @@ import {
   openSync,
   closeSync,
   unlinkSync,
+  appendFileSync,
+  statSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { execSync, execFileSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { scanHazardsForRuntime } from "./hazards.js";
 import { denyEnv } from "./denyEnv.js";
 import { validateOutput } from "./specValidator.js";
@@ -289,6 +291,123 @@ export function createScript(
   return m;
 }
 
+// 3.12/3.4: streaming child execution with an output cap and abort/timeout.
+// Below 1 MiB the output stays in memory; anything over spills to
+// ~/.orion/last-output.log (kept, not dropped) and the CLI is told honestly
+// the result was truncated. AbortSignal (SIGINT) and a timeout (via
+// ORION_RUN_TIMEOUT_MS or a configured sandbox timeout_sec) kill the child.
+const OUTPUT_CAP = 1024 * 1024; // 1 MiB in-memory cap
+function overflowLogPath(): string {
+  const dir = process.env.ORION_SCRIPTS_DIR ?? join(homedir(), ".orion");
+  return join(dir, "last-output.log");
+}
+
+interface ChildRunResult {
+  output: string;
+  truncated: boolean;
+  killed: boolean;
+  durationMs: number;
+}
+
+function runChildWithLimit(
+  bin: string,
+  args: string[],
+  opts: {
+    cwd: string;
+    env: NodeJS.ProcessEnv;
+    timeoutMs: number; // 0 = no timeout
+  },
+): Promise<ChildRunResult> {
+  return new Promise((resolve, reject) => {
+    const ac = new AbortController();
+    const child = spawn(bin, args, {
+      cwd: opts.cwd,
+      env: opts.env as Record<string, string>,
+      signal: ac.signal,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let soFar = "";
+    let pending = "";
+    let truncated = false;
+    let aborted = false;
+    const started = Date.now();
+
+    child.stdout?.on("data", (buf: Buffer) => {
+      const chunk = buf.toString("utf8");
+      if (soFar.length < OUTPUT_CAP) {
+        const room = OUTPUT_CAP - soFar.length;
+        soFar += chunk.slice(0, room);
+        if (chunk.length > room) {
+          truncated = true;
+          pending += chunk.slice(room);
+        }
+      } else pending += chunk;
+      if (pending.length) {
+        try {
+          flushOverflow(pending);
+          pending = "";
+        } catch {
+          /* log write must never break the child */
+        }
+      }
+    });
+    child.stderr?.on("data", (buf: Buffer) => process.stderr.write(buf));
+
+    const timer =
+      opts.timeoutMs > 0
+        ? setTimeout(() => {
+            aborted = true;
+            ac.abort();
+            child.kill("SIGTERM");
+          }, opts.timeoutMs)
+        : null;
+
+    child.on("error", (err) => {
+      if (timer) clearTimeout(timer);
+      // An aborted/`killed` child surfaces as a spawn error on some platforms;
+      // that is the normal timeout path, not a real failure to spawn.
+      if (aborted || ac.signal.aborted) {
+        resolve({
+          output: `${soFar}\n[truncated: script killed by timeout]`,
+          truncated,
+          killed: true,
+          durationMs: Date.now() - started,
+        });
+      } else {
+        reject(err);
+      }
+    });
+    child.on("close", () => {
+      if (timer) clearTimeout(timer);
+      resolve({
+        output: aborted
+          ? `${soFar}\n[truncated: script killed by timeout]`
+          : soFar,
+        truncated,
+        killed: aborted,
+        durationMs: Date.now() - started,
+      });
+    });
+  });
+}
+
+/** Append overflow bytes to the shared log (bounded, keeps only the tail). */
+function flushOverflow(content: string): void {
+  const f = overflowLogPath();
+  appendFileSync(f, content, "utf8");
+  // Bound: keep the file under ~2 MiB by trimming the oldest half if over.
+  try {
+    const faSize = existsSync(f) ? statSync(f).size : 0;
+    if (faSize > 2 * OUTPUT_CAP) {
+      // rewrite keeping the tail half (best-effort)
+      const text = readFileSync(f, "utf8");
+      writeFileSync(f, text.slice(text.length - OUTPUT_CAP), "utf8");
+    }
+  } catch {
+    /* non-fatal */
+  }
+}
+
 /** Запустить скрипт и вернуть stdout + время выполнения. */
 export async function runScript(
   name: string,
@@ -482,13 +601,26 @@ export async function runScript(
           : (resolveBinary("bash") ?? "bash");
     const env = denyEnv(process.env);
     env["ORION_RUN_NAME"] = name;
-    const output = execFileSync(bin, [scriptFile], {
-      encoding: "utf8",
-      timeout: m.sandbox?.timeout_sec ? m.sandbox.timeout_sec * 1000 : 30_000,
+    // 3.4/3.12: streaming child with output cap (1 MiB → last-output.log),
+    // abort signal (SIGINT) and an optional timeout (ORION_RUN_TIMEOUT_MS;
+    // a configured sandbox timeout_sec, if any, also applies).
+    const hardTimeout = m.sandbox?.timeout_sec
+      ? m.sandbox.timeout_sec * 1000
+      : 0;
+    const envTimeout = Number(process.env.ORION_RUN_TIMEOUT_MS ?? 0);
+    const timeoutMs = hardTimeout || envTimeout;
+    const res = await runChildWithLimit(bin, [scriptFile], {
       cwd: join(scriptsDir(), name),
       env: { ...env, ...sandboxEnv(m) },
+      timeoutMs,
     });
-    const durationMs = Date.now() - start;
+    const output = res.output;
+    const durationMs = res.durationMs;
+    if (res.truncated) {
+      process.stderr.write(
+        `[warn] output truncated (1 MiB cap), full log: ${overflowLogPath()}\n`,
+      );
+    }
 
     // Update stats
     m.lastRun = new Date().toISOString();

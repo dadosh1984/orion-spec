@@ -1,0 +1,14 @@
+# Предложение — спринт-b-фазы-3
+
+## Цель
+Реализовать Спринт B Фазы 3: Runtime hardening (3.4 AbortController/SIGINT + 3.12 лимит вывода) — защита от зависших процессов и OOM. (3.12) output cap: 1 MiB в память, overflow → ~/.orion/last-output.log (append, bounded ~2MiB trim); честный warn «output truncated (1 MiB cap), full log: …». (3.4) runChildWithLimit() в runtime.ts — потоковый spawn: ниже cap в память, сверх spill; AbortController signal (SIGINT) + timeout kill (ORION_RUN_TIMEOUT_MS default 0 = без таймаута; sandbox.timeout_sec back-compat explicit); killed → output «[truncated: script killed by timeout]». Убран старый 30s blanket timeout (не убивать легитимно долгие). runChildWithLimit приватный, runScript использует; результат {output,truncated,killed,durationMs}; truncation сообщается stderr warn. Тесты tests/runtime-hardening.test.ts (4): big→truncated+last-output.log, small→untouched no file, timeout (ORION_RUN_TIMEOUT_MS)→killed, sandbox timeout_sec back-compat→killed. Live: big→ последний-output.log 151KB, slow→killed by timeout 1008ms. Гейт green. Accumulate к 0.57.0 (Спринты A+B → hardening релиз).
+
+## Контекст
+
+| Аспект | Значение |
+|--------|----------|
+| Платформа | any |
+| Бюджет | compact |
+| Ограничения | compact |
+
+- **Lessons applied (v0.12):** v0-46-устранить-дубли:forge:cfd1274354ba, фаза-32-0-15:forge:daf79c57342c, v0-46-устранить-дубли:forge:c0563dbd8439, mcp-python-1-7:forge:5df8eb987773, фаза-43-0-26:forge:3fe4a7c8b111
