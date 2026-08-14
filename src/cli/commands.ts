@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { writeFileSafe } from "../utils/file.js";
 import { DEFAULT_PORT } from "../constants.js";
 import { statusMark, paint } from "../utils/term.js";
@@ -447,6 +448,29 @@ export async function main(argv: string[]): Promise<number> {
       if (!changeId) return fail("out requires a change id");
       const result = await out(changeId, opts);
       printOut(opts, result, `Result written to changes/${changeId}/result.md`);
+      return 0;
+    }
+
+    case "update": {
+      const { updateAgentFiles } = await import("../core/updateAgent.js");
+      const r = updateAgentFiles();
+      console.log(`\n${statusMark("info")} AI-agent command files:`);
+      console.log(
+        `  .claude/commands : ${r.claude === true ? "✓ present" : "— absent"}`,
+      );
+      console.log(
+        `  .cursor/rules   : ${r.cursor === true ? "✓ present" : "— absent"}`,
+      );
+      for (const f of r.files) {
+        const state = r.refreshed.includes(join(process.cwd(), f))
+          ? "refreshed"
+          : "up-to-date";
+        console.log(`  ${statusMark("done")} ${f} (${state})`);
+      }
+      if (r.refreshed.length === 0)
+        console.log(
+          `  ${statusMark("info")} nothing changed — all files idempotent.`,
+        );
       return 0;
     }
 

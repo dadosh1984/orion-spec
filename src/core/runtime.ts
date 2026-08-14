@@ -12,8 +12,9 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { scanHazardsForRuntime } from "./hazards.js";
+import { denyEnv } from "./denyEnv.js";
 import { validateOutput } from "./specValidator.js";
 import {
   recordTokenEvent,
@@ -177,11 +178,7 @@ export function detectDefaultRuntime(): "bash" | "node" | "python" {
         run?: { preferredRuntime?: string };
       };
       const pref = cfg.run?.preferredRuntime;
-      if (
-        pref === "bash" ||
-        pref === "node" ||
-        pref === "python"
-      ) {
+      if (pref === "bash" || pref === "node" || pref === "python") {
         if (resolveBinary(pref)) return pref;
       }
     }
@@ -473,26 +470,23 @@ export async function runScript(
 
   const start = Date.now();
   try {
-    let cmd: string;
-    if (m.runtime === "node") {
-      // Use the current interpreter's absolute path: resolves even when the
-      // spawned context has a stripped PATH (e.g. Windows pnpm-shim).
-      cmd = `"${process.execPath}" "${scriptFile}"`;
-    } else if (m.runtime === "python") {
-      // `python` on Windows, `python3` on Linux/macOS (v0.47). Resolve the
-      // absolute path so it survives a stripped spawn context.
-      const py = process.platform === "win32" ? "python" : "python3";
-      cmd = `"${resolveBinary(py) ?? py}" "${scriptFile}"`;
-    } else {
-      // bash by absolute path (v0.47): `bash` alone can fail on Windows when
-      // cmd.exe doesn't inherit the full PATH from the pnpm-shim spawn.
-      cmd = `"${resolveBinary("bash") ?? "bash"}" "${scriptFile}"`;
-    }
-    const output = execSync(cmd, {
+    // 3.8/3.13: argv-safe execution (no shell interpolation) + denyEnv so a
+    // script name can't inject shell and secrets never reach the child env.
+    const bin: string =
+      m.runtime === "node"
+        ? process.execPath
+        : m.runtime === "python"
+          ? (resolveBinary(
+              process.platform === "win32" ? "python" : "python3",
+            ) ?? (process.platform === "win32" ? "python" : "python3"))
+          : (resolveBinary("bash") ?? "bash");
+    const env = denyEnv(process.env);
+    env["ORION_RUN_NAME"] = name;
+    const output = execFileSync(bin, [scriptFile], {
       encoding: "utf8",
       timeout: m.sandbox?.timeout_sec ? m.sandbox.timeout_sec * 1000 : 30_000,
       cwd: join(scriptsDir(), name),
-      env: { ...process.env, ...sandboxEnv(m), ORION_RUN_NAME: name },
+      env: { ...env, ...sandboxEnv(m) },
     });
     const durationMs = Date.now() - start;
 

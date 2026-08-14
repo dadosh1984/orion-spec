@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { execSync, spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { statusMark, paint } from "../utils/term.js";
 import { confirmAction, lineDiff } from "./helpers.js";
@@ -39,12 +39,13 @@ import {
  * fingerprint are filled automatically at creation time.
  */
 async function skillMeta() {
-  const { resolveDomain, environmentFingerprint } = await import(
-  "../core/skillsMatch.js",
-  );
+  const { resolveDomain, environmentFingerprint } =
+    await import("../core/skillsMatch.js");
   return {
     domain: resolveDomain(),
-    environmentFingerprint: environmentFingerprint({ runtime: process.version }),
+    environmentFingerprint: environmentFingerprint({
+      runtime: process.version,
+    }),
   };
 }
 
@@ -162,10 +163,19 @@ export async function runDispatch(args: string[]): Promise<number> {
         watch(watchDir, { recursive: false }, (_e, fn) => {
           if (fn && re.test(fn)) {
             try {
-              execSync(
-                `"${process.execPath}" "${join(import.meta.dirname ?? ".", "..", "..", "dist", "cli", "index.js")}" run ${wName}`,
-                { stdio: "inherit", timeout: 60_000 },
+              const cli = join(
+                import.meta.dirname ?? ".",
+                "..",
+                "..",
+                "dist",
+                "cli",
+                "index.js",
               );
+              // 3.8: argv-safe, no shell — wName can't inject shell.
+              spawnSync(process.execPath, [cli, "run", wName], {
+                stdio: "inherit",
+                timeout: 60_000,
+              });
             } catch {
               /* watcher continues */
             }
@@ -247,7 +257,8 @@ export async function runDispatch(args: string[]): Promise<number> {
           const risk = ["low", "medium", "high", "critical"].includes(
             riskAns.trim().toLowerCase(),
           )
-            ? (riskAns.trim().toLowerCase() as "low" | "medium" | "high" | "critical")
+            ? (riskAns.trim().toLowerCase() as
+                "low" | "medium" | "high" | "critical")
             : result.manifest.risk_level;
           result.manifest.risk_level = risk;
           result.manifest.requires_confirmation =
@@ -265,9 +276,7 @@ export async function runDispatch(args: string[]): Promise<number> {
           }
 
           // Schedule
-          const schedAns = await ask(
-            `  Cron schedule (default: none): `,
-          );
+          const schedAns = await ask(`  Cron schedule (default: none): `);
           if (schedAns.trim()) {
             result.manifest.schedule = schedAns.trim();
           }
@@ -280,7 +289,11 @@ export async function runDispatch(args: string[]): Promise<number> {
             const field = await ask(`    JSON field name: `);
             const equals = await ask(`    Expected value: `);
             result.manifest.postconditions = [
-              { type: "json_field", field: field.trim(), equals: equals.trim() },
+              {
+                type: "json_field",
+                field: field.trim(),
+                equals: equals.trim(),
+              },
             ];
           } else if (postAns.trim() === "file_exists") {
             const fpath = await ask(`    File path: `);
@@ -350,8 +363,10 @@ export async function runDispatch(args: string[]): Promise<number> {
             "cli",
             "index.js",
           );
-          execSync(
-            `"${process.execPath}" "${cli}" forge ${m.sourceChange} --save-as ${name}`,
+          // 3.8: argv-safe, no shell — change/script name can't inject shell.
+          spawnSync(
+            process.execPath,
+            [cli, "forge", m.sourceChange, "--save-as", name],
             { stdio: "inherit", timeout: 120_000 },
           );
           // On success: clear needs_repair, mark as active.
@@ -365,9 +380,7 @@ export async function runDispatch(args: string[]): Promise<number> {
           console.error(
             `\n${statusMark("error")} Auto-repair failed: ${err instanceof Error ? err.message : String(err)}`,
           );
-          console.error(
-            `  Manual fix: orion run edit ${name}`,
-          );
+          console.error(`  Manual fix: orion run edit ${name}`);
           return 1;
         }
       } else if (autoMode) {
@@ -463,11 +476,12 @@ export async function runDispatch(args: string[]): Promise<number> {
           "",
           metric
             ? (() => {
-                const roi = metric.roiScore == null
-                  ? "n/a"
-                  : metric.roiScore === Infinity
-                    ? "∞"
-                    : metric.roiScore.toFixed(2);
+                const roi =
+                  metric.roiScore == null
+                    ? "n/a"
+                    : metric.roiScore === Infinity
+                      ? "∞"
+                      : metric.roiScore.toFixed(2);
                 return [
                   `  ${paint("Token ROI:", "dim")}   ${roi}x  |  ${paint("Saved:", "dim")} ${metric.totalTokensSaved}  |  ${paint("Net:", "dim")} ${metric.netTokensSaved}`,
                   `  ${paint("Success rate:", "dim")} ${m.runCount > 0 ? Math.round((metric.successRuns / metric.runs) * 100) : 0}% (${metric.successRuns}/${metric.runs})`,
@@ -575,7 +589,9 @@ export async function runDispatch(args: string[]): Promise<number> {
       //   orion run match --approve "<sig>" → scaffold a change from miss-log
       //                                        (safe promotion; replay-verified)
       const wantsPromote =
-        rest.includes("--promote") || name === "--promote" || name === "--candidates";
+        rest.includes("--promote") ||
+        name === "--promote" ||
+        name === "--candidates";
       const wantsShadow = rest.includes("--shadow") || name === "--shadow";
       const wantsApprove =
         rest.includes("--approve") ||
@@ -584,34 +600,57 @@ export async function runDispatch(args: string[]): Promise<number> {
         name === "--approve" ||
         name === "--propose" ||
         name === "--replay";
-      const { matchSkill, shadowCompare } = await import(
-        "../core/skillsMatch.js",
-      );
+      const { matchSkill, shadowCompare } =
+        await import("../core/skillsMatch.js");
       const { logSkillMiss } = await import("../core/skillMissLog.js");
 
       if (wantsApprove) {
         // Safe promotion state-machine (v0.52): proposed → replayed → approved.
         const isReplay = rest.includes("--replay") || name === "--replay";
-        const { readProposal, proposeFromMissLog, approveProposal, replayProposal } =
-          await import("../core/promotion.js");
+        const {
+          readProposal,
+          proposeFromMissLog,
+          approveProposal,
+          replayProposal,
+        } = await import("../core/promotion.js");
         const { missLogForStep } = await import("../core/skillMissLog.js");
         const { significantWords } = await import("../core/titles.js");
-        const { mkdirSync, writeFileSync, existsSync } = await import("node:fs");
+        const { mkdirSync, writeFileSync, existsSync } =
+          await import("node:fs");
         const { join: jn } = await import("node:path");
 
         if (isReplay) {
-          const id = (name === "--replay" ? rest.join(" ").trim() : rest.filter((a) => a !== "--replay").join(" ").trim()) || name;
+          const id =
+            (name === "--replay"
+              ? rest.join(" ").trim()
+              : rest
+                  .filter((a) => a !== "--replay")
+                  .join(" ")
+                  .trim()) || name;
           if (!id) return fail("usage: orion run match --replay <proposal-id>");
           const pr = readProposal(id);
-          if (!pr) return fail("Proposal \"" + id + "\" not found — run --propose \"<sig>\" first.");
+          if (!pr)
+            return fail(
+              'Proposal "' + id + '" not found — run --propose "<sig>" first.',
+            );
           if (!pr.scriptPath || !existsSync(pr.scriptPath)) {
-            return fail("Proposal \"" + id + "\" has no script yet — write " + (pr.scriptPath ?? "the proposed script") + " first, then replay.");
+            return fail(
+              'Proposal "' +
+                id +
+                '" has no script yet — write ' +
+                (pr.scriptPath ?? "the proposed script") +
+                " first, then replay.",
+            );
           }
           const res = await replayProposal(id, (args) =>
             (async () => {
               const { execFileSync } = await import("node:child_process");
               try {
-                const out = execFileSync(process.execPath, [pr.scriptPath!, ...args], { encoding: "utf8" });
+                const out = execFileSync(
+                  process.execPath,
+                  [pr.scriptPath!, ...args],
+                  { encoding: "utf8" },
+                );
                 return { ok: true, output: out };
               } catch (e) {
                 return { ok: false, output: String((e as Error).message || e) };
@@ -619,9 +658,20 @@ export async function runDispatch(args: string[]): Promise<number> {
             })(),
           );
           if (res.state === "replayed") {
-            console.log(statusMark("done") + " Replay PASSED (score " + res.replayScore.toFixed(2) + "). Now: orion run match --approve " + id);
+            console.log(
+              statusMark("done") +
+                " Replay PASSED (score " +
+                res.replayScore.toFixed(2) +
+                "). Now: orion run match --approve " +
+                id,
+            );
           } else {
-            console.log(statusMark("error") + " Replay BLOCKED — " + res.drift.length + " drift(s):");
+            console.log(
+              statusMark("error") +
+                " Replay BLOCKED — " +
+                res.drift.length +
+                " drift(s):",
+            );
             for (const d of res.drift) console.log("  ✗ " + d);
             console.log("  Fix the script, then re-run --replay " + id);
           }
@@ -630,21 +680,46 @@ export async function runDispatch(args: string[]): Promise<number> {
 
         const approveMode = name === "--approve";
         if (approveMode) {
-          const id = rest.filter((a) => a !== "--approve").join(" ").trim() || name;
+          const id =
+            rest
+              .filter((a) => a !== "--approve")
+              .join(" ")
+              .trim() || name;
           const prr = readProposal(id);
-          if (!prr) return fail("Proposal \"" + id + "\" not found.");
+          if (!prr) return fail('Proposal "' + id + '" not found.');
           const ok = await approveProposal(id);
-          if (!ok) return fail("Cannot approve \"" + id + "\": state is \"" + prr.state + "\" — it must be \"replayed\" first.");
-          console.log(statusMark("done") + " Approved \"" + id + "\" — recorded in economy.json (source=promote:" + id + ").");
+          if (!ok)
+            return fail(
+              'Cannot approve "' +
+                id +
+                '": state is "' +
+                prr.state +
+                '" — it must be "replayed" first.',
+            );
+          console.log(
+            statusMark("done") +
+              ' Approved "' +
+              id +
+              '" — recorded in economy.json (source=promote:' +
+              id +
+              ").",
+          );
           return 0;
         }
 
         // Propose: snapshot a repeated miss-log signature + scaffold a change dir.
         const sig = rest.join(" ").trim() || name;
-        if (!sig) return fail("usage: orion run match --propose \"<step signature>\"");
+        if (!sig)
+          return fail('usage: orion run match --propose "<step signature>"');
         const history = missLogForStep(sig);
         if (history.length < 3) {
-          return fail("Signature \"" + sig + "\" occurs only " + history.length + "× in the miss-log — need ≥ 3 to consider promotion.");
+          return fail(
+            'Signature "' +
+              sig +
+              '" occurs only ' +
+              history.length +
+              "× in the miss-log — need ≥ 3 to consider promotion.",
+          );
         }
         const slug = significantWords(sig, 3).join("-") || "promoted-skill";
         const domain = history[0].domain ?? "general";
@@ -658,18 +733,48 @@ export async function runDispatch(args: string[]): Promise<number> {
         const dir = jn("changes", slug);
         if (!existsSync(dir)) {
           mkdirSync(jn(dir, "snippets"), { recursive: true });
-          writeFileSync(jn(dir, "proposal.json"), JSON.stringify({ title: slug, goal: sig, platform: "", constraints: "promoted from miss-log (" + history.length + "×), domain=" + domain }, null, 2), "utf8");
+          writeFileSync(
+            jn(dir, "proposal.json"),
+            JSON.stringify(
+              {
+                title: slug,
+                goal: sig,
+                platform: "",
+                constraints:
+                  "promoted from miss-log (" +
+                  history.length +
+                  "×), domain=" +
+                  domain,
+              },
+              null,
+              2,
+            ),
+            "utf8",
+          );
           const tasksBody = [
             "# Tasks — " + slug,
             "",
             "Write entry.js so it reproduces each recorded resolution. Then:",
             "",
-            "`orion run match --replay " + id + "` → `orion run match --approve " + id + "`",
+            "`orion run match --replay " +
+              id +
+              "` → `orion run match --approve " +
+              id +
+              "`",
             "",
           ].join("\n");
           writeFileSync(jn(dir, "tasks.md"), tasksBody, "utf8");
         }
-        console.log(statusMark("done") + " Proposal \"" + id + "\" created (" + history.length + "×, domain=" + domain + ").");
+        console.log(
+          statusMark("done") +
+            ' Proposal "' +
+            id +
+            '" created (' +
+            history.length +
+            "×, domain=" +
+            domain +
+            ").",
+        );
         console.log("  write: changes/" + slug + "/entry.js");
         console.log("  then:  orion run match --replay " + id);
         console.log("  then:  orion run match --approve " + id);
@@ -679,13 +784,21 @@ export async function runDispatch(args: string[]): Promise<number> {
         const { promotionCandidates } = await import("../core/skillMissLog.js");
         const cands = promotionCandidates(3);
         if (cands.length === 0) {
-          console.log(`${statusMark("info")} No promotion candidates yet — log accumulates misses to find repeated signatures.`);
+          console.log(
+            `${statusMark("info")} No promotion candidates yet — log accumulates misses to find repeated signatures.`,
+          );
         } else {
-          console.log(`\n${paint(`${cands.length} promotion candidate(s)`, "cyan")} (repeat ≥ 3) — review before promoting:`);
+          console.log(
+            `\n${paint(`${cands.length} promotion candidate(s)`, "cyan")} (repeat ≥ 3) — review before promoting:`,
+          );
           for (const c of cands) {
             console.log(`\n  ✦ ×${c.repeat}  ${c.entry.step}`);
-            console.log(`    domain: ${c.entry.domain} | last resolve: ${c.entry.resolution ?? "—"}`);
-            console.log(`    promote: orion run match --approve "${c.entry.step}"`);
+            console.log(
+              `    domain: ${c.entry.domain} | last resolve: ${c.entry.resolution ?? "—"}`,
+            );
+            console.log(
+              `    promote: orion run match --approve "${c.entry.step}"`,
+            );
           }
         }
         return 0;
@@ -695,7 +808,11 @@ export async function runDispatch(args: string[]): Promise<number> {
         // Shadow-migration: show BM25 vs legacy naive on lucid terms so you
         // can decide (with data) whether BM25 fixes the false positives
         // before the naive scorer is deleted.
-        const tgt = (name === "--shadow" ? rest.join(" ") : rest.filter((a) => a !== "--shadow").join(" ")).trim();
+        const tgt = (
+          name === "--shadow"
+            ? rest.join(" ")
+            : rest.filter((a) => a !== "--shadow").join(" ")
+        ).trim();
         if (!tgt) return fail('usage: orion run match --shadow "<step>"');
         const res = shadowCompare([{ step: tgt }], undefined)[0];
         console.log(`\n${paint("shadow: BM25 vs naive", "cyan")}`);
@@ -704,7 +821,9 @@ export async function runDispatch(args: string[]): Promise<number> {
         console.log(
           `  BM25  → ${bm?.kind === "matched" ? `${bm.skill.name} (tier=${bm.tier}, score=${bm.score.toFixed(2)})` : bm?.kind === "ambiguous" ? `ambiguous: ${bm.candidates.map((c) => c.name).join(", ")}` : "none"}`,
         );
-        console.log(`  naive → ${res.naive ? `${res.naive.name} (score=${res.naive.score})` : "none"}`);
+        console.log(
+          `  naive → ${res.naive ? `${res.naive.name} (score=${res.naive.score})` : "none"}`,
+        );
         console.log(`  agree → ${res.agree ? "yes" : "NO (decision point)"}`);
         return 0;
       }
@@ -717,21 +836,34 @@ export async function runDispatch(args: string[]): Promise<number> {
       const domain = resolveDomain();
       const r = matchSkill(step);
       if (r.kind === "matched") {
-        console.log(`${statusMark("done")} Match → ${paint(r.skill.name, "green")} (tier=${r.tier}, score ${r.score.toFixed(2)}), domain=${r.skill.domain}`);
+        console.log(
+          `${statusMark("done")} Match → ${paint(r.skill.name, "green")} (tier=${r.tier}, score ${r.score.toFixed(2)}), domain=${r.skill.domain}`,
+        );
         console.log(`  Run: orion run ${r.skill.name}`);
       } else if (r.kind === "ambiguous") {
         // Delegate to the async resolver (same function run/forge uses).
         const { resolveAmbiguous } = await import("../core/skillsMatch.js");
         const decision = await resolveAmbiguous(step, r.candidates);
         if (decision.kind === "matched") {
-          console.log(`${statusMark("info")} Ambiguous → resolved to ${paint(decision.skill.name, "green")} (from: ${r.candidates.map((c) => c.name).join(", ")})`);
+          console.log(
+            `${statusMark("info")} Ambiguous → resolved to ${paint(decision.skill.name, "green")} (from: ${r.candidates.map((c) => c.name).join(", ")})`,
+          );
         } else {
-          console.log(`${statusMark("info")} Ambiguous — short-list, NO auto-resolution (error asymmetry): ${r.candidates.map((c) => c.name).join(", ")}`);
+          console.log(
+            `${statusMark("info")} Ambiguous — short-list, NO auto-resolution (error asymmetry): ${r.candidates.map((c) => c.name).join(", ")}`,
+          );
         }
         logSkillMiss({ step, domain, reason: "borderline", topScore: null });
       } else {
-        console.log(`${statusMark("error")} No confident match — sending step to LLM.`);
-        logSkillMiss({ step, domain, reason: "below-threshold", topScore: null });
+        console.log(
+          `${statusMark("error")} No confident match — sending step to LLM.`,
+        );
+        logSkillMiss({
+          step,
+          domain,
+          reason: "below-threshold",
+          topScore: null,
+        });
       }
       return 0;
     }
@@ -843,7 +975,14 @@ export async function runDispatch(args: string[]): Promise<number> {
       }
       const editor = process.env.EDITOR || process.env.VISUAL || "vi";
       try {
-        execSync(`${editor} "${scriptPath(name)}"`, { stdio: "inherit" });
+        // 3.8: argv-safe, no shell. Editor may carry flags ("code -w") —
+        // split on whitespace, then run argv with shell:false so neither the
+        // flags nor the script path can smuggle shell syntax.
+        const [bin, ...flags] = editor.split(/\s+/).filter(Boolean);
+        spawnSync(bin, [...flags, scriptPath(name)], {
+          stdio: "inherit",
+          shell: false,
+        });
       } catch {
         /* ok */
       }
