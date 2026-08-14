@@ -114,9 +114,10 @@ pnpm run format              # prettier --write (run before committing; format m
 
 **Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
 завершены и заархивированы:** `внедрить-сопоставление-атомарного-шага`
-(60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10 — npm 0.52.0),
-`2-4-svg-бейдж` (7/7), `закрыть-фазу-3-security` (7/7). Пирамида собрана
-(Receipt→npm→badge) + безопасный AI-agent охват.
+(60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10), `2-4-svg-бейдж`
+(7/7), `закрыть-фазу-3-security` (7/7). **Релиз v0.53.0 живёт на npm**
+(GitHub Release v0.53.0 Latest; ~проверено npm view=0.53.0, tarball содержит
+update/badge/version). Пирамида собрана + безопасный AI-agent охват.
 
 **Security-префикс (3.8/3.13) + Фаза 4 (4.9/4.10) сделано:**
 - **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
@@ -137,12 +138,11 @@ pnpm run format              # prettier --write (run before committing; format m
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** Фаза 4 остальные 12 задач (undo/replay/oracle/
-TUI — отдельно, не охват); B2 `memory`+`shell`; C2 warning при домен-дрейфе;
-`new --dry`. Также: bumps 0.53.0 после security (3.8/3.13) — изменение
-поведения run-scripts (argv), стоит опубликовать отдельной минор-версией.
+**ОТКРЫТОЕ (следующая сессия):** **4.3 `orion oracle <prompt>`** (честность ДО
+запуска: {kind, leaves, estimatedTokens}, тонкая над реализованным
+сложностным классификатором Фазы 3.5; 2ч по плану); потом остаток Фазы 4
+(undo/replay/TUI — отдельно); B2 `memory`+`shell`; C2 warning при домен-
+дрейфе; `new --dry`. Остальные 12 задач Фазы 3 → 0.53.x патчи по need.
 
-**Рекомендация:** безопасный агент-охват готов (`orion update`). Далее:
-минор-публикация 0.53.0 (protects run-script argv + agent охват) → остаток
-Фазы 4 (killer-features: undo/replay/oracle) → B2/C2. Показывать badge в
-README для демонстрации пирамиды.
+**Рекомендация:** `oracle` (4.3) — минимальное усилие, усиливает обе стороны
+честности (Receipt=после, Oracle=до). Дальше: undo/replay либо B2/C2.
