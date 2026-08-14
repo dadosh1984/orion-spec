@@ -2,6 +2,32 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.57.0] — hardening
+
+Production-readiness: serve no longer leaks secrets or is DoS-able, and run
+scripts can't hang or blow memory.
+
+### Security
+- **Serve redaction** (3.11): `sendJson` now redacts every `/api/*` response
+  centrally (was only `/api/cache`) — credentials in command output / cache are
+  never echoed back on any route.
+- **Serve rate-limit** (3.10): 60 req/min per-address sliding window, 429 +
+  `Retry-After` on overflow; `ORION_SERVE_RATE_LIMIT=0` turns it off.
+
+### Runtime hardening
+- **Output cap (3.12)**: run scripts stream their stdout — up to 1 MiB stays in
+  memory, the overflow spills to `~/.orion/last-output.log` (bounded trim), and
+  the CLI honestly warns `output truncated (1 MiB cap), full log: …` when it
+  happens.
+- **Abort/timeout (3.4)**: run scripts get an `AbortController` signal (SIGINT)
+  and honour `ORION_RUN_TIMEOUT_MS`. The old blanket 30s default timeout is
+  gone — legitimately long scripts are no longer killed; an explicit
+  `sandbox.timeout_sec` in the manifest still applies for back-compat.
+
+### Behavior change
+- There is no default run timeout anymore. Set `ORION_RUN_TIMEOUT_MS` (env) or
+  `sandbox.timeout_sec` (manifest) if you need one.
+
 ## [0.56.0] — provenance
 
 Full `change → lesson → change` provenance. Lineage never guesses: «a lesson
