@@ -173,10 +173,8 @@ INCOMPLETE) ставит lesson.sourceChange = changeId (fact рождения, 
 
 **СЛЕДУЮЩЕЕ (после провенанс закрыт):** незавершённая **Фаза 3** — по плану 12
 задач, но 3.5 устарела (findExistingSkill удалён, единый BM25 путь) → **11
-актуальных**. Порядок спринтов: A=Serve hardening (3.11 redaction + 3.10
-rate-limit) — **СДЕЛАНО**; B=Runtime (3.4 AbortController + 3.12 лимит вывода);
-C=Архитектура (3.1 uzum→skills, 3.2 mcp per-tool, 3.3 stores); D=Мелкие (3.6
-hazards /u, 3.7 lastRunHash, 3.9 cron). Гейт 86 файлов / 871 тест.
-**0.57.0 = hardening релиз после Спринтов A+B** (4 production-readiness),
-не патчить 0.56.x (это hardening, не дыра). AI-agent охват (2 вместо 5) —
-сознательное решение. Остаток Фазы 4 — отдельные истории.
+актуальных**. **Спринт A (serve hardening 3.11+3.10) СДЕЛАН. Спринт B
+(runtime hardening 3.12+3.4) СДЕЛАН.** Гейт 87 файлов / 875 тестов. Проект
+Production-ready после A+B. Остаток Фазы 3: C=Архитектура (3.1 uzum→skills,
+3.2 mcp per-tool, 3.3 stores); D=Мелкие (3.6 hazards /u, 3.7 lastRunHash,
+3.9 cron). **0.57.0 = hardening релиз (Спринт A + B) — готов к нарезке.**
