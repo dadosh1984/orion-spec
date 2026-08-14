@@ -2,6 +2,27 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.54.0] — 2026-08-14
+
+Safe + honest + replayable — Phase-4 killer set. Honest on BOTH ends: Oracle
+(before) and Honest Receipt/badge (after), with safe undo and zero-token replay.
+
+### Added
+- **`orion new --oracle "<prompt>"`** (4.3) — pre-flight honesty. `orion new`
+  already classifies; `--oracle` classifies WITHOUT creating a change: prints
+  `kind` (abstract|easy|medium|hard), `depth`, `plannedSteps`, and an honest
+  token label (`calibrated ×F over M changes` when >=3 calibration samples,
+  else `not calibrated (<3 samples)`) — never a fabricated number.
+- **`orion change <id> --replay`** (4.2) — regression check on the new code.
+  Determines whether a completed change still reproduces: compares the
+  reproducible hash of its input artifacts with the sha256 recorded in
+  `receipt.json`. Match → `reproducible, 0 tokens (cached)`; drift → honest
+  spec-drift; no receipt → honest "run out first" (never "passing"). Read-only.
+- **`orion change <id> --undo`** (4.1) — safe cancellation of an unfinished
+  change. Removes only pipeline-owned artifacts (`changes/<id>/`,
+  `reports/<id>/`); never touches user code under `src/`/`tests/`. Refuses a
+  completed change (result/receipt present), suggests `--archive`.
+
 ## [0.53.0] — 2026-08-14
 
 Security hardening + safe AI-agent onboarding.
