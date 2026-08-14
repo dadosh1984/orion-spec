@@ -24,6 +24,7 @@ import { fail, printOut } from "../helpers.js";
 import type { CliOptions } from "../helpers.js";
 import type { CommandHandler } from "../registry.js";
 import { think } from "../../skills/think/handler.js";
+import { oracleReport } from "../../core/oracle.js";
 import { draft } from "../../skills/draft/handler.js";
 import { forge, forgeParallel, readTasks } from "../../skills/forge/handler.js";
 import { shield } from "../../skills/shield/handler.js";
@@ -40,12 +41,14 @@ function parseNewFlags(args: string[]): {
   pipeline: boolean;
   from: string | null;
   dry: boolean;
+  oracle: boolean;
 } {
   const positional: string[] = [];
   let step: Step | null = null;
   let pipeline = false;
   let from: string | null = null;
   let dry = false;
+  let oracle = false;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--step") {
@@ -64,6 +67,8 @@ function parseNewFlags(args: string[]): {
       step = v as Step;
     } else if (a === "--pipeline") {
       pipeline = true;
+    } else if (a === "--oracle") {
+      oracle = true;
     } else if (a === "--dry") {
       dry = true;
     } else if (a === "--from") {
@@ -76,7 +81,7 @@ function parseNewFlags(args: string[]): {
       positional.push(a);
     }
   }
-  return { positional, step, pipeline, from, dry };
+  return { positional, step, pipeline, from, dry, oracle };
 }
 
 export const newHandler: CommandHandler = async (args, opts) => {
@@ -90,6 +95,26 @@ export const newHandler: CommandHandler = async (args, opts) => {
   const { positional, step, pipeline, from } = flags;
   // --dry is a global flag, parsed by parseArgs into opts.dry. Honour it.
   const dry = opts.dry;
+  const oracle = flags.oracle;
+
+  // 4.3 oracle: pre-flight complexity analysis WITHOUT creating a change —
+  // honest on the front end (Receipt is honest on the back end).
+  if (oracle) {
+    const prompt = positional.join(" ").trim();
+    if (!prompt) {
+      return fail(
+        'orion new --oracle requires a prompt, e.g. orion new --oracle "Build a CSV-to-JSON tool"',
+      );
+    }
+    const r = oracleReport(prompt);
+    console.log(`\n${statusMark("info")} pre-flight oracle for: "${prompt}"`);
+    console.log(`  kind:         ${r.kind}`);
+    console.log(`  depth:        ${r.depth}`);
+    console.log(`  plannedSteps: ${r.plannedSteps}`);
+    console.log(`  token estimate: ${r.tokenLabel}`);
+    console.log(`  (no change created — pre-flight only)`);
+    return 0;
+  }
 
   // --dry: just show what would happen, no writes. Equivalent to `orion plan`.
   if (dry) {
@@ -219,7 +244,7 @@ async function runPipeline(
   const prompt = positional.join(" ").trim();
   if (!from && !prompt) {
     return fail(
-      'orion new --pipeline requires a prompt (or --from=<id> to continue an existing change)',
+      "orion new --pipeline requires a prompt (or --from=<id> to continue an existing change)",
     );
   }
 
@@ -248,7 +273,9 @@ async function runPipeline(
   console.log(`[pipeline] step 3/5: forge`);
   const tasks = readTasks(changeId);
   if (tasks.length === 0) {
-    console.error(`[pipeline] step 3/5: forge — no tasks in changes/${changeId}/tasks.md`);
+    console.error(
+      `[pipeline] step 3/5: forge — no tasks in changes/${changeId}/tasks.md`,
+    );
     return 1;
   }
   const summary =

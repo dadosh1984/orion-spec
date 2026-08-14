@@ -1,0 +1,16 @@
+{
+  "title": "4-3-oracle-честная",
+  "goal": "Реализовать 4.3 Oracle: честная pre-flight классификация промпта ДО запуска change, зеркально Honest Receipt на фронте («честность на обоих концах»). Команда: `orion new --oracle \"<prompt>\"` (НЕ отдельная top-level команда — соблюдаем 8-командное сжатие; --oracle растворяется в существующий `new` без дублирования парсинга). Поведение: классифицирует через существующий classifyComplexity (Фаза 3.5) → kind (abstract|easy|medium|hard), depth (0-3), plannedSteps (2^depth); токены — НЕ выдумывает: если calibrationFactor (>=3 сэмплов из calibration.json) → \"calibrated ×F over M changes\", иначе \"not calibrated (<3 samples)\" (ровно паттерн `coverage: not measured`). Ничего не создаёт в changes/. Чистая функция oracleReport(prompt) в src/core/oracle.ts (детерминизм: один промпт+одна калибровка → байт-в-байт одинаковый отчёт). Тесты tests/oracle.test.ts (5): abstract → kind=abstract/plannedSteps 0 (не forge-намерение); нет калибровки → not calibrated (не число); <3 сэмплов → not calibrated; >=3 → calibrated label; детерминизм. Критерий: `new --oracle \"промпт\"` → честный отчёт, change не создан; не калиброван → \"not calibrated\", не число.",
+  "platform": "",
+  "constraints": "compact",
+  "budget": "compact",
+  "clarity": "vague",
+  "language": "ru",
+  "appliesLessons": [
+    "фазу-25-audit-логирование:forge:919b9b494e28",
+    "фаза-32-0-15:forge:c7ae2cc67289",
+    "фаза-44-0-27:forge:4a2c37d241f3",
+    "фазу-23-conformance-тесты:forge:753265ca3073",
+    "mcp-python-1-7:forge:9c866da712f6"
+  ]
+}
