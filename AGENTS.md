@@ -114,25 +114,29 @@ pnpm run format              # prettier --write (run before committing; format m
 
 **Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
 завершены и заархивированы:** `внедрить-сопоставление-атомарного-шага`
-(60/60, out SUCCESS) и `завершить-дистрибуцию-orion-spec` / D2 (10/10, out
-SUCCESS). Пакет живёт на **npm 0.52.0** (GitHub Release v0.52.0 Latest).
+(60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10 — пакет живёт на
+**npm 0.52.0**, GitHub Release v0.52.0 Latest), `2-4-svg-бейдж` (7/7).
+Пирамида собрана: Honest Receipt (правда) → npm (доступность) → бейдж
+(видимость).
 
-**D2 сделано:** убрана self-dependency `"orion-spec": "link:"` (ломала
-`npm install` — публиковалась в dependencies tarball); pnpm-lock очищен
-(importer self-dep, excludeLinksFromLockfile: true; безвредный overrides pnpm
-оставляет сам для root-имени). Published tarball 0.52.0 проверен: без
-link:/dependencies, bin→dist/cli/index.js работает (`orion 0.52.0`),
-Honest Receipt генерируется через `out`. NPM_TOKEN в GitHub Secrets;
-release.yml публикует по тегу (--provenance, strict-version, idempotent).
-`src/tasks/packageSurface.ts` — drift-экорт для `# Spec: packageSurface`.
-README: добавлена правка про Honest Receipt в out (receipt — НЕ команда CLI).
-`tests/distribute-package.test.ts` (7). Гейт 74 файла / 802 теста (+2 skip).
+**2.4 SVG-бейдж сделано:** `orion badge <change>` — чистая функция от
+`receipt.json` (единственный источник, не пересчёт shield). `receipt.status`
+(verified|partial|failing) детерминированно из guard (любой FAIL→failing;
+coverage "not measured"→partial; чисто+измеренное→verified). `badge.ts`:
+readReceipt/renderBadgeSvg/writeBadge/renderBadgeMarkdown — самодостаточный
+SVG без шрифтов/сети, адаптивная ширина, детерминизм (им же — sha256).
+Три ловушки честности в `tests/badge.test.ts` (9): нет receipt→серый
+"not verified" (не green); байт-в-байт детерминизм; статус из полей. Coverage
+не рисуется при "not measured". fallback для pre-2.4 receipt без status.
+`src/tasks/badgeSvg.ts` — drift-экорт (`# Spec: renderBadgeSvg`).
+Гейт 75 файлов / 811 тестов. Live: `badge` на завершённый change → partial
+(жёлтый) честно, badge.svg валиден.
 
-**ОТКРЫТОЕ (следующая сессия):** 2.4 **SVG-бейдж (`orion badge <id>`)**;
-Фаза 4 AI-agent охват (Claude Code + Cursor, не 5); B2 `memory`+`shell`
-(решить: 8 или 10 команд); C2 warning при домен-дрейфе; `oracle`;
-`new --dry`.
+**ОТКРЫТОЕ (следующая сессия):** Фаза 4 **AI-agent охват (Claude Code +
+Cursor, не 5)**; B2 `memory`+`shell` (решить: 8 или 10 команд); C2 warning
+при домен-дрейфе; `oracle`; `new --dry`.
 
-**Рекомендация:** D2 фундамент готов — `npm install -g orion-spec` даёт
-0.52.0 с Honest Receipt. Быстрейшая отдача — 2.4 SVG-бейдж (усиливает
-видимость killer-фичи в README) → Фаза 4 AI-agent охват.
+**Рекомендация:** уникальность закреплена (Honest Receipt + бейдж + npm
+0.52.0). Далее Фаза 4 AI-agent охват (дистрибуция к агентам) → B2/C2
+(инженерный UX). Предпредложение: показать `success.md`/badge в README
+проверка 1.1.
