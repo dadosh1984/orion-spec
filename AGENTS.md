@@ -110,30 +110,29 @@ pnpm run format              # prettier --write (run before committing; format m
 
 <!-- quick-adds for future sessions -->
 
-### SESSION-SAVE 2026-08-14 (v0.52.0)
+### SESSION-SAVE 2026-08-14 (v0.52.0 → npm 0.52.0)
 
-**Состояние:** всё закоммичено и запушено (HEAD clean, `orion --version` = 0.52.0).
-**Change-ленер `внедрить-сопоставление-атомарного-шага` — ЗАВЕРШЁН: 60/60 tasks,
-shield allPass: true, `orion out` = SUCCESS (result.md написан).** Активных
-пол-закрытых change-ленеров нет.
+**Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
+завершены и заархивированы:** `внедрить-сопоставление-атомарного-шага`
+(60/60, out SUCCESS) и `завершить-дистрибуцию-orion-spec` / D2 (10/10, out
+SUCCESS). Пакет живёт на **npm 0.52.0** (GitHub Release v0.52.0 Latest).
 
-**Закрыто в этой сессии (последние 5 задач ленера):** задача 18 (`--approve`
-промоушен) и 19 (replay перед регистрацией) — уже были реализованы стейт-машиной
-`proposed→replayed→approved`, добавлены snippet-документации; задача 27 —
-**Метрика ROI с первого дня**: `skillMissLog.ts` → `logSkillUse()`/`skillUsageStats()`
-(`steps_via_skill` vs `via_llm` из `readMissLog().length`, `saved_steps`), router
-`logSkillUse()` на confident matched, тест `tests/skill-metrics.test.ts` (4),
-сброс кеша пути `resetMissLogPath()`; задача 32/33 (эмбеддинги / полная
-инвалидация) — честно deferred (сигнала из миss-лога нет, YAGNI), snippet отмечает.
-`src/tasks/skills_match.ts` — реэкспорт поверхности (чин MCP-shield drift
-`missing exported: matchSkill`, т.к. MCP-server 0.36 ходит `src/tasks`).
+**D2 сделано:** убрана self-dependency `"orion-spec": "link:"` (ломала
+`npm install` — публиковалась в dependencies tarball); pnpm-lock очищен
+(importer self-dep, excludeLinksFromLockfile: true; безвредный overrides pnpm
+оставляет сам для root-имени). Published tarball 0.52.0 проверен: без
+link:/dependencies, bin→dist/cli/index.js работает (`orion 0.52.0`),
+Honest Receipt генерируется через `out`. NPM_TOKEN в GitHub Secrets;
+release.yml публикует по тегу (--provenance, strict-version, idempotent).
+`src/tasks/packageSurface.ts` — drift-экорт для `# Spec: packageSurface`.
+README: добавлена правка про Honest Receipt в out (receipt — НЕ команда CLI).
+`tests/distribute-package.test.ts` (7). Гейт 74 файла / 802 теста (+2 skip).
 
-**Гейт:** 73 файла / 795 тестов + 2 skipped зелёные; lint/tsc/build PASS.
+**ОТКРЫТОЕ (следующая сессия):** 2.4 **SVG-бейдж (`orion badge <id>`)**;
+Фаза 4 AI-agent охват (Claude Code + Cursor, не 5); B2 `memory`+`shell`
+(решить: 8 или 10 команд); C2 warning при домен-дрейфе; `oracle`;
+`new --dry`.
 
-**ОТКРЫТОЕ (следующая сессия):** 2.4 SVG-badge (`orion badge <id>`);
-D2 npm publish CI (npm 0.36.0 vs local 0.52.0); Фаза 4 AI-agent охват
-(Claude Code + Cursor, не 5); B2 `memory`+`shell` (решить: 8 или 10 команд);
-C2 warning при домен-дрейфе; `oracle`; `new --dry`.
-
-**Рекомендация:** Honest Receipt готов (killer-feature). Большой skills-ленер
-заархивирован. Быстрейшая отдача — 2.4 badge или D2 npm-publish.
+**Рекомендация:** D2 фундамент готов — `npm install -g orion-spec` даёт
+0.52.0 с Honest Receipt. Быстрейшая отдача — 2.4 SVG-бейдж (усиливает
+видимость killer-фичи в README) → Фаза 4 AI-agent охват.
