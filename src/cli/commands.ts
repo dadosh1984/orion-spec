@@ -72,7 +72,10 @@ import { findPluginForCommand, loadPluginHandler } from "../core/plugins.js";
  * registerAllCommands(), inside main().
  */
 function buildHelp(
-  registry?: Map<string, { name: string; description: string; aliases?: string[] }>,
+  registry?: Map<
+    string,
+    { name: string; description: string; aliases?: string[] }
+  >,
 ): string {
   const head = `orion — self-contained AI-agent toolkit
 
@@ -128,9 +131,8 @@ export async function main(argv: string[]): Promise<number> {
   let canonical = cmd;
   let helpText = HELP; // static fallback; replaced by dynamic registry help
   try {
-    const { registerAllCommands, ORION_REGISTRY } = await import(
-      "./bootstrap.js"
-    );
+    const { registerAllCommands, ORION_REGISTRY } =
+      await import("./bootstrap.js");
     registerAllCommands();
     if (cmd && Object.prototype.hasOwnProperty.call(DEPRECATED_ALIASES, cmd)) {
       const target = DEPRECATED_ALIASES[cmd];
@@ -210,7 +212,8 @@ export async function main(argv: string[]): Promise<number> {
       const proposal = await think(prompt, opts);
       // Skill-first hint (v0.48→v0.51): unified BM25 matching path.
       try {
-        const { matchSkill, resolveDomain } = await import("../core/skillsMatch.js");
+        const { matchSkill, resolveDomain } =
+          await import("../core/skillsMatch.js");
         const ex = matchSkill(prompt, { domain: resolveDomain() });
         if (ex.kind === "matched") {
           console.error(
@@ -238,7 +241,8 @@ export async function main(argv: string[]): Promise<number> {
         return fail("draft requires a title, e.g. orion draft my-csv-tool");
       // Skill-first hint (v0.49→v0.51): unified BM25 matching path.
       try {
-        const { matchSkill, resolveDomain } = await import("../core/skillsMatch.js");
+        const { matchSkill, resolveDomain } =
+          await import("../core/skillsMatch.js");
         const ex = matchSkill(title, { domain: resolveDomain() });
         if (ex.kind === "matched") {
           console.error(
@@ -345,9 +349,8 @@ export async function main(argv: string[]): Promise<number> {
           // Создаём скрипт и копируем реальный код. v0.51: fill domain +
           // environmentFingerprint at save time (was "general"/none before).
           const { meta: skillMetaForSave } = await (async () => {
-            const { resolveDomain, environmentFingerprint } = await import(
-              "../core/skillsMatch.js",
-            );
+            const { resolveDomain, environmentFingerprint } =
+              await import("../core/skillsMatch.js");
             return {
               meta: {
                 domain: resolveDomain(),
@@ -444,6 +447,19 @@ export async function main(argv: string[]): Promise<number> {
       if (!changeId) return fail("out requires a change id");
       const result = await out(changeId, opts);
       printOut(opts, result, `Result written to changes/${changeId}/result.md`);
+      return 0;
+    }
+
+    case "badge": {
+      const changeId = args[0];
+      if (!changeId) return fail("badge requires a change id");
+      const { writeBadge } = await import("../skills/out/badge.js");
+      const res = writeBadge(changeId);
+      if (!res) return fail(`badge: no changes/${changeId}/receipt.json`);
+      console.log(
+        `\n${statusMark(res.status === "verified" ? "done" : res.status === "failing" ? "error" : "warn")} ${paint(res.status, res.status === "verified" ? "green" : res.status === "failing" ? "red" : "yellow")} — ${res.svgPath} (${res.svgBytes} B)`,
+      );
+      console.log(res.markdown);
       return 0;
     }
 

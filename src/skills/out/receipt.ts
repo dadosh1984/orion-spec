@@ -26,9 +26,13 @@ export interface ReceiptData {
   coverage: string;
   hazards: string;
   sha256: string;
+  /** Honest machine-readable verdict (v2.4): verified | partial | failing. */
+  status: "verified" | "partial" | "failing";
 }
-
-function check(guard: GuardReport | null, step: string): GuardCheckResult | undefined {
+function check(
+  guard: GuardReport | null,
+  step: string,
+): GuardCheckResult | undefined {
   return guard?.checks.find((c) => c.step === step);
 }
 
@@ -61,7 +65,9 @@ function receiptTs(changeId: string, guard: GuardReport | null): string {
 /** Parse "Tests  785 passed | 2 skipped (787)" → { passed, skipped, total }. */
 function parseTests(detail: string | undefined): string {
   if (!detail) return "not measured";
-  const m = detail.match(/Tests\s+(\d+)\s+passed\s*\|\s*(\d+)\s+skipped\s*\((\d+)\)/);
+  const m = detail.match(
+    /Tests\s+(\d+)\s+passed\s*\|\s*(\d+)\s+skipped\s*\((\d+)\)/,
+  );
   if (m) return `${m[1]} passing, ${m[2]} skipped`;
   // Detail exists but the Tests summary line is absent — be explicit.
   return "ran (no pass/skip summary)";
@@ -90,9 +96,12 @@ function parseSpecSource(changeId: string, guard: GuardReport | null): string {
   const matched = detail.match(/matched (\d+)/);
   if (matched) {
     const m = Number(matched[1]);
-    return expected > 0 ? `${m}/${expected} symbols matched` : `${m} exported capability(ies) matched`;
+    return expected > 0
+      ? `${m}/${expected} symbols matched`
+      : `${m} exported capability(ies) matched`;
   }
-  if (drift?.status === "PASS" && expected === 0) return "no specs — nothing to verify";
+  if (drift?.status === "PASS" && expected === 0)
+    return "no specs — nothing to verify";
   return "not measured";
 }
 
@@ -120,8 +129,8 @@ function readCoverage(): string {
     let n = 0;
     for (const v of Object.values(cov)) {
       if (v && typeof v === "object" && "lines" in (v as object)) {
-        linesTotal += (v.lines?.percent ?? 0);
-        branchesTotal += (v.branches?.percent ?? 0);
+        linesTotal += v.lines?.percent ?? 0;
+        branchesTotal += v.branches?.percent ?? 0;
         n++;
       }
     }
@@ -152,6 +161,22 @@ export function computeReproHash(changeId: string): string {
 }
 
 /**
+ * Derive a deterministic, honest status from a guard report.
+ *
+ * - ANY FAIL check → "failing" (never a green badge on a red guard).
+ * - allPass but coverage "not measured" (or anything honestly unmeasured) →
+ *   "partial" (the badge must not claim full verification it cannot prove).
+ * - everything clean AND measured → "verified".
+ * A null guard (no shield run) stays "failing"/default — never "verified".
+ */
+export function deriveStatus(guard: GuardReport | null): ReceiptData["status"] {
+  if (!guard) return "failing"; // no guard out→ no verified claim
+  if (!guard.allPass) return "failing";
+  if (readCoverage() === "not measured") return "partial";
+  return "verified";
+}
+
+/**
  * Build the Honest Receipt from the guard report + the change's real data.
  * Every field is either measured or honestly "not measured".
  */
@@ -167,6 +192,7 @@ export function buildReceipt(
     coverage: readCoverage(),
     hazards: parseHazards(guard),
     sha256: computeReproHash(changeId),
+    status: deriveStatus(guard),
   };
 }
 
