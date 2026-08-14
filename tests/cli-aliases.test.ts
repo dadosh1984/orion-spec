@@ -18,7 +18,6 @@ describe("DEPRECATED_ALIASES (v0.51 deprecation map)", () => {
     for (const old of [
       "list",
       "status",
-      "compare",
       "assumptions",
       "stats",
       "self-audit",
@@ -27,6 +26,10 @@ describe("DEPRECATED_ALIASES (v0.51 deprecation map)", () => {
     ]) {
       expect(DEPRECATED_ALIASES[old], `list alias '${old}'`).toBe("ls");
     }
+  });
+
+  it("'compare' is NOT in DEPRECATED_ALIASES (keeps its own side-by-side legacy case)", () => {
+    expect(DEPRECATED_ALIASES.compare).toBeUndefined();
   });
 
   it("'profile' is NOT in DEPRECATED_ALIASES (legacy case still works)", () => {
@@ -112,11 +115,8 @@ describe("CLI registry (v0.51)", () => {
   });
 
   it("registerCommand adds entries and canonicalize resolves aliases", async () => {
-    const {
-      ORION_REGISTRY,
-      registerCommand,
-      canonicalize,
-    } = await import("../src/cli/registry.js");
+    const { ORION_REGISTRY, registerCommand, canonicalize } =
+      await import("../src/cli/registry.js");
     const before = ORION_REGISTRY.size;
     registerCommand({
       name: "__test__",
@@ -132,9 +132,8 @@ describe("CLI registry (v0.51)", () => {
   });
 
   it("registerCommand throws on duplicate name", async () => {
-    const { ORION_REGISTRY, registerCommand } = await import(
-      "../src/cli/registry.js"
-    );
+    const { ORION_REGISTRY, registerCommand } =
+      await import("../src/cli/registry.js");
     registerCommand({
       name: "__dup__",
       description: "first",

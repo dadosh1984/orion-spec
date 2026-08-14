@@ -117,10 +117,9 @@ export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
     // (think/draft/forge/shield/verify/out/tasks/next/pay-debt/resume/init
     //  still have working legacy cases and go through the switch).
     plan: "new",
-    // list/inspect (6) → ls
+    // list/inspect (6-1) → ls; compare keeps its own side-by-side case.
     list: "ls",
     status: "ls",
-    compare: "ls",
     assumptions: "ls",
     stats: "ls",
     "self-audit": "ls",
@@ -172,7 +171,7 @@ export function parseArgs(argv: string[]): {
       json: { type: "boolean" },
       npm: { type: "boolean" },
       ui: { type: "boolean" },
-      "version": { type: "boolean" },
+      version: { type: "boolean" },
       V: { type: "boolean" },
       port: { type: "string" },
       host: { type: "string" },
@@ -196,40 +195,53 @@ export function parseArgs(argv: string[]): {
   const port = values.port as string | undefined;
   if (port !== undefined) {
     const pn = Number(port);
-    if (!Number.isInteger(pn) || pn <= 0) throw new Error("--port requires a positive integer");
+    if (!Number.isInteger(pn) || pn <= 0)
+      throw new Error("--port requires a positive integer");
     opts.port = pn;
   }
   const host = values.host as string | undefined;
   if (host !== undefined) {
-    if (!host || host.startsWith("-")) throw new Error("--host requires a hostname or IP");
+    if (!host || host.startsWith("-"))
+      throw new Error("--host requires a hostname or IP");
     opts.host = host;
   }
   const session = values.session as string | undefined;
   if (session !== undefined) {
-    if (!session || session.startsWith("-")) throw new Error("--session requires a path to a .jsonl session file");
+    if (!session || session.startsWith("-"))
+      throw new Error("--session requires a path to a .jsonl session file");
     opts.session = session;
   }
   const parallel = values.parallel as string | undefined;
   if (parallel !== undefined) {
     const pn = Number(parallel);
-    if (!parallel || parallel.startsWith("-") || !Number.isInteger(pn) || pn < 1) {
-      throw new Error("--parallel requires a positive integer, e.g. --parallel 3");
+    if (
+      !parallel ||
+      parallel.startsWith("-") ||
+      !Number.isInteger(pn) ||
+      pn < 1
+    ) {
+      throw new Error(
+        "--parallel requires a positive integer, e.g. --parallel 3",
+      );
     }
     opts.parallel = pn;
   }
   const token = values.token as string | undefined;
   if (token !== undefined) {
-    if (!token || token.startsWith("-")) throw new Error("--token requires a non-empty token value");
+    if (!token || token.startsWith("-"))
+      throw new Error("--token requires a non-empty token value");
     opts.token = token;
   }
   const lang = values.lang as string | undefined;
   if (lang !== undefined) {
-    if (lang !== "en" && lang !== "ru") throw new Error('--lang requires "en" or "ru"');
+    if (lang !== "en" && lang !== "ru")
+      throw new Error('--lang requires "en" or "ru"');
     opts.lang = lang as "en" | "ru";
   }
   const saveAs = values["save-as"] as string | undefined;
   if (saveAs !== undefined) {
-    if (!saveAs || saveAs.startsWith("-")) throw new Error("--save-as requires a script name");
+    if (!saveAs || saveAs.startsWith("-"))
+      throw new Error("--save-as requires a script name");
     opts.saveAs = saveAs;
   }
 
@@ -248,20 +260,47 @@ export function parseArgs(argv: string[]): {
   // already extracted are dropped, everything else — including handler-level
   // flags and their values — is preserved in order.
   const consumed = new Set<string>([
-    "--no-cache", "--no-color", "--dry", "--watch", "--json", "--npm", "--ui",
-    "--version", "-V", "--port", "--host", "--session", "--parallel",
-    "--token", "--lang", "--save-as",
+    "--no-cache",
+    "--no-color",
+    "--dry",
+    "--watch",
+    "--json",
+    "--npm",
+    "--ui",
+    "--version",
+    "-V",
+    "--port",
+    "--host",
+    "--session",
+    "--parallel",
+    "--token",
+    "--lang",
+    "--save-as",
   ]);
-  const valueFlags = new Set(["--port", "--host", "--session", "--parallel", "--token", "--lang", "--save-as"]);
+  const valueFlags = new Set([
+    "--port",
+    "--host",
+    "--session",
+    "--parallel",
+    "--token",
+    "--lang",
+    "--save-as",
+  ]);
   const positionals = parsed.positionals;
   const cmd = positionals[0] ?? "";
   const args: string[] = [];
   let skipNext = false;
   for (let i = 0; i < argv.length; i++) {
     const tok = argv[i];
-    if (skipNext) { skipNext = false; continue; }
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
     if (i === 0 && positionals[0] === tok) continue; // skip the cmd token
-    if (consumed.has(tok)) { if (valueFlags.has(tok)) skipNext = true; continue; }
+    if (consumed.has(tok)) {
+      if (valueFlags.has(tok)) skipNext = true;
+      continue;
+    }
     args.push(tok);
   }
   return { cmd, args, opts };

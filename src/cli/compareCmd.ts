@@ -1,6 +1,6 @@
 import { changeStatus, phaseOf } from "../core/changeStatus.js";
 import { statusMark } from "../utils/term.js";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readTasks } from "../skills/forge/handler.js";
 
@@ -30,12 +30,30 @@ export function compareCmd(
     const guard =
       st.artifacts && (st.artifacts as Record<string, boolean>).guard;
     const guardTxt = guard ? "run" : "none";
+    // Honest Receipt if present — compare how honestly the two approaches
+    // verified their result (verified / partial / failing), the honesty
+    // backbone, not just task counts.
+    let receiptLine = "    receipt:   not run";
+    try {
+      const f = join("changes", id, "receipt.json");
+      if (existsSync(f)) {
+        const r = JSON.parse(readFileSync(f, "utf8")) as {
+          status?: string;
+          tests?: string;
+          coverage?: string;
+        };
+        receiptLine = `    receipt:   ${r.status ?? "unknown"} — ${r.tests ?? "-"}${r.coverage && r.coverage !== "not measured" ? ` · ${r.coverage}` : ""}`;
+      }
+    } catch {
+      /* corrupt receipt → show honest not-run */
+    }
     return [
       `  ${id}`,
       `    phase:     ${phaseOf(id)}`,
       `    tasks:     ${done}/${total} (${Math.round(ratio * 100)}%)`,
       `    guard:     ${guardTxt}`,
       `    result:    ${st.artifacts && (st.artifacts as Record<string, boolean>).result ? "yes" : "no"}`,
+      receiptLine,
     ];
   };
   const text = [
