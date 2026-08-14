@@ -12,6 +12,7 @@ import { join, dirname } from "node:path";
 import { classifyTask } from "./classify.js";
 import { classifyComplexity } from "../skills/think/complexity.js";
 import { matchSkill, resolveDomain } from "./skillsMatch.js";
+import { logSkillUse } from "./skillMissLog.js";
 
 // ─── Router ───────────────────────────────────────────
 
@@ -35,6 +36,7 @@ export function routeRequest(prompt: string): RouterDecision {
   // up (error asymmetry — never guess). Only a confident `matched` is used.
   const m = matchSkill(prompt, { domain: resolveDomain() });
   if (m.kind === "matched") {
+    logSkillUse(); // ROI metric: count the step that ran through the skill.
     return {
       action: "USE_EXISTING_SKILL",
       skillName: m.skill.name,

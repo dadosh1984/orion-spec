@@ -14,7 +14,7 @@
     {
       "step": "test",
       "status": "PASS",
-      "detail": "[orion] 1 failing line(s):\n🧠 orion lesson recorded — forge: task not green: Implement add — expected 2 to equal 3\n Test Files  72 passed (72)\n      Tests  791 passed | 2 skipped (793)\n   Duration  24.41s (transform 8.52s, setup 0ms, import 19.24s, tests 134.66s, environment 25ms)\n\n[orion: −38686 B (−99.3%) ≈ 9672 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+      "detail": "[orion] 1 failing line(s):\n🧠 orion lesson recorded — forge: task not green: Implement add — expected 2 to equal 3\n Test Files  73 passed (73)\n      Tests  795 passed | 2 skipped (797)\n   Duration  21.78s (transform 7.59s, setup 0ms, import 17.28s, tests 118.65s, environment 33ms)\n\n[orion: −39271 B (−99.3%) ≈ 9818 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
     },
     {
       "step": "drift",
@@ -24,12 +24,12 @@
     {
       "step": "yagni",
       "status": "PASS",
-      "detail": "1 snippet(s) within repo norms (median 95 LOC, 3 imports)"
+      "detail": "6 snippet(s) within repo norms (median 95 LOC, 3 imports)"
     },
     {
       "step": "economy",
       "status": "PASS",
-      "detail": "cache 37.2 KB of 100.0 MB (103 entries) — within budget; ≈ 1184795 tok saved across 604 compress op(s)"
+      "detail": "cache 39.5 KB of 100.0 MB (107 entries) — within budget; ≈ 1223920 tok saved across 616 compress op(s)"
     },
     {
       "step": "security",
@@ -48,6 +48,6 @@
     }
   ],
   "allPass": true,
-  "generatedAt": "2026-08-13T20:11:49.550Z",
-  "contextHash": "3721fecd96c5"
+  "generatedAt": "2026-08-14T03:10:42.340Z",
+  "contextHash": "62820f5cef37"
 }

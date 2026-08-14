@@ -29,7 +29,24 @@ export interface SkillMissEntry {
   resolution?: string;
 }
 
+export interface SkillUsage {
+  /** Steps that ran through an existing skill (confident `matched`). */
+  via_skill: number;
+  /** Steps that did NOT match and went to the LLM (logged misses). */
+  via_llm: number;
+}
+
+export interface SkillStats extends SkillUsage {
+  /** Saved steps = matched ones that avoided a full LLM round-trip. */
+  saved_steps: number;
+}
+
 let _logPath: string | null = null;
+/** Test hook: drop the env-derived path cache (ORION_MISS_LOG_DIR switch). */
+export function resetMissLogPath(): void {
+  _logPath = null;
+}
+
 export function missLogFile(): string {
   if (_logPath) return _logPath;
   const dir = process.env.ORION_MISS_LOG_DIR ?? join(homedir(), ".orion");
@@ -55,6 +72,55 @@ export function readMissLog(): SkillMissEntry[] {
 }
 
 /** Append one miss to the log (single-file JSONL append — atomic enough). */
+function usageFile(): string {
+  const dir = process.env.ORION_MISS_LOG_DIR ?? join(homedir(), ".orion");
+  return join(dir, "skill-usage.json");
+}
+
+/** Read the skill ROI tally (empty counters when the file is missing). */
+export function readSkillUsage(): SkillUsage {
+  // ponytail: 1 counting file, no schema version — a missing value is 0.
+  const f = usageFile();
+  if (!existsSync(f)) return { via_skill: 0, via_llm: 0 };
+  try {
+    const raw = JSON.parse(readFileSync(f, "utf8")) as Partial<SkillUsage>;
+    return {
+      via_skill: raw.via_skill ?? 0,
+      via_llm: raw.via_llm ?? 0,
+    };
+  } catch {
+    return { via_skill: 0, via_llm: 0 };
+  }
+}
+
+function writeSkillUsage(u: SkillUsage): void {
+  const f = usageFile();
+  if (!existsSync(f)) mkdirSync(join(f, ".."), { recursive: true });
+  try {
+    writeFileSync(f, JSON.stringify({ ...u, updatedAt: new Date().toISOString() }, null, 2), "utf8");
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/** Count one step that ran through an existing skill (confident matched). */
+export function logSkillUse(): void {
+  const u = readSkillUsage();
+  writeSkillUsage({ via_skill: u.via_skill + 1, via_llm: u.via_llm });
+}
+
+/** ROI metric from day one: skill vs LLM steps, plus saved steps. */
+export function skillUsageStats(): SkillStats {
+  const u = readSkillUsage();
+  // via_llm is the retained miss-log length — each logged miss went to the LLM.
+  const viaLlm = readMissLog().length;
+  return {
+    via_skill: u.via_skill,
+    via_llm: viaLlm,
+    saved_steps: Math.max(0, u.via_skill - viaLlm),
+  };
+}
+
 export function logSkillMiss(entry: Omit<SkillMissEntry, "ts">): void {
   const f = missLogFile();
   if (!existsSync(f)) mkdirSync(join(f, ".."), { recursive: true });
