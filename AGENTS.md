@@ -114,19 +114,18 @@ pnpm run format              # prettier --write (run before committing; format m
 
 **Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
 завершены и заархивированы:** внедрить-сопоставление-атомарного-шага (60/60),
-завершить-дистрибуцию (D2, 10/10), 2-4-svg-бейдж (7/7), закрыть-фазу-3-security
-(7/7), 4-3-oracle (4/4), 4-2-replay (4/4), 4-1-undo (4/4), engineering-debt
-(B2 memory + C2 domain-drift, 5/5). **На npm: v0.53.0 (security) + v0.54.0
-(Phase-4 killer, Latest).** Полный продукт: Oracle(ДО) + Receipt/badge(ПОСЛЕ)
-+ undo(безопасно) + replay(0 токенов) + memory(группа состояния) +
-domain-drift warning.
+завершить-дистрибуцию (D2), 2-4-svg-бейдж, закрыть-фазу-3-security,
+4-3-oracle, 4-2-replay, 4-1-undo, engineering-debt (B2 memory + C2
+domain-drift), усилить-orion-compare. **На npm: v0.53.0 + v0.54.0 (Latest).**
+Product complete.
 
-**Engineering debt сделано:** B2 `orion memory` (memoryCmd: сводка
-profile/cache/lessons/env/metrics + сабкоманды cache/lessons/env/profile; не
-9-я top-level, существующие остаются). C2 matchSkill: объявленный домен без
-скиллов → warn на stderr + fallback на general (не тихое none). Без shell
-(не восстанавливали), без TUI. Тесты memory (4) + domain-drift (4). Гейт 82
-файла / 845 тестов, shield allPass. src/tasks/memoryHandler.ts (drift).
+**compare сделано:** v0.52 консолидировал compare→ls (alias); вернул
+самостоятельный side-by-side legacy case (parse.ts убрал compare:ls) и усилил
+compareCmd строкой **Honest Receipt** на каждую сторону (status
+verified/partial/failing, tests, coverage только если измерена — не рисуется
+при not measured; corrupt/absent → «not run»). Read-only. Тесты compare (4) +
+cli-aliases update. Live: verified+coverage vs partial. Гейт 83 файла / 850
+тестов, shield allPass. Накоплено к 0.55.0.
 - **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
   `execFileSync`/`spawnSync` (без shell): runtime.ts run-скрипт
   `execFileSync(bin,[scriptFile])`, runCmd.ts watcher/repair/edit через
@@ -145,14 +144,14 @@ profile/cache/lessons/env/metrics + сабкоманды cache/lessons/env/profi
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** остаток engineering debt/toчки Фазы 4/3:
-compare (сравнение изменений), глобальные снапшоты rollback (уровень-per-
-change, не только per-task), TUI 4.8 (serve уже даёт веб-панель), оцифрованные
-патчи Фазы 3 (0.54.x). Решение: накопить engineering-debt-фиксы и раздать
-**0.55.0** как обновление (memory + domain-drift + любые доки, если наберётся
-достаточно) — по желанию, не срочно.
+**ОТКРЫТОЕ (следующая сессия):** export-trust 4.4 (JSON receipt с подписями
+hash spec+tasks+code для external verification), lineage 4.5 (change → lesson
+→ next change, уникальный угол), compare построчного diff артефактов, TUI 4.8
+(serve уже есть), глобальные снапшоты rollback (если будет спрос — undo уже
+на уровне change). Собрать engineering-debt фиксы → **0.55.0** одним цельным
+минором (накоплены: memory, domain-drift, compare-receipt; готовится export-
+trust/lineage).
 
-**Рекомендация:** product complete (v0.54.0). Далее либо compare/snapshots
-(расширение надёжности), либо TUI-панель, либо заняться докой/README с badge
-+ oracle как демонстрация. Не раздувать релиз ради фикс-единиц — собирать
-цельно в 0.55.0.
+**Рекомендация:** дополнить Honest Receipt аудитом от сторонней стороны —
+export-trust (4.4) усиливает «честность измерима внешним», lineage (4.5)
+даёт уникальный угол. Сбирать в 0.55.0 с уже накопленными memory/compare.
