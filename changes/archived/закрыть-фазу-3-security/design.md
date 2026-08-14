@@ -31,7 +31,7 @@ agent->orion. Замена на argv-массив (`execFileSync(cmd, [args])` /
 реально присутствующие. Файлы:
 - `.claude/commands/orion.md` — Claude Code slash-command.
 - `.cursor/rules/orion.mdc` — Cursor rule.
-Содержимое адаптировано (не OpenSpec 1:1): потоки `orion new → change →
+Содержимое адаптировано (идея изучена из внешнего AI-agent фреймворка, не копируется 1:1): потоки `orion new → change →
 badge`, агент обязан `orion badge <change>` = verified перед «готово»,
 читать receipt.json как источник правды.
 

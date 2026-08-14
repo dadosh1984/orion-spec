@@ -74,7 +74,7 @@ function usageFile(): string {
 
 /** Read the skill ROI tally (empty counters when the file is missing). */
 export function readSkillUsage(): SkillUsage {
-  // ponytail: 1 counting file, no schema version — a missing value is 0.
+  // yagni: 1 counting file, no schema version — a missing value is 0.
   const f = usageFile();
   if (!existsSync(f)) return { via_skill: 0, via_llm: 0 };
   try {

@@ -4,8 +4,8 @@
  * `orion update` writes run-command files so an agent (Claude Code, Cursor)
  * drives Orion through its honest workflow — and, crucially, trusts the
  * Honest Receipt (via `orion badge <change>`) over its own feeling of "done".
- * Unique angle vs OpenSpec: the agent VERIFIES the result through the
- * certificate, it doesn't just follow a process.
+ * Unique angle vs typical AI-agent frameworks: the agent VERIFIES the result
+ * through the certificate, it doesn't just follow a process.
  *
  * Idempotent: re-running writes the same content, never duplicates.
  */

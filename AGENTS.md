@@ -148,8 +148,8 @@ shield allPass. Накоплено к 0.55.0.
   orion.md (Claude Code) + `.cursor/rules/orion.mdc` (Cursor), только если
   директория есть; учит агента доверять Honest Receipt (`orion badge` /
   receipt.json) перед «готово» (НЕ своему ощущению); идемпотентно (повтор
-  без дублей, stale → refresh); печатает результат. Уникальный угол от
-  OpenSpec — агент проверяет сертификат, не просто следует процессу.
+  без дублей, stale → refresh); печатает результат. Уникальный угол —
+  агент проверяет Honest Receipt (сертификат), не просто следует процессу.
 `src/tasks/denyEnv.ts` (drift-экорт `# Spec: denyEnv`).
 Тесты `tests/security-exec.test.ts` (7) + `tests/update.test.ts` (6).
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`

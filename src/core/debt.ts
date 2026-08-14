@@ -3,8 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
- * Deferred-debt registry (v0.18, idea: ponytail-debt, but automatic and
- * derived from the deterministic shield signal — never from prose). When
+ * Deferred-debt registry (v0.18, derived from the deterministic shield
+ * signal — never from prose). When
  * shield issues a `yagni` WARN for a snippet, an open debt entry is
  * recorded; when the snippet stops triggering the WARN, the entry closes
  * itself. "Later" becomes checkable instead of never.

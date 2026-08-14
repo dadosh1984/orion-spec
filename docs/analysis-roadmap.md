@@ -168,7 +168,7 @@
 69. `docs/configuration.md` — все env-переменные с примерами.
 70. `docs/commands.md` — актуализировать (profile, lessons export/import, verify).
 71. README: бейджи CI/coverage/npm-version.
-72. README: секция «Почему Orion» (сравнение с gsd/rtk/superpowers — честно).
+72. README: секция «Почему Orion» (честное сравнение с конкурентами в категории).
 73. Веб-дашборд: тёмная тема.
 74. Веб-дашборд: страница изменений (фазы, дрейф, guard-отчёт).
 75. Веб-дашборд: график расхода токенов (economy + spend).

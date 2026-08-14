@@ -3,7 +3,7 @@
 > **Философия:** не копировать чужие проекты, а изучать идеи конкурентов, брать лучшее и адаптировать под нашу философию. Не важно какая модель ИИ используется — важна **последовательность шагов** (алгоритм действий). Компактность превыше всего: **10 команд, 10 встроенных skills, 0 лишнего**.
 
 **Аудит-источники** (прочитаны в этом ходе):
-- OpenSpec v1.9.0 (Fission-AI/OpenSpec) — README, `commands.md` (766 строк), `cli.md` (1291), `concepts.md`, `workflows.md`, `customization.md`, `package.json`.
+- Внешний AI-agent фреймворк (v1.9.0) — README, `commands.md` (766 строк), `cli.md` (1291), `concepts.md`, `workflows.md`, `customization.md`, `package.json`.
 - `docs/analysis-roadmap-v2.md` — каталог из 500 улучшений прошлого аудита.
 - Прямой обход репозитория: 131 файл `src/*.ts` (17 380 LoC), 69 `tests/*.test.ts` (10 582 LoC), 564 файла в git.
 
@@ -645,18 +645,18 @@ git push origin main
 
 ## Фаза 4 — Killer-features + AI-agent охват (v0.54, 3–4 недели)
 
-**Цель:** то, что **никто не делает** + закрыть самый серьёзный gap (OpenSpec поддерживает 30+ AI-агентов, мы — 1 через MCP).
+**Цель:** то, что **никто не делает** + закрыть самый серьёзный gap (конкуренты поддерживают 30+ AI-агентов, мы — 1 через MCP).
 
-### Что мы НЕ копируем у OpenSpec
+### Что мы НЕ копируем у конкурентов
 
 - Не копируем **30+ slash-команд** — это раздувание.
 - Не копируем **Stores (кросс-репо)** — другая ниша.
 - Не копируем **schema fork/init** — мы не фреймворк для фреймворка.
 
-### Что мы АДАПТИРУЕМ у OpenSpec
+### Что мы АДАПТИРУЕМ у конкурентов
 
 - **Command-файлы для AI-агентов** — берём идею, делаем свою версию для 5 топ-агентов.
-- **`openspec update`** (регенерация command-файлов) — адаптируем как `orion update`.
+- **`update`** (регенерация command-файлов) — адаптируем как `orion update`.
 
 ### Задачи Фазы 4
 
@@ -671,7 +671,7 @@ git push origin main
 | 4.7 | `orion whatif <change>` — метрики без запуска | 4 ч |
 | 4.8 | TUI: `orion tui` — таблица изменений с хоткеями (j/k навигация) | 12 ч |
 | 4.9 | **AI-agent command generators** для топ-5: Claude Code, Cursor, Codex, Gemini CLI, Cline — `orion update` создаёт `.claude/commands/orion.md` и аналоги | 8 ч |
-| 4.10 | `orion update` (адаптация OpenSpec) — обновить command-файлы после изменения | 4 ч |
+| 4.10 | `orion update` (адаптация идеи) — обновить command-файлы после изменения | 4 ч |
 | 4.11 | `orion run pin <name> <version>` (immutable hash) | 2 ч |
 | 4.12 | Cross-platform matrix в CI (Win/macOS/Linux) | 4 ч |
 | 4.13 | Release-нота «v0.54: Honest AI Workflow», подготовка Show HN-поста | 4 ч |
@@ -702,7 +702,7 @@ git push origin main
 3. **`pnpm run ci` зелёный на каждом шаге.** Любой красный тест = стоп, откат, разбор.
 4. **Алиасы для обратной совместимости** — 1 релиз (v0.51), потом удаляем.
 5. **Документация обновляется в той же фазе**, что и код. Без отложенных «напишу потом».
-6. **Никакого копирования OpenSpec.** Изучаем их идею → адаптируем лучшее под наши 5 топ-агентов. Не копипастим command-файлы 1:1.
+6. **Никакого копирования чужих фреймворков.** Изучаем их идею → адаптируем лучшее под наши 5 топ-агентов. Не копипастим command-файлы 1:1.
 7. **Honest Receipt не врёт.** Если coverage не считали — пишем «coverage: not measured», а не «coverage: 100%».
 8. **Уникальность важнее фичей.** Лучше 3 killer-фичи, которые никто не делает, чем 30 фичей «как у всех».
 
@@ -747,7 +747,7 @@ echo "  reports/: $(ls reports/ 2>/dev/null | wc -l) файлов"
 
 ## Контекст и источники
 
-- **OpenSpec v1.9.0** (Fission-AI/OpenSpec) — изучен: README, `commands.md`, `cli.md`, `concepts.md`, `workflows.md`, `customization.md`, `package.json`.
+- **Внешний AI-agent фреймворк** (v1.9.0) — изучен: README, `commands.md`, `cli.md`, `concepts.md`, `workflows.md`, `customization.md`, `package.json`.
 - **`docs/analysis-roadmap-v2.md`** — каталог из 500 улучшений прошлого аудита (B-каталог 1–500). Реализовано ~310, частично ~70, не сделано ~120.
 - **Прямой обход репозитория Orion v0.50.0** — 131 файл `src/*.ts` (17 380 LoC), 69 `tests/*.test.ts` (10 582 LoC), 564 файла в git, 22 непушенных коммита.
 - **Coverage из `coverage/coverage-final.json`** (v8) — 9 файлов с 0% (в основном `cli/*Cmd.ts`).

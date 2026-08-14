@@ -17,7 +17,7 @@ export function packageSurface(): {
   bin: string | null;
   node: string | null;
 } {
-  // ponytail: 1 root package.json, no dep — read via require to stay PURE.
+  // yagni: 1 root package.json, no dep — read via require to stay PURE.
   const pkg = require("../../package.json") as {
     dependencies?: Record<string, string>;
     bin?: Record<string, string>;
