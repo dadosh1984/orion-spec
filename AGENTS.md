@@ -115,20 +115,19 @@ pnpm run format              # prettier --write (run before committing; format m
 **Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
 завершены и заархивированы:** `внедрить-сопоставление-атомарного-шага`
 (60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10), `2-4-svg-бейдж`
-(7/7), `закрыть-фазу-3-security` (7/7), `4-3-oracle-честная` (4/4).
-**Релиз v0.53.0 живёт на npm** (shell-injection fix + denyEnv + orion update).
-Пирамида честности замкнута: Receipt=после (badge), **Oracle=до** (new --oracle).
+(7/7), `закрыть-фазу-3-security` (7/7), `4-3-oracle-честная` (4/4),
+`4-2-replay-повторный` (4/4), `4-1-undo-безопасная` (4/4).
+**Релизы на npm: v0.53.0 (security) и v0.54.0 (Phase-4 killer, Latest).**
+Полный нарратив «safe + honest + replayable»: Oracle(ДО) + Receipt/badge
+(ПОСЛЕ) + undo(безопасно) + replay(0 токенов).
 
-**Oracle (4.3) сделано:** `orion new --oracle "<промпт>"` — пре-флайт БЕЗ
-создания change (не отдельная top-level команда — соблюдено 8-командное
-сжатие; --oracle в parseNewFlags реюза парсинг `new`). `src/core/oracle.ts`
-`oracleReport(prompt)` чистая/детерминированная: classifyComplexity →
-{kind, depth, plannedSteps}; токены честно: calibrationFactor (>=3 сэмплов) →
-"calibrated ×F over M changes", иначе "not calibrated (<3 samples)" (паттерн
-coverage: not measured). Live: calibrated ×10 over 319 changes; abstract →
-kind=abstract/plannedSteps 0, change не создан.
-`src/tasks/oracle.ts` (drift `# Spec: oracleReport`).
-`tests/oracle.test.ts` (5). Гейт 78 файлов / 829 тестов, shield allPass.
+**Phase-4 killer сделано:** oracle (4.3) `new --oracle` — pre-flight, честный
+токен-статус (not calibrated < 3 samples); replay (4.2) `change --replay` —
+регресс-чек, reproducible 0 tokens / честный drift; undo (4.1) `change
+--undo` — безопасная отмена незавершённого (no-junk контракт, никогда
+user-код, отказ на завершённом). Все три — опции existing команд (new/
+change), не новые top-level (соблюдено 8-командное сжатие). Гейт 80 файлов /
+837 тестов. src/tasks/oracle.ts / replay.ts / undo.ts (drift).
 - **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
   `execFileSync`/`spawnSync` (без shell): runtime.ts run-скрипт
   `execFileSync(bin,[scriptFile])`, runCmd.ts watcher/repair/edit через
@@ -147,12 +146,11 @@ kind=abstract/plannedSteps 0, change не создан.
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** остальные 12 задач Фазы 4 (undo 4.1, replay
-4.2, TUI 4.8, oracle полный токен-модель когда появятся реальные данные
-калибровки) — отдельно, не смешивать с охватом; B2 `memory`+`shell`; C2
-warning при домен-дрейфе; `new --dry` (уже есть как флаг). Остальные 12 задач
-Фазы 3 → 0.53.x патчи по need.
+**ОТКРЫТОЕ (следующая сессия):** B2 `memory`+`shell` (реальный долг, инженерный
+UX); C2 warning при домен-дрейфе; остальные 12 задач Фазы 4 (TUI 4.8, oracle
+полный токен-модель при живых данных калибровки; compare 4.x; rollback с
+глобальными снапшотами исходного кода); патчи Фазы 3 (0.54.x) по need.
 
-**Рекомендация:** уникальность полна (Receipt + badge + npm 0.53.0 + Oracle
-до/после). Далее: undo/replay (killer для работы с изменением) либо B2/C2
-(инженерный UX). Показывать badge+oracle в README как демонстрацию.
+**Рекомендация:** Phase-4 killer собран и опубликован (v0.54.0). Далее: B2/C2
+как cleanup без размывания (инженерный UX) — либо TUI (панель) для визуала.
+Показывать badge+oracle в README как демонстрацию пирамиды.
