@@ -171,10 +171,12 @@ INCOMPLETE) ставит lesson.sourceChange = changeId (fact рождения, 
 85 файлов / 867 тестов. Осталось из provenance: DOT-граф (4.6 отдельно).
 **Провенанс ВЫПУЩЕН: v0.56.0 published, npm view = 0.56.0, Release Latest.**
 
-**СЛЕДУЮЩЕЕ (после провенанс закрыт):** вернуться к **незавершённой Фазе 3** —
-12 задач (rate-limit, redaction, AbortController, uzum.ts→skills, mcp.ts
-per-tool, дробление stores, 3.1-3.7, 3.9-3.12). Это растущий production-долг,
-откладывали ради killer-фич; теперь укреплять фундамент. Решить: патчи 0.56.x
-или наколпить к 0.57.0. AI-agent охват (2 агента вместо 5) — зафиксировано как
-сознательное решение. Остаток Фазы 4 (graph 4.6, whatif 4.7, pin 4.11,
-cross-platform 4.12, Show HN 4.13) — отдельные истории, не размывать.
+**СЛЕДУЮЩЕЕ (после провенанс закрыт):** незавершённая **Фаза 3** — по плану 12
+задач, но 3.5 устарела (findExistingSkill удалён, единый BM25 путь) → **11
+актуальных**. Порядок спринтов: A=Serve hardening (3.11 redaction + 3.10
+rate-limit) — **СДЕЛАНО**; B=Runtime (3.4 AbortController + 3.12 лимит вывода);
+C=Архитектура (3.1 uzum→skills, 3.2 mcp per-tool, 3.3 stores); D=Мелкие (3.6
+hazards /u, 3.7 lastRunHash, 3.9 cron). Гейт 86 файлов / 871 тест.
+**0.57.0 = hardening релиз после Спринтов A+B** (4 production-readiness),
+не патчить 0.56.x (это hardening, не дыра). AI-agent охват (2 вместо 5) —
+сознательное решение. Остаток Фазы 4 — отдельные истории.
