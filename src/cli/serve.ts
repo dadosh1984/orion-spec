@@ -146,12 +146,53 @@ function sendJson(
   status: number,
   body: unknown,
 ): void {
-  const payload = JSON.stringify(body, null, 2);
+  // 3.11 redaction: any string in the response tree may hold a credential
+  // (command output, a DSN, an env value). RedactDeep applies the same
+  // conservative rule as the cache endpoint, but to EVERY /api/* response,
+  // not just /api/cache — the dashboard never echoes a secret back.
+  const payload = JSON.stringify(redactDeep(body), null, 2);
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
   });
   res.end(payload);
+}
+
+/** Recurse into a JSON tree and redact every credential-shaped string. */
+export function redactDeep(value: unknown): unknown {
+  if (typeof value === "string") return redactValue(value);
+  if (Array.isArray(value)) return value.map(redactDeep);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = redactDeep(v);
+    return out;
+  }
+  return value;
+}
+
+// 3.10 rate-limit: per-address sliding window of recent request timestamps.
+const WINDOW_MS = 60_000;
+const HITS: Map<string, number[]> = new Map();
+function rateLimitLimit(): number {
+  const raw = process.env.ORION_SERVE_RATE_LIMIT;
+  if (raw === undefined) return 60; // default: 60 req/min per address
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : 60;
+}
+/** True if the request passes the per-address rate cap (0 disables the check). */
+export function rateLimitAllowed(req: http.IncomingMessage): boolean {
+  const limit = rateLimitLimit();
+  if (limit === 0) return true;
+  const addr = req.socket.remoteAddress ?? "unknown";
+  const now = Date.now();
+  const hits = (HITS.get(addr) ?? []).filter((t) => now - t < WINDOW_MS);
+  if (hits.length >= limit) {
+    HITS.set(addr, hits);
+    return false;
+  }
+  hits.push(now);
+  HITS.set(addr, hits);
+  return true;
 }
 
 /** Render the single-file dashboard (zero dependencies, vanilla JS). */
@@ -412,6 +453,17 @@ export function startServer(
         res.end(JSON.stringify({ error: "unauthorized" }, null, 2));
         return;
       }
+    }
+    // 3.10 rate-limit (serve): per-address sliding-window cap. Default 60
+    // req/min; `ORION_SERVE_RATE_LIMIT=0` disables, any N overrides. Cheap,
+    // protects against a noisy/buggy client hammering the local dashboard.
+    if (!rateLimitAllowed(req)) {
+      res.writeHead(429, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Retry-After": "1",
+      });
+      res.end(JSON.stringify({ error: "rate limited" }, null, 2));
+      return;
     }
     switch (url.pathname) {
       case "/api/events": {

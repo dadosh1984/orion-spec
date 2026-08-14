@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "done": 0,
+  "total": 0,
+  "skipped": 0,
+  "pending": [],
+  "missingSnippets": [],
+  "reportPath": "changes/спринт-фазы-3-serve/forge-report.md",
+  "message": "forge complete: 0 done, 0 skipped from cache"
+}
