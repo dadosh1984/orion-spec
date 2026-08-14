@@ -22,6 +22,7 @@
  *   orion change <id> --import <path>  Import profile+lessons snapshot
  */
 import { fail, printOut } from "../helpers.js";
+import { statusMark } from "../../utils/term.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { readTasks } from "../../skills/forge/handler.js";
@@ -33,12 +34,10 @@ import { resume } from "../../skills/resume/handler.js";
 import { nextStep } from "../../skills/next/handler.js";
 import { payDebt } from "../../skills/pay-debt/handler.js";
 import { verifyChange, formatVerifyReport } from "../../core/verify.js";
+import { replay } from "../../skills/replay/handler.js";
 import { shield } from "../../skills/shield/handler.js";
 import { out } from "../../skills/out/handler.js";
-import {
-  exportProfile,
-  importProfile,
-} from "../../core/profile.js";
+import { exportProfile, importProfile } from "../../core/profile.js";
 import type { CommandHandler } from "../registry.js";
 
 export const changeHandler: CommandHandler = async (args, opts) => {
@@ -59,7 +58,9 @@ export const changeHandler: CommandHandler = async (args, opts) => {
   if (rest.includes("--tasks")) {
     const tasks = readTasks(id);
     if (tasks.length === 0)
-      return fail(`no tasks under changes/${id}/ — run "orion new ${id}" first`);
+      return fail(
+        `no tasks under changes/${id}/ — run "orion new ${id}" first`,
+      );
     const done = tasks.filter((t) => t.done).length;
     printOut(
       opts,
@@ -81,7 +82,11 @@ export const changeHandler: CommandHandler = async (args, opts) => {
   if (rest.includes("--review")) {
     const r = reviewChange(id);
     const failed = r.checks.filter((c) => !c.ok).length;
-    printOut(opts, r, `Review for ${id}: ${r.pass ? "PASS" : "ISSUES"} (${failed} failed check(s))`);
+    printOut(
+      opts,
+      r,
+      `Review for ${id}: ${r.pass ? "PASS" : "ISSUES"} (${failed} failed check(s))`,
+    );
     return r.pass ? 0 : 1;
   }
 
@@ -128,7 +133,11 @@ export const changeHandler: CommandHandler = async (args, opts) => {
   // --pay-debt
   if (rest.includes("--pay-debt")) {
     const r = payDebt(id);
-    printOut(opts, r, `Pay-debt for ${id}: ${r.paid.length} closed, ${r.stillOwed.length} still owed`);
+    printOut(
+      opts,
+      r,
+      `Pay-debt for ${id}: ${r.paid.length} closed, ${r.stillOwed.length} still owed`,
+    );
     return 0;
   }
 
@@ -144,6 +153,23 @@ export const changeHandler: CommandHandler = async (args, opts) => {
       console.log(formatVerifyReport(result));
     }
     return 0;
+  }
+
+  // --replay (4.2): regression check on the new code — deterministic, read-only.
+  if (rest.includes("--replay")) {
+    const r = replay(id);
+    if (opts.json) {
+      console.log(JSON.stringify(r, null, 2));
+      return 0;
+    }
+    const mark = r.specDrift ? "error" : "done";
+    const txt = r.specDrift
+      ? `${statusMark(mark as "error")} replay ${id}: ${r.detail}`
+      : `${statusMark("done")} replay ${id}: ${r.detail} (tokens: ${r.tokens})`;
+    console.log(txt);
+    console.log(`    sha now:     ${r.shaNow}`);
+    console.log(`    sha receipt: ${r.shaReceipt}`);
+    return r.specDrift ? 1 : 0;
   }
 
   // --shield
@@ -195,7 +221,9 @@ export const changeHandler: CommandHandler = async (args, opts) => {
     [
       `Change: ${id}`,
       `Tasks:  ${done}/${tasks.length}`,
-      done === tasks.length && tasks.length > 0 ? "Status: DONE" : "Status: INCOMPLETE",
+      done === tasks.length && tasks.length > 0
+        ? "Status: DONE"
+        : "Status: INCOMPLETE",
       "",
       `Try: orion change ${id} --tasks | --review | --diff | --changelog | --archive`,
     ].join("\n"),
