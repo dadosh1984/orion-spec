@@ -1,0 +1,53 @@
+{
+  "changeId": "завершить-дистрибуцию-orion-spec",
+  "checks": [
+    {
+      "step": "lint",
+      "status": "PASS",
+      "detail": "$ eslint src --max-warnings=0\n"
+    },
+    {
+      "step": "type",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "step": "test",
+      "status": "PASS",
+      "detail": "[orion] 1 failing line(s):\n🧠 orion lesson recorded — forge: task not green: Implement add — expected 2 to equal 3\n Test Files  74 passed (74)\n      Tests  802 passed | 2 skipped (804)\n   Duration  23.59s (transform 9.83s, setup 0ms, import 19.60s, tests 128.84s, environment 26ms)\n\n[orion: −39271 B (−99.3%) ≈ 9818 tok — ≈ tokens: bytes/4 estimate (no tokenizer)]"
+    },
+    {
+      "step": "drift",
+      "status": "PASS",
+      "detail": "matched 1 exported capabilities"
+    },
+    {
+      "step": "yagni",
+      "status": "PASS",
+      "detail": "10 snippet(s) within repo norms (median 92 LOC, 3 imports)"
+    },
+    {
+      "step": "economy",
+      "status": "PASS",
+      "detail": "cache 43.1 KB of 100.0 MB (112 entries) — within budget; ≈ 1253373 tok saved across 625 compress op(s)"
+    },
+    {
+      "step": "security",
+      "status": "PASS",
+      "detail": "no obvious issues"
+    },
+    {
+      "step": "policy",
+      "status": "PASS",
+      "detail": "no .orion/policy.json — no project gates to enforce"
+    },
+    {
+      "step": "verifiability",
+      "status": "PASS",
+      "detail": "oracles: ci, lint, test-runner, type-check · verifiability level 3 — strong checks present"
+    }
+  ],
+  "allPass": true,
+  "generatedAt": "2026-08-14T03:26:53.509Z",
+  "contextHash": "c125b4271149"
+}

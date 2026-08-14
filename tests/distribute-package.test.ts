@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { packageSurface } from "../src/tasks/packageSurface.js";
 
 const ROOT = join(import.meta.dirname, "..");
 
@@ -62,5 +63,13 @@ describe("distribute orion-spec (D2) — clean package surface", () => {
   it("engines.node matches the action runner (>=22.12)", () => {
     const p = pkgJson();
     expect((p.engines as Record<string, string>).node).toBe(">=22.12.0");
+  });
+
+  it("packageSurface() reports a clean publishable surface (ok=true)", () => {
+    const s = packageSurface();
+    expect(s.ok).toBe(true);
+    expect(s.selfDep).toBe(false);
+    expect(s.bin).toBe("dist/cli/index.js");
+    expect(s.node).toBe(">=22.12.0");
   });
 });

@@ -122,10 +122,11 @@ npm ls -g orion-spec           # check the installed version
 `orion mcp` announces when a newer release is available. Every version is
 dated and described in [CHANGELOG.md](CHANGELOG.md).
 
-The packaged CLI ships the **Honest Receipt** — `orion receipt` (or read the
-`receipt.json` next to a change's `result.md`). It reports real guard data
-(`drift`, `test`, `hazard`) and labels coverage "not measured" when no
-coverage file exists — so the quality certificate is as honest as the code.
+The packaged CLI ships the **Honest Receipt** — written into every change's
+`result.md` and as a machine-readable `receipt.json` when `out` finishes. It
+reports real guard data (`drift`, `test`, `hazard`) and labels coverage
+"not measured" when no coverage file exists — so the quality certificate is
+as honest as the code.
 
 ---
 

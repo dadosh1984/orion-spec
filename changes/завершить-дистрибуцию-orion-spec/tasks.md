@@ -33,7 +33,7 @@ self-dependency, а установка ставит рабочий 0.52.0 с Hon
 - [x] [fact] Обновить README: бейдж версии npm (`img.shields.io/npm/v/
   orion-spec`) уже в шапке, секция Installation (`npm i -g orion-spec`), local
   dep, from-source, Updating уже есть; добавлен абзац про Honest Receipt
-  (`orion receipt` / receipt.json) в установленном CLI.
+  (секция в result.md + `receipt.json` из `orion out`).
 - [x] [control] `pnpm format:check` на файлах D2 зелёный (router/skillMissLog/
   distribute-package). ВНИМАНИЕ: в репо есть предсуществующий формат-долг 17
   чужих src-файлов — не трогается D2, не блокирует release.yml (не гонит
@@ -41,11 +41,14 @@ self-dependency, а установка ставит рабочий 0.52.0 с Hon
 
 ## Фаза 3 — публикация 0.52.0 (триггер через GitHub)
 
-- [ ] [assumption] Коммит D2 → push main → тег `v0.52.0` (== package.json).
+- [x] [assumption] Коммит D2 → push main → тег `v0.52.0` (== package.json).
   push тега триггерит `.github/workflows/release.yml` → `npm publish
   --provenance` с `secrets.NPM_TOKEN` (токен есть в GitHub Secrets, пакет
-  0.52.0 на npm отсутствует). Проверить: `npm view orion-spec version` ==
-  `0.52.0` после релиза.
+  0.52.0 на npm отсутствовал). РЕЗУЛЬТАТ: `npm view orion-spec version` ==
+  `0.52.0`; GitHub Release v0.52.0 Latest; published tarball чист (нет link:),
+  bin→dist/cli/index.js работает (`orion 0.52.0` из распакованного tarball),
+  `out` из установленного CLI генерирует Honest Receipt (проверено на
+  завершённом change, result.md восстановлен из git).
 - [x] [control] Полный гейт: vitest 74 файла / 801 тест (+2 skipped), eslint/
   tsc/build зелёные (после форматирования затронутых D2 файлов).
 

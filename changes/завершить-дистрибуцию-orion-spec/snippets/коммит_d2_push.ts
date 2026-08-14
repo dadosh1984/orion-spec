@@ -15,5 +15,5 @@
  * NPM_TOKEN настроен в GitHub Secrets (dadosh1984/orion-spec); локальная
  * npm-авторизация отсутствует (E401) — публикация идёт целиком через CI.
  * После публикации один шаг вручную: fresh `npm install -g orion-spec` и
- * `orion receipt` на глобальной установке (поведение == локальный dist).
+ * `orion out <id>` → receipt-блок + `receipt.json` в result.md) на глобальной установке (поведение == локальный dist).
  */
