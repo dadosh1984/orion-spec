@@ -141,6 +141,26 @@ export const changeHandler: CommandHandler = async (args, opts) => {
     return 0;
   }
 
+  // --undo (4.1): safe cancellation of an unfinished change (no user code).
+  if (rest.includes("--undo")) {
+    const { undo, listUnfinished } =
+      await import("../../skills/undo/handler.js");
+    const r = undo(id);
+    if (opts.json) {
+      console.log(JSON.stringify(r, null, 2));
+    } else if (r.ok) {
+      console.log(`${statusMark("done")} undo ${id}: ${r.detail}`);
+    } else if (r.refusedCompleted) {
+      console.log(`${statusMark("warn")} ${r.detail}`);
+    } else {
+      const unfinished = listUnfinished();
+      console.log(`${statusMark("warn")} ${r.detail}`);
+      if (unfinished.length)
+        console.log(`  unfinished: ${unfinished.join(", ")}`);
+    }
+    return r.ok ? 0 : 1;
+  }
+
   // --verify
   if (rest.includes("--verify")) {
     const result = verifyChange(id, process.cwd(), { cache: true });
