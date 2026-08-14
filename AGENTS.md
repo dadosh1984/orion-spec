@@ -116,10 +116,11 @@ pnpm run format              # prettier --write (run before committing; format m
 завершены и заархивированы:** внедрить-сопоставление-атомарного-шага (60/60),
 завершить-дистрибуцию (D2), 2-4-svg-бейдж, закрыть-фазу-3-security,
 4-3-oracle, 4-2-replay, 4-1-undo, engineering-debt (B2 memory + C2
-domain-drift), усилить-orion-compare, 4-4-export-trust. **На npm: v0.53.0 ·
-v0.54.0 · v0.55.0 (Latest — «trust, state & comparison»).** Релиз 0.55.0 =
-memory + domain-drift + compare-receipt + export-trust; проверен из npm-
-пакета. Product complete. Следующий минор 0.56.0 = lineage.
+domain-drift), усилить-orion-compare, 4-4-export-trust, провенанс-lineage.
+**На npm: v0.53.0 · v0.54.0 · v0.55.0 · v0.56.0 (Latest — «provenance»,
+lineage полный).** Релизы: 0.55.0 = «trust, state & comparison»; 0.56.0 =
+«provenance» (lineage/apply/sourceChange) — оба проверены из npm-пакета.
+Product complete.
 
 **compare сделано:** v0.52 консолидировал compare→ls (alias); вернул
 самостоятельный side-by-side legacy case (parse.ts убрал compare:ls) и усилил
@@ -167,9 +168,13 @@ Lesson.sourceChange? / Proposal.borrowedLessons. Тесты lineage (12). Гей
 INCOMPLETE) ставит lesson.sourceChange = changeId (fact рождения, без
 эвристики); recordPattern/recordLesson передают sourceChange; ручной lesson
 остаётся «not recorded». Тесты lineage (12) — теперь 3 на sourceChange. Гейт
-85 файлов / 867 тестов. Осталось: release 0.56.0 (CHANGELOG + тег) и DOT-граф
-(4.6 отдельно).
+85 файлов / 867 тестов. Осталось из provenance: DOT-граф (4.6 отдельно).
+**Провенанс ВЫПУЩЕН: v0.56.0 published, npm view = 0.56.0, Release Latest.**
 
-**Рекомендация:** 0.55.0 (=memory+domain-drift+compare+export-trust, «trust,
-state & comparison») уже готов и будет пушен. После релиза — 0.56.0 lineage,
-начав с письменного ответа «что значит lesson повлиял на change».
+**СЛЕДУЮЩЕЕ (после провенанс закрыт):** вернуться к **незавершённой Фазе 3** —
+12 задач (rate-limit, redaction, AbortController, uzum.ts→skills, mcp.ts
+per-tool, дробление stores, 3.1-3.7, 3.9-3.12). Это растущий production-долг,
+откладывали ради killer-фич; теперь укреплять фундамент. Решить: патчи 0.56.x
+или наколпить к 0.57.0. AI-agent охват (2 агента вместо 5) — зафиксировано как
+сознательное решение. Остаток Фазы 4 (graph 4.6, whatif 4.7, pin 4.11,
+cross-platform 4.12, Show HN 4.13) — отдельные истории, не размывать.
