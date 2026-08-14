@@ -154,24 +154,18 @@ shield allPass. Накоплено к 0.55.0.
 **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
 создаёт валидный command-файл, повтор идемпотентен.
 
-**Дизайн lineage (0.56.0) — ПРИНЯТ (явное действие, не эвристика):**
-«lesson повлиял» <=> пользователь явно применил lesson (`orion memory
-lessons apply <id>`, задача 2.5). Эвристика в `orion new` — ТОЛЬКО подсказка,
-никогда не запись. Data model:
-```
-lesson.json   += sourceChange: string|null  // change-id, из которого lesson
-                                            // родился; null если ручной
-proposal.json += borrowedLessons: [{lessonId, appliedAt, note?}]
-```
-sourceChange заполняется при `orion out` SUCCESS → записанный lesson;
-borrowedLessons — ТОЛЬКО при `lessons apply`. `orion lineage <lesson-id>`:
-назад по sourceChange, вперёд по borrowedLessons, ASCII/--json; честно
-«(not recorded — manual lesson)» / «(none yet)»; детекция цикла.**Порядок
-0.56.0: сначала 2.5 lessons apply → потом 4.5 lineage** (lineage данных без
-2.5 не имеет). Не делать автоматич. заполнение при new, не строить граф по
-эвристике, TUI/DOT graph → отдельная задача (не смешивать).
-Тесты честности (5): цепочка 3 звена, детекция цикла, orphan, нет
-borrowedLessons, детерминизм.
+**Дизайн lineage (0.56.0) — РЕАЛИЗОВАН (2.5 + 4.5, явное действие, не
+эвристика).** src/core/lineage.ts: applyLesson (phantom-refuse, idempotent)
+пишет proposal.json.borrowedLessons; lineageOf — BFS по явным ссылкам
+(backward sourceChange, forward borrowedLessons + born-from lessons),
+cycle-safe, честно (orphan/applied-none), дем. `orion memory lessons apply
+<id> --to <change>`, `orion lineage <lesson-id>`. Data model:
+proposal.json.borrowedLessons + lesson.json.sourceChange.
+Lesson.sourceChange? / Proposal.borrowedLessons. Тесты lineage (9). Гейт 85
+файлов / 864 теста, shield allPass. СОДЕРЖИМОЕ 0.56.0 готово (lineage +
+анонимия из 0.55). Осталось: release 0.56.0 (CHANGELOG + тег). Потенциальный follow-up 0.56.x: запись sourceChange в out SUCCESS (сейчас lineage читает
+sourceChange только если записан, должен писать при out?) + DOT-граф (4.6
+отдельно).
 
 **Рекомендация:** 0.55.0 (=memory+domain-drift+compare+export-trust, «trust,
 state & comparison») уже готов и будет пушен. После релиза — 0.56.0 lineage,
