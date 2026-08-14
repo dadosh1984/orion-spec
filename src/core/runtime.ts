@@ -341,7 +341,11 @@ function runChildWithLimit(
           truncated = true;
           pending += chunk.slice(room);
         }
-      } else pending += chunk;
+      } else {
+        // Already at/over the cap → this chunk is overflow too.
+        truncated = true;
+        pending += chunk;
+      }
       if (pending.length) {
         try {
           flushOverflow(pending);
