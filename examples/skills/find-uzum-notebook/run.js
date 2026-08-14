@@ -24,7 +24,7 @@ function parsePriceBlock(text) {
 
 function parseRatingReviews(text) {
   // rating like "4.9" / "5.0" appears before the review count "(NN отзывов)".
-  const ratingMatch = text.match(/(\d\.\d)\s*\((\d[\d\s\u00a0]*)\s*отзыв\w*/i);
+  const ratingMatch = text.match(/(\d\.\d)\s*\((\d[\d\s\u00a0]*)\s*отзыв[а-яё]*/iu);
   if (!ratingMatch) return { rating: null, reviews: 0 };
   const rating = parseFloat(ratingMatch[1]);
   const reviews = parseInt(ratingMatch[2].replace(/[\s\u00a0]/g, ""), 10);

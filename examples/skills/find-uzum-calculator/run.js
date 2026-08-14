@@ -21,7 +21,7 @@ function parsePriceBlock(text, minPrice = 5000) {
 }
 
 function parseRatingReviews(text) {
-  const m = text.match(/(\d\.\d)\s*\((\d[\d\s\u00a0]*)\s*отзыв\w*/i);
+  const m = text.match(/(\d\.\d)\s*\((\d[\d\s\u00a0]*)\s*отзыв[а-яё]*/iu);
   if (!m) return { rating: null, reviews: 0 };
   const rating = parseFloat(m[1]);
   const reviews = parseInt(m[2].replace(/[\s\u00a0]/g, ""), 10);
