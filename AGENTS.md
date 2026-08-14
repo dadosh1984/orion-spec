@@ -216,3 +216,61 @@ RED-GREEN-REFACTOR создана для «напиши код, который �
 расширить draft шаблонами delete/modify/cleanup. **Не чинить сейчас** —
 полировка по сигналу, не превентивно. Обнаружено при попытке открыть
 change для удаления uzum.ts (3.1).
+
+### SESSION-SAVE 2026-08-14 (пауза после 3.1)
+
+**Состояние:** HEAD clean (`7cbbf7b`), `orion --version` = 0.57.0,
+npm 0.57.0 published. Активных change нет
+(`внедрить-сопоставление-атомарного-шага` — 100%, готов и сохранён в истории).
+Режим сменён: код → код → код (спринты A/B/C) **→** использование → сигнал → код.
+Полировка Спринт C (3.2/3.3) и Спринт D (3.6/3.7/3.9) **отложены** без
+сигнала — это было бы спекулятивно.
+
+**Сделано в этой сессии (5 коммитов):**
+1. `7478bc8` **chore:** убрать случайные отсылки к чужим брендам из
+   авторского кода — ponytail/openspec в комментариях → нейтральные
+   формулировки (debt, skillMissLog, packageSurface, updateAgent,
+   archived/закрыть-фазу-3-security, plan_upgrade, analysis-roadmap,
+   AGENTS.md позитивное упоминание).
+2. `def46c3` **feat(promotion):** orion run --resolve — attach real
+   resolution to miss-log signature. resolveProposal() back-fill пустых
+   history.resolution, идемпотентна, refuses empty/missing. CLI wrapper
+   `--resolve <id> --output <file>` читает верифицируемый output и
+   прикрепляет. Также writeProposal.scriptPath на scaffold для replay.
+   3 новых теста. Гейт tests/promotion.test.ts 8/8 green.
+   **Разблокировал replay** — без этого первый промоушен невозможен.
+3. `1ae5f17` **chore(skills):** sync parseRatingReviews regex to cyrillic
+   class `[а-яё]* /iu`. Defensive fix из AGENTS.md: `\w` не матчит non-ASCII
+   даже с `/u`. Aligns find-uzum-notebook и find-uzum-calculator с
+   find-uzum-calculator-sold (который уже имел fix). minPrice/window
+   **намеренно оставлены per-skill** (тетради стоят 5–15K UZS ≠ книги).
+4. `87dee91` **refactor(3.1):** удалить мёртвый vendor src/core/uzum.ts и
+   tests/uzum.test.ts. Inline-копии в 4 example-скиллах — production и
+   автономны (подтверждено механикой browser.ts:importSkillAsEsm → /tmp
+   копия → import из изоляции; относительные импорты в skills не работают).
+   Гейт: tsc clean, vitest 878 → 867 (−11). Vendor ушёл из core.
+5. `7cbbf7b` **docs(session-save):** сигнал #3 — draft task-type слепота
+   (см. выше).
+
+**Гейт:** 86 файлов / 867 тестов + 2 skipped. tsc --noEmit чисто.
+shield не гонялся (нет change), но ручной прогон всех команд прошёл.
+
+**ОТКРЫТОЕ (следующая сессия):**
+- **convert csv** — 2 повтора в miss-log. Третий однотипный шаг через
+  `orion run match "convert csv"` сделает его промоушен-кандидатом.
+  Replay уже разблокирован (`--resolve` доступен).
+- **Спринт C 3.2 (mcp per-tool)** и **3.3 (stores split)** — **НЕ стартуем**
+  без реального сигнала боли. Если MCP-tool добавляется тяжело или
+  `lessons.ts` мешает тестированию — появится signal.
+- **Спринт D 3.6/3.7/3.9** — **НЕ стартуем** без сигнала. 3.9 (busy-spin)
+  не виден в дефолте (cron почти не используется). 3.6 (cyrillic hazards)
+  экзотика (команды юзера обычно ASCII). 3.7 (lastRunHash) — browser/docker
+  optional. По сигналу — руками + коммит, **не через draft** (сигнал #3).
+- **Сигнал #3 фикс** (draft шаблоны delete/modify/cleanup) — не превентивно.
+- **bump 0.58.0** — преждевременно (один рефактор не тянет на релиз).
+  Копить ценность: 2–3 содержательных правки → релиз.
+
+**Рекомендация:** Сессию закрыть. Следующая начинается естественно —
+`orion next_step` (покажет высший приоритет) или `orion run match
+"<реальный-шаг>"` (накопить miss-log). Не делать превентивную полировку
+Спринт D; ждать сигнала. Продукт production-ready на npm 0.57.0.
