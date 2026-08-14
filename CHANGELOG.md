@@ -2,6 +2,27 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.56.0] — provenance
+
+Full `change → lesson → change` provenance. Lineage never guesses: «a lesson
+influenced a change» ⟺ the user explicitly applied it.
+
+### Added
+- **`orion lineage <lesson-id>`** — the full provenance chain `change → lesson
+  → change` (BFS over explicit links, cycle-safe, deterministic). Backward via
+  `lesson.sourceChange` (born-from), forward via `proposal.borrowedLessons`.
+- **`orion memory lessons apply <id> --to <change>`** — explicitly applies a
+  lesson to a change, filling `proposal.json.borrowedLessons` (only on user
+  action; idempotent, phantom-refused).
+- **Automatic `sourceChange` on `out`** — `out` (SUCCESS and INCOMPLETE) stamps
+  the born-from change on the lesson it creates. A fact of birth from `out`,
+  never a heuristic. Manual (off-`out`) lessons honestly stay "not recorded",
+  so `lineage` shows a real backward link only when one exists.
+
+### Principle
+Lineage never guesses influence: heuristics (keyword/domain hints) are
+suggestions only and never write a `borrowedLessons` or `sourceChange` link.
+
 ## [0.55.0] — 2026-08-14
 
 Trust, state & comparison — a coherent engineering-debt release on top of the
