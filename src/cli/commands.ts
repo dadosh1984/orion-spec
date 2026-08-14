@@ -487,6 +487,33 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
 
+    case "export-trust": {
+      const changeId = args[0];
+      if (!changeId) return fail("export-trust requires a change id");
+      const { exportTrust } = await import("../skills/out/trust.js");
+      const t = exportTrust(changeId);
+      if (!t) return fail(`export-trust: no changes/${changeId}/proposal.json`);
+      console.log(
+        `\n${statusMark("done")} trust exported → changes/${changeId}/trust.json`,
+      );
+      console.log(`  integrity: ${t.integrity}`);
+      console.log(
+        `  artifacts: proposal · tasks · spec · tests (${t.testCount} test file(s))`,
+      );
+      return 0;
+    }
+
+    case "verify-trust": {
+      const changeId = args[0];
+      if (!changeId) return fail("verify-trust requires a change id");
+      const { verifyTrust } = await import("../skills/out/trust.js");
+      const r = verifyTrust(changeId);
+      console.log(
+        `\n${r.ok ? statusMark("done") : statusMark("error")} ${paint(r.ok ? "trust verified" : "trust FAILED", r.ok ? "green" : "red")} — ${r.detail}`,
+      );
+      return r.ok ? 0 : 1;
+    }
+
     case "verify": {
       const changeId = args[0];
       if (!changeId) return fail("verify requires a change id");

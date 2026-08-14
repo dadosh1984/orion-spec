@@ -1,0 +1,16 @@
+{
+  "title": "4-4-export-trust",
+  "goal": "Реализовать 4.4 export-trust: hash-based proof для external verification Honest Receipt (без криптографических подписей; GPG/SSH/blockchain вне scope v1). `orion export-trust <change>` пишет `changes/<id>/trust.json` = {change, ts, artifacts{proposal/tasks/spec/tests{sha256,size}}, testCount, receipt (embedded full), integrity: sha256(JSON.stringify({artifacts,receipt}))}. `orion verify-trust <change>` читает trust.json, пересчитывает hashes артефактов с диска, сверяет с trust.artifacts + integrity root; возвращает {ok, tampered[], integrityOk, detail}. Детерминизм (те же артефакты+receipt → байт-в-байт trust.json). Tests criteria честности: (1) детерминизм; (2) verify passes на не-tampered; (3) измени spec.md → verify FAIL (tampered spec); (4) измени tests файл → FAIL; (5) нет trust.json → честно. Модуль src/skills/out/trust.ts (exportTrust/verifyTrust). CLI case export-trust/verify-trust. Накопить к 0.55.0 (memory+domain-drift+compare+export-trust), не в текущий релиз.",
+  "platform": "",
+  "constraints": "compact",
+  "budget": "compact",
+  "clarity": "vague",
+  "language": "ru",
+  "appliesLessons": [
+    "orion-spec:session:eb355cdf0851",
+    "фаза-10-прямая-запись:shield:419cdebf38b1",
+    "фаза-32-0-15:shield:44b818d7fb67",
+    "фаза-11-новая-порция:shield:d56c0982cb88",
+    "изучить-типовую-обработку-1с:shield:a9c538201233"
+  ]
+}
