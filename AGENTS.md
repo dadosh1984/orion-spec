@@ -177,4 +177,10 @@ INCOMPLETE) ставит lesson.sourceChange = changeId (fact рождения, 
 (runtime hardening 3.12+3.4) СДЕЛАН.** Гейт 87 файлов / 875 тестов. Проект
 Production-ready после A+B. Остаток Фазы 3: C=Архитектура (3.1 uzum→skills,
 3.2 mcp per-tool, 3.3 stores); D=Мелкие (3.6 hazards /u, 3.7 lastRunHash,
-3.9 cron). **0.57.0 = hardening релиз (Спринт A + B) — готов к нарезке.**
+3.9 cron). **0.57.0 = hardening релиз — ОПУБЛИКОВАН (npm view=0.57.0, Release
+Latest).** Реальные прогоны A/B/C из npm прошли: 8 команд help, версия
+0.57.0, new/draft/ls; B (timeout kill≤1.1s, 1MiB cap+spill last-output.log,
+rate-limit 4-й 429); C (oracle abstract change не создан, export/verify-trust,
+tamper FAIL). **Найден и исправлен реальный баг: truncated warn молчал при
+overflow-в-одном-chunk (cap+spill работали, флаг truncated не вставал) —
+починено в main (fix commit), в next миноре.** Product production-ready.
