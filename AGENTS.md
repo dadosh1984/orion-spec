@@ -114,29 +114,35 @@ pnpm run format              # prettier --write (run before committing; format m
 
 **Состояние:** всё закоммичено и запушено (HEAD clean). **Change-ленеры
 завершены и заархивированы:** `внедрить-сопоставление-атомарного-шага`
-(60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10 — пакет живёт на
-**npm 0.52.0**, GitHub Release v0.52.0 Latest), `2-4-svg-бейдж` (7/7).
-Пирамида собрана: Honest Receipt (правда) → npm (доступность) → бейдж
-(видимость).
+(60/60), `завершить-дистрибуцию-orion-spec` / D2 (10/10 — npm 0.52.0),
+`2-4-svg-бейдж` (7/7), `закрыть-фазу-3-security` (7/7). Пирамида собрана
+(Receipt→npm→badge) + безопасный AI-agent охват.
 
-**2.4 SVG-бейдж сделано:** `orion badge <change>` — чистая функция от
-`receipt.json` (единственный источник, не пересчёт shield). `receipt.status`
-(verified|partial|failing) детерминированно из guard (любой FAIL→failing;
-coverage "not measured"→partial; чисто+измеренное→verified). `badge.ts`:
-readReceipt/renderBadgeSvg/writeBadge/renderBadgeMarkdown — самодостаточный
-SVG без шрифтов/сети, адаптивная ширина, детерминизм (им же — sha256).
-Три ловушки честности в `tests/badge.test.ts` (9): нет receipt→серый
-"not verified" (не green); байт-в-байт детерминизм; статус из полей. Coverage
-не рисуется при "not measured". fallback для pre-2.4 receipt без status.
-`src/tasks/badgeSvg.ts` — drift-экорт (`# Spec: renderBadgeSvg`).
-Гейт 75 файлов / 811 тестов. Live: `badge` на завершённый change → partial
-(жёлтый) честно, badge.svg валиден.
+**Security-префикс (3.8/3.13) + Фаза 4 (4.9/4.10) сделано:**
+- **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
+  `execFileSync`/`spawnSync` (без shell): runtime.ts run-скрипт
+  `execFileSync(bin,[scriptFile])`, runCmd.ts watcher/repair/edit через
+  `spawnSync` argv + `shell:false`; последний `execSync(`${...})` в runCmd убран.
+- **3.13 denyEnv** (`src/core/denyEnv.ts`): `isDeniedEnvName`/`denyEnv`
+  фильтруют секреты (*TOKEN/*SECRET/*KEY/*PASSWORD/AWS_*/GITHUB_*) из env
+  дочернего скрипта (runtime.ts run через `denyEnv(process.env)`).
+- **orion update** (`src/core/updateAgent.ts`): пишет `.claude/commands/`
+  orion.md (Claude Code) + `.cursor/rules/orion.mdc` (Cursor), только если
+  директория есть; учит агента доверять Honest Receipt (`orion badge` /
+  receipt.json) перед «готово» (НЕ своему ощущению); идемпотентно (повтор
+  без дублей, stale → refresh); печатает результат. Уникальный угол от
+  OpenSpec — агент проверяет сертификат, не просто следует процессу.
+`src/tasks/denyEnv.ts` (drift-экорт `# Spec: denyEnv`).
+Тесты `tests/security-exec.test.ts` (7) + `tests/update.test.ts` (6).
+**Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
+создаёт валидный command-файл, повтор идемпотентен.
 
-**ОТКРЫТОЕ (следующая сессия):** Фаза 4 **AI-agent охват (Claude Code +
-Cursor, не 5)**; B2 `memory`+`shell` (решить: 8 или 10 команд); C2 warning
-при домен-дрейфе; `oracle`; `new --dry`.
+**ОТКРЫТОЕ (следующая сессия):** Фаза 4 остальные 12 задач (undo/replay/oracle/
+TUI — отдельно, не охват); B2 `memory`+`shell`; C2 warning при домен-дрейфе;
+`new --dry`. Также: bumps 0.53.0 после security (3.8/3.13) — изменение
+поведения run-scripts (argv), стоит опубликовать отдельной минор-версией.
 
-**Рекомендация:** уникальность закреплена (Honest Receipt + бейдж + npm
-0.52.0). Далее Фаза 4 AI-agent охват (дистрибуция к агентам) → B2/C2
-(инженерный UX). Предпредложение: показать `success.md`/badge в README
-проверка 1.1.
+**Рекомендация:** безопасный агент-охват готов (`orion update`). Далее:
+минор-публикация 0.53.0 (protects run-script argv + agent охват) → остаток
+Фазы 4 (killer-features: undo/replay/oracle) → B2/C2. Показывать badge в
+README для демонстрации пирамиды.
