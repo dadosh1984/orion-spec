@@ -2,6 +2,27 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.53.0] — 2026-08-14
+
+Security hardening + safe AI-agent onboarding.
+
+### Security
+- **Run-scripts execute via argv** (`execFileSync`/`spawn`), not shell
+  interpolation. Shell-injection eliminated (task 3.8). Scripts that relied on
+  shell features (pipes, glob, `$VAR`) in arguments now treat them literally.
+  Includes watcher `run`, auto-repair `forge --save-as`, and `edit`.
+- **denyEnv**: secrets (`*TOKEN`, `*SECRET`, `*KEY`, `*PASSWORD`, `AWS_*`, `GITHUB_*`)
+  are filtered out of child-process env (task 3.13) — they no longer reach
+  external scripts/output/cache.
+
+### Added
+- **`orion update`** — generates AI-agent command files for Claude Code
+  (`.claude/commands/orion.md`) and Cursor (`.cursor/rules/orion.mdc`) when
+  those agent dirs exist. The files teach the agent to verify the
+  **Honest Receipt** (`orion badge <change>` = verified / `receipt.json`)
+  before declaring a task done — trust the certificate, not a feeling.
+  Idempotent: a second run never duplicates or rewrites unchanged files.
+
 ## [0.52.0] — 2026-08-14
 
 Skills-first architecture took shape: prompt → complexity classifier → honest
