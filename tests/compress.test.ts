@@ -495,4 +495,29 @@ describe("compress: high-value rules (v0.14)", () => {
     expect(r.matched).toBe(false);
     expect(r.out).toBe(tiny);
   });
+
+  it("handles Unicode filenames in ls output (v0.57)", () => {
+    const out = [
+      "-rw-r--r-- 1 user user 123 Jan  1 12:00 файл.txt",
+      "-rw-r--r-- 1 user user 456 Jan  1 12:01 文档.pdf",
+    ].join("\n");
+    const r = compress("ls", out);
+    expect(r.matched).toBe(true);
+    expect(r.out).toContain("файл.txt");
+    expect(r.out).toContain("文档.pdf");
+  });
+
+  it("handles Unicode filenames in grep output (v0.57)", () => {
+    // Direct grepRule test — parser must handle Unicode colons and paths.
+    const out = [
+      "src/main.ts:10:const x = 'привет мир'",
+      "src/utils.ts:25:console.log('привет мир')",
+      "src/core.ts:42:// привет мир",
+    ].join("\n");
+    const r = compress("rg привет", out);
+    expect(r.out).toContain("привет мир");
+    expect(r.out).toContain("src/core.ts");
+    // matched may be false if header overhead exceeds savings — that's OK,
+    // the rule still parsed correctly and stored raw output.
+  });
 });

@@ -515,7 +515,7 @@ const RULES: Rule[] = [
   { test: (cmd) => /^git diff\b/.test(cmd), compress: gitDiffRule },
   { test: (cmd) => /^git log\b/.test(cmd), compress: gitLogRule },
   { test: (cmd) => /(^|[/\\])ls(\s|$)/.test(cmd), compress: lsRule },
-  { test: (cmd) => /\b(rg|grep)\b/.test(cmd), compress: grepRule },
+  { test: (cmd) => /(?<!\S)(rg|grep)(?!\S)/.test(cmd), compress: grepRule },
   {
     test: (cmd) =>
       /(^|[/\\])(npm|pnpm|yarn)( |$).*\b(install|add|remove)\b/.test(cmd),
