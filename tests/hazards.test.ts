@@ -22,4 +22,50 @@ describe("hazard gate + denyEnv (v0.34)", () => {
   it("returns [] for clean code", () => {
     expect(scanHazards("export const a = 1;")).toEqual([]);
   });
+
+  it("catches multi-line rmSync (newline bypass, v0.57)", () => {
+    const src = "fs\n.rmSync('/x', {recursive:true})";
+    const hits = scanHazards(src);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((h) => h.includes("rm"))).toBe(true);
+  });
+
+  it("catches multi-line exec (whitespace bypass, v0.57)", () => {
+    const src = "const {\n  exec \n} = require('child_process')";
+    const hits = scanHazards(src);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((h) => h.includes("child-process"))).toBe(true);
+  });
+
+  it("catches multi-line eval with comment in between (v0.57)", () => {
+    // комментарии удаляются перед сканом
+    const src = "// harmless comment\neval\n(code)";
+    const hits = scanHazards(src);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((h) => h.includes("eval"))).toBe(true);
+  });
+
+  it("still catches single-line patterns after normalization (v0.57)", () => {
+    const hits = scanHazards("child_process.execSync('ls')");
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((h) => h.includes("child-process"))).toBe(true);
+  });
+
+  it("normalizeSource collapses whitespace but keeps comments intact (v0.57)", async () => {
+    const { normalizeSource } = await import("../src/core/hazards.js");
+    // Comments are NOT stripped — // inside strings like https:// would break.
+    const src = "// comment\nconst x = 1; // inline";
+    const result = normalizeSource(src);
+    expect(result).toContain("comment");
+    expect(result).toContain("const x = 1;");
+    // But newlines ARE collapsed: the result is one line.
+    expect(result.split("\n").length).toBe(1);
+  });
+
+  it("catches multi-line eval (comment safety, v0.57)", () => {
+    const src = "// harmless comment\neval\n(code)";
+    const hits = scanHazards(src);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((h) => h.includes("eval"))).toBe(true);
+  });
 });

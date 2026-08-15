@@ -83,11 +83,23 @@ const HAZARDS_PYTHON: { re: RegExp; what: string }[] = [
 // Legacy: used by forge/shield (JS-only)
 const HAZARDS = HAZARDS_JS;
 
+/** Normalize source for deterministic scanning: collapse whitespace (v0.57).
+ *  Prevents bypass via line breaks: `fs\n.rmSync()` is caught as `fs.rmSync()`.
+ *  Does NOT strip comments — comment text can match hazard patterns
+ *  (false positive is safe), but stripping `//` inside strings like
+ *  `fetch("https://x.com")` breaks the URL. */
+export function normalizeSource(source: string): string {
+  return source
+    .replace(/\s+/g, " ")              // collapse ws (inc newlines)
+    .trim();
+}
+
 /** Scan source for destructive/escaping patterns; returns human-readable hits. */
 export function scanHazards(source: string): string[] {
+  const normal = normalizeSource(source);
   const found: string[] = [];
   for (const { re, what } of HAZARDS) {
-    const m = source.match(re);
+    const m = normal.match(re);
     if (m) found.push(`${what} ("${m[0].slice(0, 40)}")`);
   }
   return found;
@@ -99,6 +111,7 @@ export function scanHazardsForRuntime(
   runtime: "bash" | "node" | "python",
   options?: { allowHttps?: boolean; allowOwnExit?: boolean }
 ): string[] {
+  const normal = normalizeSource(source);
   const patterns =
     runtime === "bash"
       ? [...HAZARDS_BASH]
@@ -113,7 +126,7 @@ export function scanHazardsForRuntime(
     // A low/medium-risk skill may terminate its own process; that is not an
     // escape vector (the process belongs to the skill itself).
     if (options?.allowOwnExit && what.includes("own process")) continue;
-    const m = source.match(re);
+    const m = normal.match(re);
     if (m) found.push(`${what} ("${m[0].slice(0, 40)}")`);
   }
   return found;
