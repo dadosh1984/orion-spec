@@ -22,7 +22,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-compress-"));
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
-  process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
+  process.env.ORION_ECONOMY_FILE = join(dir, "economy.jsonl");
 });
 
 afterEach(() => {
@@ -286,7 +286,7 @@ describe("compress core", () => {
     // per-project aggregation covers every row.
     const totalPerProject = stats.byProject.reduce((s, g) => s + g.entries, 0);
     expect(totalPerProject).toBe(3);
-    expect(economyLogPath()).toContain("economy.json");
+    expect(economyLogPath()).toContain("economy.jsonl");
   });
 
   it("currentProject resolves package.json name, then git root, then cwd", () => {
@@ -310,7 +310,7 @@ describe("compress is fail-safe on corrupt rules", () => {
     // A null-ish input still returns raw; the engine must never throw.
     const r = compress("vitest run", "\u0000raw\u0000", "");
     expect(typeof r.out).toBe("string");
-    expect(existsSync(join(dir, "economy.json"))).toBe(true);
+    expect(existsSync(join(dir, "economy.jsonl"))).toBe(true);
   });
 });
 

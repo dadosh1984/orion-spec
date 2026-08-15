@@ -19,7 +19,7 @@ beforeEach(() => {
   dir = join(tmpdir(), `orion-promo-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   process.env.ORION_PROPOSALS_DIR = dir;
-  process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
+  process.env.ORION_ECONOMY_FILE = join(dir, "economy.jsonl");
 });
 
 afterEach(() => {

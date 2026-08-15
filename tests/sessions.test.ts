@@ -27,7 +27,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-sessions-"));
   process.chdir(dir);
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
-  process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
+  process.env.ORION_ECONOMY_FILE = join(dir, "economy.jsonl");
 });
 
 afterEach(() => {

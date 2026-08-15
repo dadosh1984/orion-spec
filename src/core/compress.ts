@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { trace } from "./telemetry.js";
@@ -539,25 +539,45 @@ const RULES: Rule[] = [
 
 /* ---------------------------- economy log ---------------------------- */
 
-/** Append-only economy ledger (~/.orion/economy.json; test override via ORION_ECONOMY_FILE). */
+/** Append-only economy ledger (~/.orion/economy.jsonl; test override via ORION_ECONOMY_FILE). */
 export function economyLogPath(): string {
   return (
-    process.env.ORION_ECONOMY_FILE ?? join(homedir(), ".orion", "economy.json")
+    process.env.ORION_ECONOMY_FILE ?? join(homedir(), ".orion", "economy.jsonl")
   );
 }
 
-/** Append one economy entry; the ledger is capped to 5000 rows. */
+/** Maximum rows kept in the ledger (trimmed on read). */
+const MAX_ECONOMY_ROWS = 5000;
+
+/**
+ * Append one economy entry as a JSONL line (atomic O_APPEND).
+ * Race-condition-safe: every parallel process writes its own line without
+ * reading the full file first. The cap (5000 rows) is applied on read.
+ */
 export function appendEconomy(entry: EconomyEntry): void {
   try {
     const path = economyLogPath();
-    const rows: EconomyEntry[] = existsSync(path)
-      ? (JSON.parse(readFileSync(path, "utf8")) as EconomyEntry[])
-      : [];
-    rows.push({ ...entry, project: entry.project ?? currentProject() });
-    if (rows.length > 5000) rows.splice(0, rows.length - 5000);
-    writeFileSync(path, JSON.stringify(rows), "utf8");
+    const line = JSON.stringify({ ...entry, project: entry.project ?? currentProject() }) + "\n";
+    appendFileSync(path, line, "utf8");
   } catch {
     /* best effort — economy must never break the caller */
+  }
+}
+
+/** Migrate old economy.json to economy.jsonl if it exists (idempotent, best-effort). */
+function migrateLegacyEconomy(): void {
+  try {
+    const oldPath = join(homedir(), ".orion", "economy.json");
+    const newPath = economyLogPath();
+    if (!existsSync(oldPath) || existsSync(newPath)) return;
+    const raw = JSON.parse(readFileSync(oldPath, "utf8"));
+    if (Array.isArray(raw)) {
+      const lines = raw.map((e: EconomyEntry) => JSON.stringify(e) + "\n").join("");
+      writeFileSync(newPath, lines, "utf8");
+      // Keep old file as backup; don't delete.
+    }
+  } catch {
+    /* best effort */
   }
 }
 
@@ -596,13 +616,27 @@ function gitRoot(): string | null {
   return null;
 }
 
-/** Read the economy ledger (empty when missing/corrupt). */
+/** Read the economy ledger (empty when missing/corrupt). JSONL format: one JSON object per line. */
 export function readEconomy(): EconomyEntry[] {
   try {
+    migrateLegacyEconomy();
     const path = economyLogPath();
     if (!existsSync(path)) return [];
-    const raw = JSON.parse(readFileSync(path, "utf8"));
-    return Array.isArray(raw) ? (raw as EconomyEntry[]) : [];
+    const text = readFileSync(path, "utf8");
+    const rows: EconomyEntry[] = [];
+    for (const raw of text.split("\n")) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object") rows.push(parsed as EconomyEntry);
+      } catch {
+        /* skip corrupt line */
+      }
+    }
+    // Trim to MAX_ECONOMY_ROWS oldest lines on read.
+    if (rows.length > MAX_ECONOMY_ROWS) rows.splice(0, rows.length - MAX_ECONOMY_ROWS);
+    return rows;
   } catch {
     return [];
   }

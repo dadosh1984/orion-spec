@@ -20,7 +20,7 @@ beforeEach(() => {
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
   process.env.ORION_PROFILE_FILE = join(dir, "profile.md");
-  process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
+  process.env.ORION_ECONOMY_FILE = join(dir, "economy.jsonl");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
 });
 

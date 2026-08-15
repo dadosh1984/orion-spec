@@ -217,7 +217,7 @@ describe("next: cost-aware alternatives (v0.11)", () => {
 
 describe("next: economy footer (v0.17)", () => {
   it("appends honest savings when a fixture ledger exists", async () => {
-    process.env.ORION_ECONOMY_FILE = join(process.cwd(), "economy.json");
+    process.env.ORION_ECONOMY_FILE = join(process.cwd(), "economy.jsonl");
     const rows = [
       {
         project: "demo",
@@ -230,7 +230,7 @@ describe("next: economy footer (v0.17)", () => {
         ts: new Date().toISOString(),
       },
     ];
-    writeFileSync(process.env.ORION_ECONOMY_FILE, JSON.stringify(rows), "utf8");
+    writeFileSync(process.env.ORION_ECONOMY_FILE, JSON.stringify(rows[0]) + "\n", "utf8");
     makeChange("cli-tool", true);
     const r = await nextStep();
     expect(r.summary).toContain(
@@ -239,7 +239,9 @@ describe("next: economy footer (v0.17)", () => {
   });
 
   it("says the honest nothing-yet line when the ledger is empty", async () => {
-    process.env.ORION_ECONOMY_FILE = join(process.cwd(), "economy-empty.json");
+    process.env.ORION_ECONOMY_FILE = join(process.cwd(), "economy-empty.jsonl");
+    // Ensure the file is empty (no lines)
+    writeFileSync(process.env.ORION_ECONOMY_FILE, "", "utf8");
     makeChange("cli-tool", true);
     const r = await nextStep();
     expect(r.summary).toContain("no compress ops recorded yet");

@@ -20,7 +20,7 @@ beforeEach(() => {
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
-  process.env.ORION_ECONOMY_FILE = join(dir, "economy.json");
+  process.env.ORION_ECONOMY_FILE = join(dir, "economy.jsonl");
   process.env.ORION_SHIELD_SKIP_SHELL = "1";
   process.env.ORION_DEBT_FILE = join(dir, "debt.json");
   // shield() fails honestly when the change does not exist (v0.10), so the
