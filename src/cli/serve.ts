@@ -173,6 +173,24 @@ export function redactDeep(value: unknown): unknown {
 // 3.10 rate-limit: per-address sliding window of recent request timestamps.
 const WINDOW_MS = 60_000;
 const HITS: Map<string, number[]> = new Map();
+
+/** TTL cleanup for HITS map — run every 60s to prevent memory leak (v0.57). */
+let _rateCleanup: ReturnType<typeof setInterval> | null = null;
+function startRateCleanup(): void {
+  if (_rateCleanup) return;
+  // Skip in test environment.
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return;
+  _rateCleanup = setInterval(() => {
+    const now = Date.now();
+    for (const [addr, timestamps] of HITS) {
+      const recent = timestamps.filter((t) => now - t < WINDOW_MS);
+      if (recent.length === 0) HITS.delete(addr);
+      else HITS.set(addr, recent);
+    }
+  }, 60_000);
+  // Allow garbage collection on process exit.
+  if (typeof _rateCleanup?.unref === "function") _rateCleanup.unref();
+}
 function rateLimitLimit(): number {
   const raw = process.env.ORION_SERVE_RATE_LIMIT;
   if (raw === undefined) return 60; // default: 60 req/min per address
@@ -437,6 +455,9 @@ export function startServer(
   const loopback = isLoopbackHost(opts.host ?? "127.0.0.1");
   // Explicit token wins; otherwise a non-loopback bind must not be open.
   const authToken = opts.token ?? (loopback ? undefined : generateToken());
+
+  // Start rate-limit TTL cleanup (v0.57).
+  startRateCleanup();
 
   const server = http.createServer((req, res) => {
     const url = new URL(
