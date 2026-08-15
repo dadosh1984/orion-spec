@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { trace } from "./telemetry.js";
 import { OrionTrack } from "./track.js";
+import { jsonlStore, type Store } from "./store.js";
 
 /**
  * Orion Token Economy — a zero-dependency output compressor (v0.11).
@@ -549,19 +550,24 @@ export function economyLogPath(): string {
 /** Maximum rows kept in the ledger (trimmed on read). */
 const MAX_ECONOMY_ROWS = 5000;
 
-/**
- * Append one economy entry as a JSONL line (atomic O_APPEND).
- * Race-condition-safe: every parallel process writes its own line without
- * reading the full file first. The cap (5000 rows) is applied on read.
- */
-export function appendEconomy(entry: EconomyEntry): void {
-  try {
-    const path = economyLogPath();
-    const line = JSON.stringify({ ...entry, project: entry.project ?? currentProject() }) + "\n";
-    appendFileSync(path, line, "utf8");
-  } catch {
-    /* best effort — economy must never break the caller */
+/** Lazy Store instance — created on first use with the correct config path. */
+let _economyStore: Store<EconomyEntry> | null = null;
+let _lastEconomyPath = "";
+
+/** Reset the cached economy store handle (for tests changing ORION_ECONOMY_FILE). */
+export function resetEconomyStore(): void {
+  _economyStore = null;
+  _lastEconomyPath = "";
+}
+
+function economyStore(): Store<EconomyEntry> {
+  const path = economyLogPath();
+  if (!_economyStore || _lastEconomyPath !== path) {
+    _economyStore = jsonlStore<EconomyEntry>(path);
+    _lastEconomyPath = path;
+    migrateLegacyEconomy();
   }
+  return _economyStore;
 }
 
 /** Migrate old economy.json to economy.jsonl if it exists (idempotent, best-effort). */
@@ -574,7 +580,6 @@ function migrateLegacyEconomy(): void {
     if (Array.isArray(raw)) {
       const lines = raw.map((e: EconomyEntry) => JSON.stringify(e) + "\n").join("");
       writeFileSync(newPath, lines, "utf8");
-      // Keep old file as backup; don't delete.
     }
   } catch {
     /* best effort */
@@ -582,29 +587,22 @@ function migrateLegacyEconomy(): void {
 }
 
 /**
- * Which project the current working directory belongs to:
+ * Which project the current working directory belongs to.
  * package.json name → git-root directory name → cwd basename.
- * Zero-dependency: git root is found by walking up, no `git` exec.
  */
 export function currentProject(): string {
   try {
     if (existsSync("package.json")) {
-      const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
-        name?: unknown;
-      };
-      if (typeof pkg.name === "string" && pkg.name.trim()) {
-        return pkg.name.trim();
-      }
+      const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { name?: unknown };
+      if (typeof pkg.name === "string" && pkg.name.trim()) return pkg.name.trim();
     }
-  } catch {
-    /* fall through */
-  }
+  } catch { /* fall through */ }
   const root = gitRoot();
   if (root) return basename(root);
   return basename(process.cwd());
 }
 
-/** Nearest ancestor directory containing a .git entry, or null. */
+/** Nearest ancestor dir with a .git entry. */
 function gitRoot(): string | null {
   let dir = process.cwd();
   for (let i = 0; i < 12; i++) {
@@ -616,25 +614,19 @@ function gitRoot(): string | null {
   return null;
 }
 
-/** Read the economy ledger (empty when missing/corrupt). JSONL format: one JSON object per line. */
+/** Append one economy entry (JSONL, atomic). */
+export function appendEconomy(entry: EconomyEntry): void {
+  try {
+    economyStore().append({ ...entry, project: entry.project ?? currentProject() });
+  } catch {
+    /* best effort — economy must never break the caller */
+  }
+}
+
+/** Read the economy ledger (capped to MAX_ECONOMY_ROWS). */
 export function readEconomy(): EconomyEntry[] {
   try {
-    migrateLegacyEconomy();
-    const path = economyLogPath();
-    if (!existsSync(path)) return [];
-    const text = readFileSync(path, "utf8");
-    const rows: EconomyEntry[] = [];
-    for (const raw of text.split("\n")) {
-      const trimmed = raw.trim();
-      if (!trimmed) continue;
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === "object") rows.push(parsed as EconomyEntry);
-      } catch {
-        /* skip corrupt line */
-      }
-    }
-    // Trim to MAX_ECONOMY_ROWS oldest lines on read.
+    const rows = economyStore().load();
     if (rows.length > MAX_ECONOMY_ROWS) rows.splice(0, rows.length - MAX_ECONOMY_ROWS);
     return rows;
   } catch {

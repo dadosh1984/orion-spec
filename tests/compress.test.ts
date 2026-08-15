@@ -12,6 +12,7 @@ import {
   economyStats,
   firstToken,
   currentProject,
+  resetEconomyStore,
 } from "../src/core/compress.js";
 import { OrionTrack } from "../src/core/track.js";
 
@@ -23,6 +24,9 @@ beforeEach(() => {
   process.chdir(dir);
   process.env.ORION_CACHE_DIR = join(dir, "cache");
   process.env.ORION_ECONOMY_FILE = join(dir, "economy.jsonl");
+  resetEconomyStore();
+  // Write empty file so economy starts clean in this suite.
+  writeFileSync(process.env.ORION_ECONOMY_FILE, "", "utf8");
 });
 
 afterEach(() => {

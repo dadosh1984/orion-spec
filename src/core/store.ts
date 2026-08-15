@@ -1,0 +1,119 @@
+/**
+ * Abstract storage layer — Store<T> (v0.57).
+ *
+ * Единый интерфейс для файловых хранилищ Orion (economy, lessons).
+ * Реализации: fileStore (JSON array), jsonlStore (JSONL + O_APPEND),
+ * memoryStore (для тестов).
+ *
+ * Кэш-файлы track не используют Store — у них другой паттерн (key-value).
+ */
+
+import { existsSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
+
+/** Generic persistent store. */
+export interface Store<T> {
+  load(): T[];
+  append(entry: T): void;
+  replace(entries: T[]): void;
+  /** Trim to max entries, optionally sorted (lowest dropped first). */
+  cap(max: number, sortBy?: (a: T, b: T) => number): void;
+}
+
+/** File-system store backed by a JSON array file. */
+export function fileStore<T>(path: string): Store<T> {
+  function read(): T[] {
+    try {
+      if (!existsSync(path)) return [];
+      const raw = JSON.parse(readFileSync(path, "utf8"));
+      return Array.isArray(raw) ? (raw as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  function write(rows: T[]): void {
+    writeFileSync(path, JSON.stringify(rows), "utf8");
+  }
+  return {
+    load: read,
+    append(entry) {
+      const rows = read();
+      rows.push(entry);
+      write(rows);
+    },
+    replace: write,
+    cap(max, sortBy) {
+      let rows = read();
+      if (sortBy) rows = rows.sort(sortBy);
+      if (rows.length > max) rows = rows.slice(-max);
+      write(rows);
+    },
+  };
+}
+
+/** JSONL store — append-only via O_APPEND, no read-modify-write. */
+export function jsonlStore<T>(path: string): Store<T> {
+  return {
+    load(): T[] {
+      try {
+        if (!existsSync(path)) return [];
+        const text = readFileSync(path, "utf8");
+        const rows: T[] = [];
+        for (const raw of text.split("\n")) {
+          const trimmed = raw.trim();
+          if (!trimmed) continue;
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed && typeof parsed === "object") rows.push(parsed as T);
+          } catch {
+            /* skip corrupt line */
+          }
+        }
+        return rows;
+      } catch {
+        return [];
+      }
+    },
+    append(entry: T): void {
+      try {
+        appendFileSync(path, JSON.stringify(entry) + "\n", "utf8");
+      } catch {
+        /* best effort */
+      }
+    },
+    replace(entries: T[]): void {
+      try {
+        const text = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
+        writeFileSync(path, text, "utf8");
+      } catch {
+        /* best effort */
+      }
+    },
+    cap(max: number, sortBy?: (a: T, b: T) => number): void {
+      try {
+        let rows = this.load();
+        if (sortBy) rows = rows.sort(sortBy);
+        if (rows.length > max) rows = rows.slice(-max);
+        this.replace(rows);
+      } catch {
+        /* best effort */
+      }
+    },
+  };
+}
+
+/** In-memory store for tests (never touches disk). */
+export function memoryStore<T>(): Store<T> {
+  const buf: T[] = [];
+  return {
+    load: () => [...buf],
+    append: (e) => buf.push(e),
+    replace: (es) => {
+      buf.length = 0;
+      buf.push(...es);
+    },
+    cap: (max, sortBy) => {
+      if (sortBy) buf.sort(sortBy);
+      if (buf.length > max) buf.splice(0, buf.length - max);
+    },
+  };
+}
