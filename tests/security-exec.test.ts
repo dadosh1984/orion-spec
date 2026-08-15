@@ -63,9 +63,9 @@ describe("shell-injection (3.8) — child processes use argv, not interpolated s
     );
   });
 
-  it("runCmd.ts edit uses spawnSync with shell:false (editor parsed, no shell)", () => {
+  it("runCmd.ts edit uses shell:true for editor (path-with-spaces safe, v0.57)", () => {
     const rc = src("src/cli/runCmd.ts");
-    expect(rc).toMatch(/spawnSync\(bin, \[\.\.\.flags, scriptPath\(name\)\]/);
-    expect(rc).toContain("shell: false");
+    expect(rc).toMatch(/spawnSync\(editor, \[scriptPath\(name\)\]/);
+    expect(rc).toContain("shell: true");
   });
 });

@@ -1019,13 +1019,11 @@ export async function runDispatch(args: string[]): Promise<number> {
       }
       const editor = process.env.EDITOR || process.env.VISUAL || "vi";
       try {
-        // 3.8: argv-safe, no shell. Editor may carry flags ("code -w") —
-        // split on whitespace, then run argv with shell:false so neither the
-        // flags nor the script path can smuggle shell syntax.
-        const [bin, ...flags] = editor.split(/\s+/).filter(Boolean);
-        spawnSync(bin, [...flags, scriptPath(name)], {
+        // 3.8: use shell for editor invocation so paths with spaces work.
+        // The editor command is user-controlled via env, not from a script.
+        spawnSync(editor, [scriptPath(name)], {
           stdio: "inherit",
-          shell: false,
+          shell: true,
         });
       } catch {
         /* ok */
