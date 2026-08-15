@@ -139,6 +139,8 @@ interface WatcherEntry {
   pattern: string;
   skillName: string;
   createdAt: string;
+  /** Child process PID (v0.57). */
+  pid?: number;
 }
 
 function readWatchers(): WatcherEntry[] {
@@ -160,6 +162,7 @@ export function addFileWatcher(
   watchDir: string,
   pattern: string,
   skillName: string,
+  pid?: number,
 ): WatcherEntry {
   const entries = readWatchers().filter((e) => e.name !== name);
   const entry: WatcherEntry = {
@@ -168,6 +171,7 @@ export function addFileWatcher(
     pattern,
     skillName,
     createdAt: new Date().toISOString(),
+    pid,
   };
   entries.push(entry);
   writeWatchers(entries);

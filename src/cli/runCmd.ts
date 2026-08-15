@@ -106,8 +106,6 @@ export async function runDispatch(args: string[]): Promise<number> {
         if (!existsSync(watchDir))
           return fail(`directory not found: ${watchDir}`);
         try {
-          addFileWatcher(wName, watchDir, pattern, wName);
-          // Spawn a detached background watcher process (v0.48).
           const child = spawn(
             process.execPath,
             [
@@ -128,9 +126,31 @@ export async function runDispatch(args: string[]): Promise<number> {
             ],
             { detached: true, stdio: "ignore", cwd: process.cwd() },
           );
+          if (!child.pid) {
+            return fail("Failed to spawn watcher process (no PID).");
+          }
+          // Register watcher with PID before unref (v0.57).
+          addFileWatcher(wName, watchDir, pattern, wName, child.pid);
           child.unref();
+          // Cleanup on parent exit (v0.57): kill the child.
+          const killChild = () => {
+            try {
+              process.kill(child.pid!, "SIGTERM");
+            } catch {
+              /* already gone */
+            }
+          };
+          process.on("exit", killChild);
+          process.on("SIGINT", () => {
+            killChild();
+            process.exit(0);
+          });
+          process.on("SIGTERM", () => {
+            killChild();
+            process.exit(0);
+          });
           console.log(
-            `${statusMark("done")} Watcher "${wName}" started: ${watchDir} (${pattern}) → orion run ${wName}`,
+            `${statusMark("done")} Watcher "${wName}" started (PID ${child.pid}): ${watchDir} (${pattern}) → orion run ${wName}`,
           );
           console.log(`  Stop: orion run watch stop ${wName}`);
         } catch (err) {
@@ -144,6 +164,17 @@ export async function runDispatch(args: string[]): Promise<number> {
       if (name === "stop") {
         const wName = rest[0];
         if (!wName) return fail("run watch stop requires a watcher name");
+        // Kill child process before removing (v0.57).
+        const { listWatchers } = await import("../core/router.js");
+        const watchers = listWatchers();
+        const w = watchers.find((e) => e.name === wName);
+        if (w?.pid) {
+          try {
+            process.kill(w.pid, "SIGTERM");
+          } catch {
+            /* already dead */
+          }
+        }
         removeFileWatcher(wName);
         console.log(`${statusMark("done")} Watcher "${wName}" stopped.`);
         return 0;
