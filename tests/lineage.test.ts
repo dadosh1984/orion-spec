@@ -16,7 +16,7 @@ import {
   lessonSourceChange,
   appliedTo,
 } from "../src/core/lineage.js";
-import { recordPattern, recordLesson } from "../src/core/lessons.js";
+import { recordPattern, recordLesson, resetLessonsStore } from "../src/core/lessons.js";
 
 const ORIG_CWD = process.cwd();
 const ORIG_L = process.env.ORION_LESSONS_FILE;
@@ -51,12 +51,14 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "orion-2-5-"));
   process.env.ORION_LESSONS_FILE = join(dir, "lessons.json");
   process.chdir(dir);
+  resetLessonsStore();
 });
 
 afterEach(() => {
   process.chdir(ORIG_CWD);
   delete process.env.ORION_LESSONS_FILE;
   if (ORIG_L) process.env.ORION_LESSONS_FILE = ORIG_L;
+  resetLessonsStore();
   rmSync(dir, { recursive: true, force: true });
 });
 

@@ -4,18 +4,16 @@
  * Единый интерфейс для файловых хранилищ Orion (economy, lessons).
  * Реализации: fileStore (JSON array), jsonlStore (JSONL + O_APPEND),
  * memoryStore (для тестов).
- *
- * Кэш-файлы track не используют Store — у них другой паттерн (key-value).
  */
 
 import { existsSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
 
-/** Generic persistent store. */
+/** Generic persistent store. cap keeps the last `max` entries (after optional sort ascending). */
 export interface Store<T> {
   load(): T[];
   append(entry: T): void;
   replace(entries: T[]): void;
-  /** Trim to max entries, optionally sorted (lowest dropped first). */
+  /** Trim to max entries, keeping the LAST ones (highest score after ascending sort). */
   cap(max: number, sortBy?: (a: T, b: T) => number): void;
 }
 
@@ -26,9 +24,7 @@ export function fileStore<T>(path: string): Store<T> {
       if (!existsSync(path)) return [];
       const raw = JSON.parse(readFileSync(path, "utf8"));
       return Array.isArray(raw) ? (raw as T[]) : [];
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   }
   function write(rows: T[]): void {
     writeFileSync(path, JSON.stringify(rows), "utf8");
@@ -43,7 +39,7 @@ export function fileStore<T>(path: string): Store<T> {
     replace: write,
     cap(max, sortBy) {
       let rows = read();
-      if (sortBy) rows = rows.sort(sortBy);
+      if (sortBy) rows.sort(sortBy);
       if (rows.length > max) rows = rows.slice(-max);
       write(rows);
     },
@@ -56,47 +52,35 @@ export function jsonlStore<T>(path: string): Store<T> {
     load(): T[] {
       try {
         if (!existsSync(path)) return [];
-        const text = readFileSync(path, "utf8");
         const rows: T[] = [];
-        for (const raw of text.split("\n")) {
+        for (const raw of readFileSync(path, "utf8").split("\n")) {
           const trimmed = raw.trim();
           if (!trimmed) continue;
           try {
             const parsed = JSON.parse(trimmed);
             if (parsed && typeof parsed === "object") rows.push(parsed as T);
-          } catch {
-            /* skip corrupt line */
-          }
+          } catch { /* skip corrupt */ }
         }
         return rows;
-      } catch {
-        return [];
-      }
+      } catch { return []; }
     },
     append(entry: T): void {
-      try {
-        appendFileSync(path, JSON.stringify(entry) + "\n", "utf8");
-      } catch {
-        /* best effort */
-      }
+      try { appendFileSync(path, JSON.stringify(entry) + "\n", "utf8"); }
+      catch { /* best effort */ }
     },
     replace(entries: T[]): void {
       try {
         const text = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
         writeFileSync(path, text, "utf8");
-      } catch {
-        /* best effort */
-      }
+      } catch { /* best effort */ }
     },
     cap(max: number, sortBy?: (a: T, b: T) => number): void {
       try {
         let rows = this.load();
-        if (sortBy) rows = rows.sort(sortBy);
+        if (sortBy) rows.sort(sortBy);
         if (rows.length > max) rows = rows.slice(-max);
         this.replace(rows);
-      } catch {
-        /* best effort */
-      }
+      } catch { /* best effort */ }
     },
   };
 }
@@ -107,10 +91,7 @@ export function memoryStore<T>(): Store<T> {
   return {
     load: () => [...buf],
     append: (e) => buf.push(e),
-    replace: (es) => {
-      buf.length = 0;
-      buf.push(...es);
-    },
+    replace: (es) => { buf.length = 0; buf.push(...es); },
     cap: (max, sortBy) => {
       if (sortBy) buf.sort(sortBy);
       if (buf.length > max) buf.splice(0, buf.length - max);
