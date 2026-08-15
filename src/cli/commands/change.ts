@@ -192,11 +192,26 @@ export const changeHandler: CommandHandler = async (args, opts) => {
     return r.specDrift ? 1 : 0;
   }
 
-  // --shield
+  // --shield: change-level guard (hazard scan + drift, v0.57).
   if (rest.includes("--shield")) {
-    const report = await shield(id, opts);
-    if (!report.allPass) return 1;
-    return 0;
+    const { runChangeShield } = await import("../../core/changeShield.js");
+    const result = await runChangeShield(id);
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      if (result.ok) {
+        console.log(`${statusMark("done")} change shield ${id}: PASS`);
+      } else {
+        console.log(`${statusMark("error")} change shield ${id}: FAIL`);
+        if (result.hazards.length) {
+          console.log(`  hazards (${result.hazards.length}):`);
+          for (const h of result.hazards) console.log(`    ${h}`);
+        }
+        if (result.drift === false)
+          console.log(`  drift: spec ↔ source mismatch`);
+      }
+    }
+    return result.ok ? 0 : 1;
   }
 
   // --out

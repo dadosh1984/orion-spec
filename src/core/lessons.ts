@@ -225,7 +225,7 @@ export async function importLessons(source: string): Promise<{
   }
   if (added > 0) {
     existing.sort(scoreSort);
-    if (existing.length > MAX_LESSONS) existing = existing.slice(0, MAX_LESSONS);
+    if (existing.length > MAX_LESSONS) existing.splice(MAX_LESSONS);
     getStore().replace(existing);
   }
   return { added, skipped, total: parsed.length };
