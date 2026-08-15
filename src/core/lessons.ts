@@ -107,7 +107,12 @@ export function recordLesson(lesson: NewLesson): Lesson {
     );
     if (!duplicate) {
       rows.push(entry);
-      if (rows.length > MAX_LESSONS) rows.splice(0, rows.length - MAX_LESSONS);
+      if (rows.length > MAX_LESSONS) {
+        // Sort by score descending before eviction — keep high-value lessons.
+        // ponytail: rung3 score-trim (lessons v0.57).
+        rows.sort((a, b) => ((b.score ?? 0) - (a.score ?? 0)));
+        rows.splice(MAX_LESSONS);
+      }
       writeFileSync(lessonsPath(), JSON.stringify(rows), "utf8");
       // Visible self-correction (v0.26): the terminal shows that a lesson
       // was recorded (stderr — protocol-safe for CLI and MCP).
@@ -238,8 +243,11 @@ export async function importLessons(source: string): Promise<{
     added++;
   }
   if (added > 0) {
-    if (existing.length > MAX_LESSONS)
-      existing.splice(0, existing.length - MAX_LESSONS);
+    if (existing.length > MAX_LESSONS) {
+      // ponytail: rung3 score-trim (lessons v0.57) — same sort as recordLesson.
+      existing.sort((a, b) => ((b.score ?? 0) - (a.score ?? 0)));
+      existing.splice(MAX_LESSONS);
+    }
     writeFileSync(lessonsPath(), JSON.stringify(existing), "utf8");
   }
   return { added, skipped, total: parsed.length };

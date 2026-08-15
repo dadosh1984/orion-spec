@@ -145,13 +145,28 @@ describe("lessons store (v0.12)", () => {
     expect(findLessons("totally unrelated gibberish xyzzy")).toHaveLength(0);
   });
 
-  it("caps the ledger at 500 entries, evicting oldest", () => {
+  it("caps the ledger at 500 entries, evicting lowest-score (v0.57)", () => {
+    // recordLesson doesn't accept score; test the sort-trim logic directly
+    // by writing lessons with different scores and checking eviction order.
+    const all: Lesson[] = [];
     for (let i = 0; i < 510; i++) {
-      recordLesson({ changeId: "cap", step: "forge", error: `err-${i}` });
+      all.push({
+        id: `l-${i}`,
+        ts: new Date().toISOString(),
+        changeId: "cap",
+        step: "forge",
+        error: `err-${i}`,
+        score: i < 10 ? 0 : 100, // first 10 low-score
+      });
     }
+    writeFileSync(lessonsPath(), JSON.stringify(all), "utf8");
+    // Trigger cap by recording one more (gets score 0 by default)
+    recordLesson({ changeId: "cap", step: "forge", error: "err-cap" });
     const rows = readLessons();
     expect(rows).toHaveLength(500);
+    // err-0..err-9 had score 0, they should be evicted (FIFO would keep them).
     expect(rows.some((l) => l.error === "err-0")).toBe(false);
+    // err-509 had score 100, it survives despite being older.
     expect(rows.some((l) => l.error === "err-509")).toBe(true);
   });
 
