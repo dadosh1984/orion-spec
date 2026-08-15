@@ -274,3 +274,29 @@ shield не гонялся (нет change), но ручной прогон вс�
 `orion next_step` (покажет высший приоритет) или `orion run match
 "<реальный-шаг>"` (накопить miss-log). Не делать превентивную полировку
 Спринт D; ждать сигнала. Продукт production-ready на npm 0.57.0.
+
+### SESSION-SAVE 2026-08-15 — аудит и чистка (v0.57 → 0.58 prep)
+
+**Состояние:** HEAD clean (`8a892dc`), `orion --version` 0.57.0, npm 0.57.0 published. Активных change нет (архивные неактуальны).
+
+**Сделано в сессии (10 коммитов):**
+1. `036483a` **fix(economy):** JSONL + O_APPEND — race condition fix (#2)
+2. `23d9ca5` **fix(runCmd):** `$EDITOR` shell:true — пути с пробелами (#7)
+3. `ef2a2cd` **fix(watcher):** PID tracking + cleanup — zombie prevention (#4)
+4. `509e3db` **fix(serve):** rate-limit TTL cleanup — memory leak (#10)
+5. `debfa8c` **fix(hazards):** normalizeSource — multi-line bypass (#8)
+6. `859ca65` **feat(store):** Store<T> layer + economy jsonlStore migration
+7. `4ed3c18` **refactor(lessons):** fileStore migration, memoryStore в тестах
+8. `519412c` **feat(change):** `orion change <id> --shield` — hazard+drift guard
+9. `ac53098` **chore:** удалить phase*.test.ts (4 файла)
+10. `8a892dc` **fix(compress):** Unicode-safe regex для grep rule matching (#11)
+
+**Аудит закрыт:** 3 🔴, 3 🟠, 1 🟡 бага исправлено. 2 false positive. 1 намеренная архитектура.
+**Новый код:** `src/core/store.ts`, `src/core/changeShield.ts`, `tests/store.test.ts`, `tests/change-shield.test.ts`.
+**Гейт:** 84 файла / 874 теста, tsc --noEmit чисто, shield не гонялся (нет active change).
+
+**Открыто (v0.58):**
+- Legacy switch cleanup (~35 deprecated aliases) — `src/cli/parse.ts` + `commands.ts`
+- `out` shield-gate — `out` отказывается писать SUCCESS если `change --shield` FAIL
+- `Store<T>` для `track.ts` — последний модуль с raw file I/O
+- Shell completion, TypeDoc — низкий приоритет
