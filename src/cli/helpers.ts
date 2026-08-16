@@ -25,6 +25,8 @@ export interface CliOptions {
   lang?: "en" | "ru";
   /** Save forge result as a runnable script (v0.39). */
   saveAs?: string;
+  /** Auto-check blockers after refine (v0.59). */
+  auto: boolean;
 }
 
 /** Print JSON or plain text depending on the --json flag. */

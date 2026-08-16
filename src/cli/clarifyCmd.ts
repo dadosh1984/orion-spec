@@ -115,8 +115,8 @@ export async function answerCommand(args: string[], _flags: unknown): Promise<nu
   return 0;
 }
 
-/** orion refine <change-id> */
-export async function refineCommand(args: string[]): Promise<number> {
+/** orion refine <change-id> [--auto] */
+export async function refineCommand(args: string[], auto = false): Promise<number> {
   const [changeId] = args;
   if (!changeId) {
     console.error('orion: refine requires a change id, e.g. orion refine my-change');
@@ -128,10 +128,17 @@ export async function refineCommand(args: string[]): Promise<number> {
   }
 
   try {
-    refine(changeId);
+    const blockersMsg = refine(changeId, auto);
     const state = loadClarifyState(changeId);
     const answered = state.answers.length;
     console.log(`${EMOJI.done} Context refined for "${changeId}" (${answered} answer(s) merged).`);
+
+    if (blockersMsg) {
+      console.error(`${EMOJI.blocker} ${blockersMsg}`);
+      console.error('  Resolve blockers with orion answer, then retry refine --auto.');
+      return 1;
+    }
+
     console.log('  Run: orion forge <change-id> to apply updated context.');
     return 0;
   } catch (err) {

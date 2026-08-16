@@ -154,6 +154,7 @@ export function parseArgs(argv: string[]): {
     dry: false,
     watch: false,
     json: false,
+    auto: false,
     npm: false,
     port: 0,
     ui: true,
@@ -179,6 +180,7 @@ export function parseArgs(argv: string[]): {
       parallel: { type: "string" },
       token: { type: "string" },
       lang: { type: "string" },
+      auto: { type: "boolean" },
       "save-as": { type: "string" },
     },
   });
@@ -189,6 +191,7 @@ export function parseArgs(argv: string[]): {
   opts.dry = values.dry === true;
   opts.watch = values.watch === true;
   opts.json = values.json === true;
+  opts.auto = values.auto === true;
   opts.npm = values.npm === true;
   if (values.ui === true) opts.ui = true;
 

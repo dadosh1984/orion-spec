@@ -290,3 +290,47 @@ describe('refine', () => {
     expect(raw.context).toContain('refactor');
   });
 });
+
+it('refine auto returns blocker message when blockers remain', () => {
+  const id = 'test-refine-auto-blocked';
+  createChangeDir(id);
+  writeProposal(id, { goal: 'refactor the module' });
+
+  const engine = new SocratesEngine();
+  const questions = engine.analyze({
+    changeId: id,
+    proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+    snippetsDir: 'changes/' + id + '/snippets',
+  });
+  const store = clarifyStore(id);
+  store.questions.replace(questions);
+
+  const result = refine(id, true);
+  expect(result).not.toBeNull();
+  expect(result).toContain('blocker');
+});
+
+it('refine auto returns null when all blockers resolved', () => {
+  const id = 'test-refine-auto-pass';
+  createChangeDir(id);
+  writeProposal(id, { goal: 'refactor the module' });
+
+  const engine = new SocratesEngine();
+  const questions = engine.analyze({
+    changeId: id,
+    proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+    snippetsDir: 'changes/' + id + '/snippets',
+  });
+  const store = clarifyStore(id);
+  store.questions.replace(questions);
+
+  const answers = questions
+    .filter(q => q.priority === 'blocker')
+    .map(q => ({ questionId: q.id, text: 'acknowledged', ts: new Date().toISOString() }));
+  store.answers.replace(answers);
+  const dialogs = answers.map((a: Answer) => ({ role: 'agent' as const, text: a.text, ts: a.ts }));
+  store.dialogue.replace(dialogs);
+
+  const result = refine(id, true);
+  expect(result).toBeNull();
+});

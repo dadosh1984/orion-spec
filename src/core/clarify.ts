@@ -429,7 +429,7 @@ export function appendDialogue(changeId: string, entry: DialogueEntry): void {
   store.dialogue.replace(state.dialogue);
 }
 
-export function refine(changeId: string): void {
+export function refine(changeId: string, autoCheck = false): string | null {
   const proposal = readJsonSync<Proposal>(`changes/${changeId}/proposal.json`);
   if (!proposal) {
     throw new Error(`change "${changeId}" has no proposal.json`);
@@ -450,6 +450,22 @@ export function refine(changeId: string): void {
     text: 'Context updated via answers. Re-run orion forge <change-id> to apply.',
     ts: now(),
   });
+
+  // --auto: check blockers after merge
+  if (autoCheck) {
+    const blockers = getUnansweredBlockersSync(changeId);
+    if (blockers.length > 0) {
+      const msg = `${blockers.length} blocker(s) remain after answers: ${blockers.map(b => b.id).join(', ')}`;
+      appendDialogue(changeId, {
+        role: 'orion',
+        text: msg,
+        ts: now(),
+      });
+      return msg;
+    }
+  }
+
+  return null;
 }
 
 function buildContext(goal: string, answers: Answer[]): string {
@@ -458,6 +474,19 @@ function buildContext(goal: string, answers: Answer[]): string {
     parts.push(`${a.questionId}: ${a.text}`);
   }
   return parts.join(' | ');
+}
+
+/** Sync helper for refine --auto: check blockers without loading state twice. */
+function getUnansweredBlockersSync(changeId: string): Array<{ id: string; text: string }> {
+  try {
+    const state = loadClarifyState(changeId);
+    const answeredIds = new Set(state.answers.map(a => a.questionId));
+    return state.questions
+      .filter(q => q.priority === 'blocker' && !answeredIds.has(q.id))
+      .map(q => ({ id: q.id, text: q.text }));
+  } catch {
+    return [];
+  }
 }
 
 /** Read and parse JSON synchronously (needed for clarify which runs sync). */

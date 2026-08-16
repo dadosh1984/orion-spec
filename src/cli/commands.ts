@@ -449,7 +449,7 @@ export async function main(argv: string[]): Promise<number> {
     }
 
     case "refine":
-      return await refineCommand(args);
+      return await refineCommand(args, opts.auto);
 
     case "answer":
       return await answerCommand(args, opts);
