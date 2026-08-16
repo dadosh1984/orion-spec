@@ -112,46 +112,68 @@ export async function chatCommand(prompt: string, auto = false, full = false): P
       return 1;
     }
     process.stderr.write(`${icon(true)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${DIM}all clear — no questions${RESET}  ${elapsed(t3)}\n`);
+  } else if (!auto) {
+    // Manual mode: show questions, wait for user
+    const blockerList = unresolved.filter(q => q.priority === 'blocker');
+    const clarifyingList = unresolved.filter(q => q.priority === 'clarifying');
+    for (const q of unresolved) {
+      const icon2 = q.priority === 'blocker' ? `${RED}\u26A0${RESET}` : `${YELLOW}?${RESET}`;
+      console.error(`  ${icon2} ${q.text.slice(0, 80)}`);
+    }
+    const total = unresolved.length;
+    const bCount = blockerList.length;
+    process.stderr.write(`\n  ${ARROW}  ${bCount} blocker(s), ${total - bCount} clarifying — answer via: orion answer ${changeId} <answers.json>`);
+    process.stderr.write(`\n  ${ARROW}  Then retry: orion chat "${prompt}"`);
+    return 1;
   } else {
-    const blockers = unresolved.filter(q => q.priority === 'blocker');
-    const clarifying = unresolved.filter(q => q.priority === 'clarifying');
+    // ── AUTO MODE: LLM answers ALL questions in a loop ──
+    process.stderr.write(`${YELLOW}${BOLD}  \u231B  AI agent resolving ${unresolved.length} question(s)...${RESET}\n`);
+    let iteration = 0;
+    let remaining = unresolved.length;
 
-    if (blockers.length > 0) {
-      process.stderr.write(`${icon(false)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${RED}${blockers.length} blocker(s) require human input${RESET}  ${elapsed(t3)}\n`);
-      for (const q of blockers) {
-        console.error(`  ${RED}\u26A0${RESET} ${q.text.slice(0, 80)}`);
-      }
-      console.error(`\n  ${ARROW}  Answer: orion answer ${changeId} <answers.json>`);
-      console.error(`  ${ARROW}  Retry:  orion chat "${prompt}"`);
-      return 1;
-    }
+    while (remaining > 0 && iteration < 10) {
+      iteration++;
+      const allQuestions = generateQuestions(changeId);
+      const openQuestions = allQuestions.filter(q => !q.resolved);
+      remaining = openQuestions.length;
 
-    if (clarifying.length > 0 && !auto) {
-      process.stderr.write(`${icon(false)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${YELLOW}${clarifying.length} clarifying question(s)${RESET}  ${elapsed(t3)}\n`);
-      for (const q of clarifying) {
-        console.error(`  ${YELLOW}?${RESET} ${q.text.slice(0, 80)}`);
-      }
-      console.error(`\n  ${ARROW}  Answer: orion answer ${changeId} <answers.json>`);
-      console.error(`  ${ARROW}  Retry:  orion chat "${prompt}"`);
-      return 1;
-    }
+      if (remaining === 0) break;
 
-    // Auto-answer clarifying questions
-    if (clarifying.length > 0 && auto) {
-      process.stderr.write(`${YELLOW}${BOLD}  \u231B  Auto-answering ${clarifying.length} question(s)...${RESET}\n`);
+      process.stderr.write(`  ${DIM}Round ${iteration}: ${remaining} open question(s)...${RESET}\n`);
+
       const proposal = await readProposalJson(changeId);
       const goal = proposal?.goal ?? '';
       const context = proposal?.context ?? '';
 
       const answers: Answer[] = [];
-      for (const q of clarifying) {
+      for (const q of openQuestions.slice(0, 5)) {
+        process.stderr.write(`  ${ARROW} ${q.id}: ${q.text.slice(0, 60)}... `);
         const text = await askWithFallback(q, goal, context);
         answers.push({ questionId: q.id, text, ts: new Date().toISOString() });
-        process.stderr.write(`  ${DIM}${q.id}: ${text.slice(0, 60)}${RESET}\n`);
+        process.stderr.write(`${GREEN}${CHECK}${RESET}\n`);
       }
-      applyAnswers(changeId, answers);
-      process.stderr.write(`${icon(true)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${DIM}${answers.length} auto-answered${RESET}  ${elapsed(t3)}\n`);
+
+      if (answers.length > 0) {
+        applyAnswers(changeId, answers);
+        process.stderr.write(`  ${DIM}${answers.length} answer(s) applied${RESET}\n`);
+      } else {
+        // No answers generated — force-break to avoid infinite loop
+        process.stderr.write(`  ${RED}No answers generated — aborting auto-clarify${RESET}\n`);
+        return 1;
+      }
     }
+
+    const finalQuestions = generateQuestions(changeId);
+    const finalOpen = finalQuestions.filter(q => !q.resolved);
+    if (finalOpen.length > 0) {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${RED}${finalOpen.length} question(s) remain after ${iteration} rounds${RESET}  ${elapsed(t3)}\n`);
+      for (const q of finalOpen) {
+        process.stderr.write(`  ${RED}\u26A0${RESET} ${q.text.slice(0, 80)}\n`);
+      }
+      return 1;
+    }
+
+    process.stderr.write(`${icon(true)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${DIM}${iteration} round(s), all resolved${RESET}  ${elapsed(t3)}\n`);
   }
 
   if (full) {
