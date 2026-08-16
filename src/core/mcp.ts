@@ -529,6 +529,48 @@ export function getMcpTools(): McpTool[] {
       inputSchema: { type: "object", properties: {} },
       handler: async () => JSON.stringify({ version: readVersion() }, null, 2),
     },
+    {
+      name: "chat",
+      description: "Execute a software change via Orion autonomous pipeline (draft + clarify + answer + refine). Call repeatedly — blockers are returned so the agent can provide answers via the answer tool.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          prompt: { type: "string", description: "The change goal" },
+          auto: { type: "boolean", description: "Auto-answer clarifying questions via LLM (default false)" },
+        },
+        required: ["prompt"],
+      },
+      handler: async (args) => {
+        const prompt = String(args.prompt ?? "");
+        if (!prompt.trim()) throw new Error("chat requires a prompt");
+        const { chatCommand } = await import("../cli/chatCmd.js");
+        const exitCode = await chatCommand(prompt, Boolean(args.auto));
+        return JSON.stringify({ exitCode }, null, 2);
+      },
+    },
+    {
+      name: "status",
+      description: "Get the current status of all changes: task progress, guard verdict, artifact completeness.",
+      inputSchema: { type: "object", properties: {} },
+      handler: async () => {
+        const changes = scanChanges();
+        return JSON.stringify(changes, null, 2);
+      },
+    },
+    {
+      name: "lessons",
+      description: "List recorded self-correction lessons (optionally filtered by change id).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          changeId: { type: "string", description: "Filter by change id (optional)" },
+        },
+      },
+      handler: async (args) => {
+        const changeId = args.changeId ? String(args.changeId) : undefined;
+        return JSON.stringify(listLessons(changeId), null, 2);
+      },
+    },
   ];
 }
 

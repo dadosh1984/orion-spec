@@ -1,0 +1,21 @@
+{
+  "title": "test-автономный-режим-auto",
+  "goal": "test автономный режим --auto",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2,
+  "appliesLessons": [
+    "onec-converter-новый-режим:forge:f76571cd7ebe",
+    "onec-converter-новый-режим:forge:3768931c4fb3",
+    "onec-converter-новый-режим:forge:03d3da2b5513",
+    "onec-converter-новый-режим:forge:f7c7a44bc219",
+    "onec-converter-новый-режим:shield:c2fcf201fda6"
+  ],
+  "answers": [],
+  "context": "test автономный режим --auto"
+}
