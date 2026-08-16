@@ -52,6 +52,7 @@ describe("parseArgs", () => {
       json: true,
       auto: false,
       full: false,
+      force: false,
       npm: false,
       port: 0,
       ui: true,

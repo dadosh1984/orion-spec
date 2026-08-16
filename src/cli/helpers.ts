@@ -29,6 +29,8 @@ export interface CliOptions {
   auto: boolean;
   /** Full pipeline: forge + shield + out (v0.62). */
   full: boolean;
+  /** Force bypass prompt drift guard (v0.64). */
+  force: boolean;
 }
 
 /** Print JSON or plain text depending on the --json flag. */

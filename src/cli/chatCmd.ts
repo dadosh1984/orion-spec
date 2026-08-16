@@ -52,7 +52,7 @@ function resultLine(label: string, value: string, color = ''): void {
 }
 
 // ─── Chat command ────────────────────────────────────────
-export async function chatCommand(prompt: string, auto = false, full = false): Promise<number> {
+export async function chatCommand(prompt: string, auto = false, full = false, force = false): Promise<number> {
   const t0 = process.hrtime.bigint();
 
   console.log(`\n${BOLD}${CYAN}  Orion v${readVersionSafe()}${RESET} ${GRAY}— Autonomous Change Pipeline${RESET}\n`);
@@ -77,7 +77,7 @@ export async function chatCommand(prompt: string, auto = false, full = false): P
   }
 
   if (!changeId) {
-    const proposal = await think(prompt, {});
+    const proposal = await think(prompt, { force });
     if (!proposal?.title) {
       console.error(`\n  ${icon(false)} ${RED}think failed — no proposal created${RESET}`);
       return 1;
@@ -177,26 +177,30 @@ export async function chatCommand(prompt: string, auto = false, full = false): P
   }
 
   if (full) {
-    // ── STEP 4/6: FORGE ─────────────────────────
+    // ── STEP 4/6: FORGE — graceful, skip if no snippets ──
     const t4 = process.hrtime.bigint();
-    process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}writing code...${RESET}\n`);
-    try {
-      const summary = await forge(changeId, {
-        noCache: false,
-        onTask: (row) => {
-          const m = row.status === 'done' ? `${GREEN}${CHECK}${RESET}` : row.status === 'skipped' ? `${DIM}${CHECK}${RESET}` : `${DIM}\u25CB${RESET}`;
-          process.stderr.write(`  ${m} ${DIM}${row.desc.slice(0, 60)}${RESET}\n`);
-        },
-      });
-      if (summary.ok) {
-        process.stderr.write(`${icon(true)} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}${summary.done ?? '?'}/${summary.total ?? '?'} tasks done${RESET}  ${elapsed(t4)}\n`);
-      } else {
-        process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${RED}failed${RESET}  ${elapsed(t4)}\n`);
-        return 1;
+    const tasksFile = `changes/${changeId}/tasks.md`;
+    const snippetsDir = `changes/${changeId}/snippets`;
+    if (!existsSync(tasksFile) || !existsSync(snippetsDir)) {
+      process.stderr.write(`${YELLOW}\u26A0${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}skipped — no tasks/snippets${RESET}  ${elapsed(t4)}\n`);
+    } else {
+      process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}writing code...${RESET}\n`);
+      try {
+        const summary = await forge(changeId, {
+          noCache: false,
+          onTask: (row) => {
+            const m = row.status === 'done' ? `${GREEN}${CHECK}${RESET}` : row.status === 'skipped' ? `${DIM}${CHECK}${RESET}` : `${DIM}\u25CB${RESET}`;
+            process.stderr.write(`  ${m} ${DIM}${row.desc.slice(0, 60)}${RESET}\n`);
+          },
+        });
+        if (summary.ok) {
+          process.stderr.write(`${icon(true)} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}${summary.done ?? '?'}/${summary.total ?? '?'} tasks done${RESET}  ${elapsed(t4)}\n`);
+        } else {
+          process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}skipped — no implementable snippets${RESET}  ${elapsed(t4)}\n`);
+        }
+      } catch (err) {
+        process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}skipped — ${err instanceof Error ? err.message.slice(0, 40) : 'error'}${RESET}\n`);
       }
-    } catch (err) {
-      process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${RED}${err instanceof Error ? err.message : 'error'}${RESET}\n`);
-      return 1;
     }
 
     // ── STEP 5/6: SHIELD ────────────────────────

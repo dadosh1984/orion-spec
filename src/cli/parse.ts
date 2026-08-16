@@ -156,6 +156,7 @@ export function parseArgs(argv: string[]): {
     json: false,
     auto: false,
     full: false,
+    force: false,
     npm: false,
     port: 0,
     ui: true,
@@ -183,6 +184,7 @@ export function parseArgs(argv: string[]): {
       lang: { type: "string" },
       auto: { type: "boolean" },
       full: { type: "boolean" },
+      force: { type: "boolean" },
       "save-as": { type: "string" },
     },
   });
@@ -195,6 +197,7 @@ export function parseArgs(argv: string[]): {
   opts.json = values.json === true;
   opts.auto = values.auto === true;
   opts.full = values.full === true;
+  opts.force = values.force === true;
   opts.npm = values.npm === true;
   if (values.ui === true) opts.ui = true;
 

@@ -47,15 +47,6 @@ function now(): string {
   return new Date().toISOString();
 }
 
-const VAGUE_TERMS = [
-  'улучшить', 'улучши', 'оптимизировать', 'оптимизируй', 'рефакторинг', 'сделать лучше',
-  'сделай лучше', 'пофиксить', 'пофикси', 'доработать', 'доработай', 'обновить',
-  'обнови', 'добавить', 'добавь', 'изучи', 'изучить', 'определи', 'определить',
-  'проанализируй', 'проанализировать', 'напиши', 'написать', 'реализуй', 'реализовать',
-  'создай', 'создать', 'enhance', 'optimize',
-  'refactor', 'improve', 'fix', 'update',
-];
-
 const TODO_PATTERNS = /TODO|FIXME|XXX|HACK/;
 
 /**
@@ -124,23 +115,6 @@ export class SocratesEngine {
           category: 'hazard' as QuestionCategory,
           priority: 'blocker' as QuestionPriority,
           source: 'hazard:scan',
-          resolved: false,
-          ts: now(),
-        };
-      }
-      return null;
-    });
-
-    // 2. AMBIGUITY → blocker
-    this.addRule(generated, existingKeySet, () => {
-      const vague = this.detectAmbiguity(opts);
-      if (vague) {
-        return {
-          id: this.nextId('amb'),
-          text: `Goal "${opts.proposal?.goal ?? '?'}" contains vague term(s): "${vague}". Provide concrete completion criteria.`,
-          category: 'ambiguity' as QuestionCategory,
-          priority: 'blocker' as QuestionPriority,
-          source: 'proposal:goal',
           resolved: false,
           ts: now(),
         };
@@ -241,17 +215,6 @@ export class SocratesEngine {
     }
     return hazards;
   }
-
-  private detectAmbiguity(opts: AnalyzeOpts): string | null {
-    const goal = opts.proposal?.goal ?? '';
-    if (!goal) return null;
-    const lower = goal.toLowerCase();
-    for (const term of VAGUE_TERMS) {
-      if (lower.includes(term)) return term;
-    }
-    return null;
-  }
-
   private detectTodos(opts: AnalyzeOpts): string[] {
     const snippetsDir = opts.snippetsDir;
     if (!snippetsDir || !existsSync(snippetsDir)) return [];

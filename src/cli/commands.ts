@@ -458,7 +458,7 @@ export async function main(argv: string[]): Promise<number> {
     case "chat": {
       const prompt = args.join(" ");
       if (!prompt) return fail("chat requires a prompt, e.g. orion chat \"add date sorting to orders\"");
-      return await chatCommand(prompt, opts.auto, opts.full);
+      return await chatCommand(prompt, opts.auto, opts.full, opts.force);
     }
 
     case "clarify":
