@@ -6,7 +6,7 @@
  * memoryStore (для тестов).
  */
 
-import { existsSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, appendFileSync, renameSync } from "node:fs";
 
 /** Generic persistent store. cap keeps the last `max` entries (after optional sort ascending). */
 export interface Store<T> {
@@ -71,7 +71,9 @@ export function jsonlStore<T>(path: string): Store<T> {
     replace(entries: T[]): void {
       try {
         const text = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
-        writeFileSync(path, text, "utf8");
+        const tmp = path + "." + process.pid + ".tmp";
+        writeFileSync(tmp, text, "utf8");
+        renameSync(tmp, path);
       } catch { /* best effort */ }
     },
     cap(max: number, sortBy?: (a: T, b: T) => number): void {

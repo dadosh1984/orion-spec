@@ -115,7 +115,6 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
   } else if (!auto) {
     // Manual mode: show questions, wait for user
     const blockerList = unresolved.filter(q => q.priority === 'blocker');
-    const clarifyingList = unresolved.filter(q => q.priority === 'clarifying');
     for (const q of unresolved) {
       const icon2 = q.priority === 'blocker' ? `${RED}\u26A0${RESET}` : `${YELLOW}?${RESET}`;
       console.error(`  ${icon2} ${q.text.slice(0, 80)}`);
@@ -180,7 +179,6 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
     // ── STEP 4/6: FORGE — auto-generate snippets via AI if missing ──
     const t4 = process.hrtime.bigint();
     const snippetsDir = `changes/${changeId}/snippets`;
-    const tasksFile = `changes/${changeId}/tasks.md`;
 
     // Generate snippets if empty
     if (!existsSync(snippetsDir) || !readdirSync(snippetsDir).some(f => f.endsWith('.ts'))) {
@@ -303,7 +301,7 @@ async function generateSnippets(changeId: string): Promise<number> {
 
     const content = code && code.length > 10 && !code.startsWith('Acknowledged')
       ? code
-      : `/**\n * ${name} — auto-generated stub\n */\n\nexport function ${name}(): void {\n  // TODO: implement\n  console.log('${name} called');\n}\n`;
+      : `/**\n * ${name} — auto-generated stub\n */\n\nexport function ${name}(): void {\n  // TODO: implement\n  throw new Error('${name}: not implemented');\n}\n`;
 
     writeFileSync(file, content, 'utf8');
     count++;

@@ -59,12 +59,10 @@ function writeJson(file: string, obj: unknown): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
   writeFileSync(tmp, content, 'utf8');
-  writeFileSync(file, content, 'utf8');
-  try { writeFileSync(tmp, content, 'utf8'); } catch { /* best effort */ }
   try {
     renameSync(tmp, file);
   } catch {
-    // If rename fails (cross-device), write directly
+    // Fallback: rename can fail cross-device; write directly
     writeFileSync(file, content, 'utf8');
   }
 }
@@ -248,7 +246,17 @@ export class SocratesEngine {
       const specFile = join(specsDir, specDir, 'spec.md');
       if (!existsSync(specFile)) continue;
       const specContent = readFileSync(specFile, 'utf8');
-      const exports = specContent.match(/`export\s+(function|const|class|interface|type)\s+(\w+)/g);
+
+      // Extract code blocks (```typescript ... ```) and inline backticks
+      const codeBlocks: string[] = [];
+      const blockRegex = /```(?:typescript|ts)?\n([\s\S]*?)```/g;
+      let m: RegExpExecArray | null;
+      while ((m = blockRegex.exec(specContent)) !== null) {
+        codeBlocks.push(m[1]);
+      }
+      const codeText = codeBlocks.join('\n') + '\n' + specContent;
+
+      const exports = codeText.match(/`?export\s+(function|const|class|interface|type)\s+(\w+)/g);
       if (!exports) continue;
       for (const exp of exports) {
         const name = exp.split(/\s+/).pop() ?? '';
@@ -282,11 +290,16 @@ export class SocratesEngine {
     }
     if (!hasNewCode) return false;
 
-    const testDir = join(process.cwd(), 'tests');
-    if (!existsSync(testDir)) return true;
-    const testFiles = this.listFiles(testDir, '.test.ts');
-    if (testFiles.length === 0) return true;
+    // Check change-level tests/ directory
+    const changeDir = join(process.cwd(), 'changes', opts.changeId);
+    const changeTestDir = join(changeDir, 'tests');
+    if (existsSync(changeTestDir) && this.listFiles(changeTestDir, '.test.ts').length > 0) return false;
 
+    // Check project-level tests/ directory
+    const testDir = join(process.cwd(), 'tests');
+    if (existsSync(testDir) && this.listFiles(testDir, '.test.ts').length > 0) return false;
+
+    // Check .test.ts / .spec.ts in snippets
     const snippetTestFiles = files.filter(f => f.includes('.test.') || f.includes('.spec.'));
     return snippetTestFiles.length === 0;
   }
@@ -370,7 +383,7 @@ export function applyAnswers(changeId: string, answers: Answer[]): void {
       state.answers.push(answer);
     }
 
-    state.dialogue.push({ role: 'agent', text: answer.text, ts: answer.ts });
+    state.dialogue.push({ role: 'agent', text: answer.text, ts: answer.ts ?? now() });
   }
 
   store.questions.replace(state.questions);

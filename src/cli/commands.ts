@@ -111,25 +111,6 @@ export async function main(argv: string[]): Promise<number> {
   const track = OrionTrack.init();
 
   // v0.51: deprecated alias notice. When the user runs an old command
-  // name, print a one-line warning to stderr before the legacy case
-  // branch runs. Aliases will be removed entirely in v0.52.
-  if (cmd && Object.prototype.hasOwnProperty.call(DEPRECATED_ALIASES, cmd)) {
-    const target = DEPRECATED_ALIASES[cmd];
-    if (target === "__removed__") {
-      console.error(
-        `orion: '${cmd}' was removed in v0.51; use 'orion new' or 'orion doctor' instead`,
-      );
-      return 1;
-    }
-    if (target === "__hidden__") {
-      console.error(`orion: '${cmd}' is not a public command`);
-      return 1;
-    }
-    console.error(
-      `orion: '${cmd}' is deprecated, use '${target}' (will be removed in v0.52)`,
-    );
-  }
-
   // v0.51: route canonical (non-deprecated) top-level commands through
   // the new ORION_REGISTRY. Unknown commands still fall through to the
   // legacy switch for plugin discovery and back-compat shims.
@@ -327,15 +308,17 @@ export async function main(argv: string[]): Promise<number> {
             const { execSync } = await import("node:child_process");
             try {
               const changed = execSync(
-                "git diff --name-only HEAD -- src/tasks/",
+                "git status --porcelain -- src/tasks/",
                 { encoding: "utf8" },
               )
                 .trim()
                 .split("\n")
-                .filter((f) => f.endsWith(".ts") && existsSync(f));
+                .filter((l) => l.trim().endsWith(".ts"))
+                .map((l) => l.trim().split(/\s+/).pop())
+                .filter((f): f is string => Boolean(f))
               if (changed.length === 1) {
                 // Ровно один новый файл — используем как точку входа
-                entryPath = changed[0];
+                entryPath = changed[0] ?? null;
               }
             } catch {
               // not a git repo — ok
