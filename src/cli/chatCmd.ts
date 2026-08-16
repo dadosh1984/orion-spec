@@ -5,7 +5,7 @@
  * With --auto: uses LLM for clarifying questions; blockers still need human.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { think } from '../skills/think/handler.js';
 import { draft } from '../skills/draft/handler.js';
 import {
@@ -28,13 +28,35 @@ const EMOJI = {
 
 /** orion chat <prompt> [--auto] */
 export async function chatCommand(prompt: string, auto = false): Promise<number> {
-  // 1. Draft phase
-  const title = slugify(prompt);
-  const changeDir = `changes/${title}`;
-  const isNew = !existsSync(changeDir);
+  // 1. Draft phase — use proposal.title from think as single source of truth
   let changeId: string;
 
-  if (isNew) {
+  // Check for existing change by matching prompt slug against changes dir
+  const maybeSlug = slugify(prompt);
+  const changesDir = 'changes';
+  if (existsSync(changesDir)) {
+    const entries = readdirSync(changesDir);
+    const existing = entries.find(e => e === maybeSlug || e.startsWith(maybeSlug));
+    if (existing) {
+      changeId = existing;
+      console.log(`${EMOJI.info} Re-entering change: ${changeId}`);
+    } else {
+      // New change — think + draft
+      const proposal = await think(prompt, {});
+      if (!proposal || !proposal.title) {
+        console.error('orion: chat — think failed to produce a proposal');
+        return 1;
+      }
+      changeId = proposal.title;
+      const artifacts = await draft(changeId, { noCache: false, lang: 'ru' });
+      if (!artifacts) {
+        console.error(`orion: chat — draft failed for "${changeId}"`);
+        return 1;
+      }
+      console.log(`${EMOJI.done} Created change: ${changeId}`);
+    }
+  } else {
+    // New project — think + draft
     const proposal = await think(prompt, {});
     if (!proposal || !proposal.title) {
       console.error('orion: chat — think failed to produce a proposal');
@@ -47,9 +69,6 @@ export async function chatCommand(prompt: string, auto = false): Promise<number>
       return 1;
     }
     console.log(`${EMOJI.done} Created change: ${changeId}`);
-  } else {
-    changeId = title;
-    console.log(`${EMOJI.info} Re-entering change: ${changeId}`);
   }
 
   // 2. Clarify loop
