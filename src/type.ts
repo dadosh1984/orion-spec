@@ -51,6 +51,13 @@ export interface TddConfig {
   srcExt?: string;
 }
 
+/** Clarifying answer from SocratesEngine dialog. */
+export interface Answer {
+  questionId: string;
+  text: string;
+  ts: string;
+}
+
 /** A user proposal gathered by the `think` skill. */
 export interface Proposal {
   title: string;
@@ -73,6 +80,10 @@ export interface Proposal {
   depth?: 0 | 1 | 2 | 3;
   /** Planned leaf-step count at the chosen depth (2^depth). */
   plannedSteps?: number;
+  /** Clarifying answers provided during SocratesEngine dialog (v0.58). */
+  answers?: Answer[];
+  /** Accumulated clarifications context string (v0.58). */
+  context?: string;
   /** Lessons the user EXPLICITLY applied to this change (v0.56, lineage).
    * Only set via `orion memory lessons apply` — heuristics never write here. */
   borrowedLessons?: Array<{

@@ -56,6 +56,11 @@ import { cleanCmd } from "./cleanCmd.js";
 import { statusWatch } from "./statusWatchCmd.js";
 import { diffCmd } from "./diffCmd.js";
 import { envCmd } from "./envCmd.js";
+import {
+  clarifyCommand,
+  answerCommand,
+  refineCommand,
+} from "./clarifyCmd.js";
 import { runDispatch } from "./runCmd.js";
 import { createScript, scriptPath, writeManifest } from "../core/runtime.js";
 import {
@@ -442,6 +447,15 @@ export async function main(argv: string[]): Promise<number> {
       }
       return report.allPass ? 0 : 1;
     }
+
+    case "refine":
+      return await refineCommand(args);
+
+    case "answer":
+      return await answerCommand(args, opts as never);
+
+    case "clarify":
+      return await clarifyCommand(args);
 
     case "out": {
       const changeId = args[0];

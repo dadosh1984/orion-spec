@@ -7,6 +7,7 @@ import {
   lessonsForChange,
   recordPattern,
 } from "../../core/lessons.js";
+import { loadClarifyState } from "../../core/clarify.js";
 import { recordCalibration } from "../../core/calibration.js";
 import { estimateChangeCost } from "../next/handler.js";
 import { buildReceipt, renderReceiptText, receiptJson } from "./receipt.js";
@@ -46,6 +47,19 @@ export async function out(
       `change "${changeId}" not found under changes/ — run "orion think ..." first`,
     );
   }
+
+  // SocratesEngine gate: unanswered blockers block finalization (v0.58).
+  const socratesBlockers = getUnansweredBlockers(changeId);
+  if (socratesBlockers.length > 0) {
+    const state = loadClarifyState(changeId);
+    return await buildIncompleteResult(
+      changeId,
+      `Unanswered blocker questions: ${socratesBlockers.map(b => b.id).join(', ')}`,
+      socratesBlockers,
+      state,
+    );
+  }
+
   const guardPath = `reports/${changeId}/guard-report.json`;
   const guard: GuardReport | null = existsSync(guardPath)
     ? (JSON.parse(readFileSync(guardPath, "utf8")) as GuardReport)
@@ -57,10 +71,6 @@ export async function out(
   const allTasksDone = tasksTotal === 0 || tasksDone === tasksTotal;
 
   const guardOk = guard?.allPass === true;
-  // Staleness: the guard report carries a context hash (since v0.10); if the
-  // code or the change moved after the last shield run, the verdict is stale.
-  // Reports written before v0.10 have no hash — freshness is unknown, so we
-  // say so instead of guessing.
   const currentHash = projectHash(changeId);
   const freshnessUnknown = guard !== null && guard.contextHash === undefined;
   const staleGuard =
@@ -71,8 +81,6 @@ export async function out(
     guardOk && allTasksDone && !staleGuard ? "SUCCESS" : "INCOMPLETE";
 
   if (status === "INCOMPLETE") {
-    // Self-correction (v0.12): an honest verdict we cannot deliver is a
-    // lesson — `next` will route back to `think` with a corrective task.
     recordLesson({
       changeId,
       step: "out",
@@ -83,16 +91,14 @@ export async function out(
           : "guard not passing",
       cause: "out could not produce a SUCCESS verdict",
       fix: `resolve the condition above, then re-run orion out ${changeId}`,
-      sourceChange: changeId, // this change bore the lesson (lineage backward)
+      sourceChange: changeId,
     });
   } else {
-    // Positive learning (v0.29, T5.6): a SUCCESS is also a lesson — the
-    // exact conditions that let `out` deliver are worth reinforcing.
     recordPattern({
       changeId,
       step: "out",
       pattern: `SUCCESS: ${tasksDone}/${tasksTotal} tasks + non-stale guard → result.md written`,
-      sourceChange: changeId, // the change that produced this success-lesson
+      sourceChange: changeId,
     });
   }
 
@@ -111,10 +117,6 @@ export async function out(
       ? `**Guard:** ${guardDetail} — legacy report without a freshness snapshot; re-run \`orion shield\` for a definitive verdict`
       : `**Guard:** ${guardDetail}`;
 
-  // 2.2: `out` auto-repays yagni debt (v0.52) before writing the receipt.
-  // Deterministic — recomputes shield's own yagni signal and syncs the
-  // ledger; pays nothing it cannot prove. The result is surfaced in the
-  // receipt below.
   let debt: {
     paid: string[];
     stillOwed: string[];
@@ -125,14 +127,12 @@ export async function out(
     const r = payDebt(changeId);
     debt = { paid: r.paid, stillOwed: r.stillOwed, openAfter: r.openAfter };
   } catch {
-    debt = null; // debt repayment is best-effort; never break `out`
+    debt = null;
   }
 
-  // 2.3: Honest Receipt (v0.52) — every field measured or honestly
-  // "not measured"; never a fabricated coverage/count.
   const receipt = buildReceipt(changeId, guard);
 
-  const summary = [
+  const summaryLines = [
     `# Result — ${changeId}`,
     "",
     `- **Status:** ${status}`,
@@ -206,13 +206,20 @@ export async function out(
     "",
   ].join("\n");
 
+  // SocratesEngine dialogue summary (v0.58)
+  const socratesDialogue = (() => {
+    try {
+      const state = loadClarifyState(changeId);
+      if (state.dialogue.length === 0) return '';
+      return `\n## Socrates Dialogue\n\n${state.dialogue.length} exchanges. All blockers resolved.\n`;
+    } catch { return ''; }
+  })();
+
+  const summary = summaryLines + socratesDialogue;
+
   const resultPath = `changes/${changeId}/result.md`;
   await writeFileSafe(resultPath, summary);
-  // 2.3: also write the machine-readable receipt for tooling/CI.
   await writeFileSafe(`changes/${changeId}/receipt.json`, receiptJson(receipt));
-  // Calibration (v0.18, H): a SUCCESS verdict records the change's actual
-  // weight — Σ change file bytes ÷ 4, the honest ≈ bytes/4 proxy — next
-  // to the estimate next would give. Future estimates learn from reality.
   if (status === "SUCCESS") {
     recordCalibration(
       changeId,
@@ -234,20 +241,11 @@ export async function out(
   };
 }
 
-/**
- * Honest «Уроки и решения» (Lessons & decisions) block for a SUCCESS
- * result.md (v0.14): the change's own recorded lessons plus relevant shared
- * ones, rendered as `> error → use: fix` lines. An empty ledger is reported
- * explicitly — a task that never hit a recorded error is not padded with
- * invented wisdom.
- */
 function lessonsSection(changeId: string, goal: string): string[] {
   const all = lessonsForChange(changeId, goal);
   const errors = all.filter((l) => l.kind !== "success");
   const successes = all.filter((l) => l.kind === "success");
   const lines = ["## Уроки и решения", ""];
-  // The “no errors” line reflects only real failures — a recorded success
-  // pattern (v0.29) must not make a clean run look like it errored.
   if (errors.length === 0) {
     lines.push("_Уроков нет — эта задача прошла без зафиксированных ошибок._");
   } else {
@@ -266,10 +264,61 @@ function lessonsSection(changeId: string, goal: string): string[] {
   return lines;
 }
 
-/**
- * Actual weight of a completed change: Σ bytes of every file under
- * changes/<id> (and its guard report) ÷ 4 — the honest ≈ bytes/4 proxy.
- */
+function getUnansweredBlockers(changeId: string): Array<{ id: string; text: string }> {
+  try {
+    const state = loadClarifyState(changeId);
+    const answeredIds = new Set(state.answers.map(a => a.questionId));
+    return state.questions
+      .filter(q => q.priority === 'blocker' && !answeredIds.has(q.id))
+      .map(q => ({ id: q.id, text: q.text }));
+  } catch {
+    return [];
+  }
+}
+
+async function buildIncompleteResult(
+  changeId: string,
+  _reason: string,
+  blockers: Array<{ id: string; text: string }>,
+  state: { dialogue: Array<{ role: string; text: string }> },
+): Promise<OutResult> {
+  const summary = [
+    `# Result — ${changeId}`,
+    '',
+    `- **Status:** INCOMPLETE`,
+    `- **Socrates blockers:** ${blockers.length} unanswered blocker(s)`,
+    '',
+    '## Socrates Dialogue',
+    '',
+    `${state.dialogue.length} exchange(s). Blocker questions remain:`,
+    '',
+    ...blockers.map(b => `- 🚨 **${b.id}**: ${b.text}`),
+    '',
+    '## Next steps',
+    '',
+    `Resolve blockers via \`orion answer ${changeId} --json answers.json\` then \`orion refine ${changeId}\`.`,
+  ].join('\n');
+
+  await writeFileSafe(`changes/${changeId}/result.md`, summary);
+
+  for (const b of blockers) {
+    console.error(`🚨 ${b.id}: ${b.text}`);
+  }
+
+  return {
+    changeId,
+    resultPath: `changes/${changeId}/result.md`,
+    receiptPath: '',
+    allPass: false,
+    summary,
+    status: 'INCOMPLETE',
+    tasksDone: 0,
+    tasksTotal: 0,
+    artifacts: [],
+    staleGuard: false,
+  };
+}
+
 function changeBytes(changeId: string): number {
   const dir = `changes/${changeId}`;
   const files = existsSync(dir) ? walkFiles(dir) : [];
@@ -286,7 +335,6 @@ function changeBytes(changeId: string): number {
   return Math.max(1, Math.round(bytes / 4));
 }
 
-/** Recursively list files under a directory (best-effort). */
 function walkFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -297,9 +345,6 @@ function walkFiles(dir: string): string[] {
   return out;
 }
 
-/** Existing artifacts of a change, best-effort walk. result.md is the
- * output of `out` itself, not a source artifact — listing it would make
- * the summary self-referential and the second run differ from the first. */
 function listArtifacts(changeId: string): string[] {
   const dir = `changes/${changeId}`;
   const candidates = [
