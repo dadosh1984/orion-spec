@@ -14,6 +14,7 @@ export default defineConfig({
         }
       : {}),
     include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
+    exclude: ["tests/browser.test.ts"],
     testTimeout: 60_000,
     hookTimeout: 60_000,
     // Nested vitest runs (forge/tdd spawn `pnpm vitest run` as a child of
