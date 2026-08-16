@@ -1,177 +1,246 @@
 /**
- * orion chat — one-command pipeline (v0.61).
+ * orion chat — autonomous change pipeline (v0.62).
  *
- * draft → clarify → answer → refine → out.
- * With --auto: uses LLM for clarifying questions; blockers still need human.
+ * Full cycle: think → draft → clarify → forge → shield → out
+ * Each step is visualised with timing, status and useful info.
  */
 
 import { existsSync, readdirSync } from 'node:fs';
 import { think } from '../skills/think/handler.js';
 import { draft } from '../skills/draft/handler.js';
+import { forge } from '../skills/forge/handler.js';
+import { shield } from '../skills/shield/handler.js';
+import { out } from '../skills/out/handler.js';
 import {
   generateQuestions,
   hasUnansweredBlockers,
-  refine,
   applyAnswers,
-  loadClarifyState,
 } from '../core/clarify.js';
 import { askWithFallback } from '../core/llm/index.js';
+import { readVersionSafe } from '../utils/version.js';
 import type { Answer } from '../core/clarify.js';
 
-const EMOJI = {
-  blocker: '\u{1F6A8}',
-  clarifying: '\u{2753}',
-  done: '\u{2714}\u{FE0F}',
-  info: '\u{2139}\u{FE0F}',
-  llm: '\u{1F916}',   // 🤖
-};
+// ─── Visual ──────────────────────────────────────────────
+const RESET = '\x1b[0m';
+const BOLD = '\x1b[1m';
+const DIM = '\x1b[2m';
+const GREEN = '\x1b[32m';
+const YELLOW = '\x1b[33m';
+const RED = '\x1b[31m';
+const CYAN = '\x1b[36m';
+const GRAY = '\x1b[90m';
+const CHECK = '\u2713';
+const CROSS = '\u2717';
+const ARROW = '\u25B6';
+const LINE = '\u2500';
 
-/** orion chat <prompt> [--auto] */
-export async function chatCommand(prompt: string, auto = false): Promise<number> {
-  // 1. Draft phase — use proposal.title from think as single source of truth
-  let changeId: string;
+function icon(ok: boolean): string {
+  return ok ? `${GREEN}${CHECK}${RESET}` : `${RED}${CROSS}${RESET}`;
+}
 
-  // Check for existing change by matching prompt slug against changes dir
+function elapsed(start: bigint): string {
+  const ms = Number(process.hrtime.bigint() - start) / 1e6;
+  return ms > 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
+}
+
+function rule(): void {
+  console.log(`  ${GRAY}${LINE.repeat(48)}${RESET}`);
+}
+
+function resultLine(label: string, value: string, color = ''): void {
+  console.log(`  ${BOLD}${label}:${RESET} ${color}${value}${RESET}`);
+}
+
+// ─── Chat command ────────────────────────────────────────
+export async function chatCommand(prompt: string, auto = false, full = false): Promise<number> {
+  const t0 = process.hrtime.bigint();
+
+  console.log(`\n${BOLD}${CYAN}  Orion v${readVersionSafe()}${RESET} ${GRAY}— Autonomous Change Pipeline${RESET}\n`);
+
+  // ── STEP 1/6: THINK ─────────────────────────
+  const t1 = process.hrtime.bigint();
+  let changeId = '';
+
+  // Check for existing change first
   const maybeSlug = slugify(prompt);
   const changesDir = 'changes';
+  let isReenter = false;
+
   if (existsSync(changesDir)) {
     const entries = readdirSync(changesDir);
     const existing = entries.find(e => e === maybeSlug || e.startsWith(maybeSlug));
     if (existing) {
       changeId = existing;
-      console.log(`${EMOJI.info} Re-entering change: ${changeId}`);
-    } else {
-      // New change — think + draft
-      const proposal = await think(prompt, {});
-      if (!proposal || !proposal.title) {
-        console.error('orion: chat — think failed to produce a proposal');
-        return 1;
-      }
-      changeId = proposal.title;
-      const artifacts = await draft(changeId, { noCache: false, lang: 'ru' });
-      if (!artifacts) {
-        console.error(`orion: chat — draft failed for "${changeId}"`);
-        return 1;
-      }
-      console.log(`${EMOJI.done} Created change: ${changeId}`);
+      isReenter = true;
+      process.stderr.write(`${icon(true)} ${BOLD}STEP 1/6${RESET}: THINK     ${DIM}re-entering change: ${changeId}${RESET}\n`);
     }
-  } else {
-    // New project — think + draft
+  }
+
+  if (!changeId) {
     const proposal = await think(prompt, {});
-    if (!proposal || !proposal.title) {
-      console.error('orion: chat — think failed to produce a proposal');
+    if (!proposal?.title) {
+      console.error(`\n  ${icon(false)} ${RED}think failed — no proposal created${RESET}`);
       return 1;
     }
     changeId = proposal.title;
+    process.stderr.write(`${icon(true)} ${BOLD}STEP 1/6${RESET}: THINK     ${DIM}${changeId}${RESET}  ${elapsed(t1)}\n`);
+  }
+
+  // ── STEP 2/6: DRAFT ─────────────────────────
+  const t2 = process.hrtime.bigint();
+  if (isReenter) {
+    process.stderr.write(`${icon(true)} ${BOLD}STEP 2/6${RESET}: DRAFT     ${DIM}(skipped — already exists)${RESET}  \n`);
+  } else {
     const artifacts = await draft(changeId, { noCache: false, lang: 'ru' });
     if (!artifacts) {
-      console.error(`orion: chat — draft failed for "${changeId}"`);
+      console.error(`\n  ${icon(false)} ${RED}draft failed for "${changeId}"${RESET}`);
       return 1;
     }
-    console.log(`${EMOJI.done} Created change: ${changeId}`);
+    const specCount = Array.isArray(artifacts.specs) ? artifacts.specs.length : 0;
+    process.stderr.write(`${icon(true)} ${BOLD}STEP 2/6${RESET}: DRAFT     ${DIM}${specCount} spec(s), ${artifacts.tasks ?? '?'} task(s)${RESET}  ${elapsed(t2)}\n`);
   }
 
-  // 2. Clarify loop
-  const clarifyResolved = await resolveQuestions(changeId, prompt, auto);
-  if (!clarifyResolved.ok) {
-    return clarifyResolved.exitCode;
+  // ── STEP 3/6: CLARIFY ───────────────────────
+  const t3 = process.hrtime.bigint();
+  const questions = generateQuestions(changeId);
+  const unresolved = questions.filter(q => !q.resolved);
+
+  if (unresolved.length === 0) {
+    if (hasUnansweredBlockers(changeId)) {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${RED}unanswered blockers remain${RESET}\n`);
+      console.error(`\n  ${ARROW}  Run: orion answer ${changeId} <answers.json>`);
+      return 1;
+    }
+    process.stderr.write(`${icon(true)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${DIM}all clear — no questions${RESET}  ${elapsed(t3)}\n`);
+  } else {
+    const blockers = unresolved.filter(q => q.priority === 'blocker');
+    const clarifying = unresolved.filter(q => q.priority === 'clarifying');
+
+    if (blockers.length > 0) {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${RED}${blockers.length} blocker(s) require human input${RESET}  ${elapsed(t3)}\n`);
+      for (const q of blockers) {
+        console.error(`  ${RED}\u26A0${RESET} ${q.text.slice(0, 80)}`);
+      }
+      console.error(`\n  ${ARROW}  Answer: orion answer ${changeId} <answers.json>`);
+      console.error(`  ${ARROW}  Retry:  orion chat "${prompt}"`);
+      return 1;
+    }
+
+    if (clarifying.length > 0 && !auto) {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${YELLOW}${clarifying.length} clarifying question(s)${RESET}  ${elapsed(t3)}\n`);
+      for (const q of clarifying) {
+        console.error(`  ${YELLOW}?${RESET} ${q.text.slice(0, 80)}`);
+      }
+      console.error(`\n  ${ARROW}  Answer: orion answer ${changeId} <answers.json>`);
+      console.error(`  ${ARROW}  Retry:  orion chat "${prompt}"`);
+      return 1;
+    }
+
+    // Auto-answer clarifying questions
+    if (clarifying.length > 0 && auto) {
+      process.stderr.write(`${YELLOW}${BOLD}  \u231B  Auto-answering ${clarifying.length} question(s)...${RESET}\n`);
+      const proposal = await readProposalJson(changeId);
+      const goal = proposal?.goal ?? '';
+      const context = proposal?.context ?? '';
+
+      const answers: Answer[] = [];
+      for (const q of clarifying) {
+        const text = await askWithFallback(q, goal, context);
+        answers.push({ questionId: q.id, text, ts: new Date().toISOString() });
+        process.stderr.write(`  ${DIM}${q.id}: ${text.slice(0, 60)}${RESET}\n`);
+      }
+      applyAnswers(changeId, answers);
+      process.stderr.write(`${icon(true)} ${BOLD}STEP 3/6${RESET}: CLARIFY   ${DIM}${answers.length} auto-answered${RESET}  ${elapsed(t3)}\n`);
+    }
   }
 
-  // 3. Refine phase
-  const blockersMsg = refine(changeId, true);
-  if (blockersMsg) {
-    console.error(`${EMOJI.blocker} ${blockersMsg}`);
-    return 1;
-  }
-  console.log(`${EMOJI.done} Context refined.`);
+  if (full) {
+    // ── STEP 4/6: FORGE ─────────────────────────
+    const t4 = process.hrtime.bigint();
+    process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}writing code...${RESET}\n`);
+    try {
+      const summary = await forge(changeId, {
+        noCache: false,
+        onTask: (row) => {
+          const m = row.status === 'done' ? `${GREEN}${CHECK}${RESET}` : row.status === 'skipped' ? `${DIM}${CHECK}${RESET}` : `${DIM}\u25CB${RESET}`;
+          process.stderr.write(`  ${m} ${DIM}${row.desc.slice(0, 60)}${RESET}\n`);
+        },
+      });
+      if (summary.ok) {
+        process.stderr.write(`${icon(true)} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}${summary.done ?? '?'}/${summary.total ?? '?'} tasks done${RESET}  ${elapsed(t4)}\n`);
+      } else {
+        process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${RED}failed${RESET}  ${elapsed(t4)}\n`);
+        return 1;
+      }
+    } catch (err) {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${RED}${err instanceof Error ? err.message : 'error'}${RESET}\n`);
+      return 1;
+    }
 
-  // 4. Done
-  const state = loadClarifyState(changeId);
-  console.log(`${EMOJI.done} Socrates dialogue complete (${state.dialogue.length} exchanges).`);
-  console.log(`  Continue with:  orion forge ${changeId}`);
-  console.log(`  Finalize with:  orion out ${changeId}`);
+    // ── STEP 5/6: SHIELD ────────────────────────
+    const t5 = process.hrtime.bigint();
+    process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 5/6${RESET}: SHIELD    ${DIM}running lint + tests + tsc...${RESET}\n`);
+    try {
+      const report = await shield(changeId, { noCache: false });
+      const passCount = report.checks.filter(c => c.status === 'PASS').length;
+      const failCount = report.checks.filter(c => c.status === 'FAIL').length;
+      const status = report.allPass ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`;
+      process.stderr.write(`${icon(report.allPass)} ${BOLD}STEP 5/6${RESET}: SHIELD    ${status} ${DIM}${passCount} pass, ${failCount} fail${RESET}  ${elapsed(t5)}\n`);
+      if (!report.allPass) {
+        for (const c of report.checks.filter(c => c.status !== 'PASS')) {
+          process.stderr.write(`  ${RED}\u26A0${RESET} ${c.step}: ${c.detail ?? ''}\n`);
+        }
+      }
+    } catch (err) {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 5/6${RESET}: SHIELD    ${RED}${err instanceof Error ? err.message : 'error'}${RESET}\n`);
+      return 1;
+    }
+
+    // ── STEP 6/6: OUT ───────────────────────────
+    const t6 = process.hrtime.bigint();
+    try {
+      const result = await out(changeId);
+      const status = result.allPass ? `${GREEN}SUCCESS${RESET}` : `${YELLOW}INCOMPLETE${RESET}`;
+      process.stderr.write(`${icon(result.allPass)} ${BOLD}STEP 6/6${RESET}: OUT       ${status} ${DIM}${result.tasksDone}/${result.tasksTotal} tasks${RESET}  ${elapsed(t6)}\n`);
+
+      // ── RESULT SUMMARY ──────────────────────────
+      const totalTime = elapsed(t0);
+      rule();
+      resultLine('Change', changeId);
+      resultLine('Status', result.allPass ? 'SUCCESS' : 'INCOMPLETE', result.allPass ? GREEN : YELLOW);
+      resultLine('Tasks', `${result.tasksDone}/${result.tasksTotal} done`);
+      resultLine('Guard', result.staleGuard ? 'STALE' : 'checked');
+      resultLine('Total time', totalTime, CYAN);
+      console.log();
+
+      return result.allPass ? 0 : 1;
+    } catch (err) {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 6/6${RESET}: OUT       ${RED}${err instanceof Error ? err.message : 'error'}${RESET}\n`);
+      return 1;
+    }
+  }
+
+  // Without --full: show next steps
+  const totalTime = elapsed(t0);
+  rule();
+  resultLine('Change', changeId);
+  resultLine('Pipeline', 'think + draft + clarify', GREEN);
+  resultLine('Status', isReenter ? 're-entered' : 'created');
+  resultLine('Total time', totalTime, CYAN);
+  console.log();
+  process.stderr.write(`  ${ARROW}  Continue: orion forge ${changeId}\n`);
+  process.stderr.write(`  ${ARROW}  Or full:  orion chat "${prompt}" --full\n`);
   return 0;
 }
 
-/** Handle clarify: auto-answer clarifying questions or print them. */
-async function resolveQuestions(
-  changeId: string,
-  prompt: string,
-  auto: boolean,
-): Promise<{ ok: boolean; exitCode: number }> {
-  const allQuestions = generateQuestions(changeId);
-  // Check if there are any NEW questions (unanswered blockers)
-  const questions = allQuestions.filter(q => !q.resolved);
-  if (questions.length === 0) {
-    // Re-entrant check
-    if (hasUnansweredBlockers(changeId)) {
-      console.error(`${EMOJI.blocker} Unanswered blockers remain for ${changeId}.`);
-      return { ok: false, exitCode: 1 };
-    }
-    console.log(`${EMOJI.done} All clear — no questions.`);
-    return { ok: true, exitCode: 0 };
-  }
-
-  const blockers = questions.filter(q => q.priority === 'blocker');
-  const clarifying = questions.filter(q => q.priority === 'clarifying');
-
-  // Blockers always block (safety)
-  if (blockers.length > 0) {
-    for (const q of blockers) {
-      console.log(`${EMOJI.blocker} [${q.id}] ${q.text}`);
-    }
-    console.error(`\n${EMOJI.blocker} ${blockers.length} blocker(s) require human resolution.`);
-    console.error(`  orion answer ${changeId} <answers.json>`);
-    console.error(`  Then retry: orion chat "${prompt}"`);
-    return { ok: false, exitCode: 1 };
-  }
-
-  // Clarifying: auto-answer if --auto, otherwise print
-  if (clarifying.length === 0) {
-    return { ok: true, exitCode: 0 };
-  }
-
-  if (!auto) {
-    for (const q of clarifying) {
-      console.log(`${EMOJI.clarifying} [${q.id}] ${q.text}`);
-    }
-    console.log(`\n${EMOJI.clarifying} ${clarifying.length} clarifying question(s).`);
-    console.log(`  orion answer ${changeId} <answers.json>`);
-    console.log(`  Then retry: orion chat "${prompt}"`);
-    return { ok: false, exitCode: 1 };
-  }
-
-  // --auto mode: answer clarifying questions via LLM (or fallback)
-  const proposal = await readProposal(changeId);
-  const goal = proposal?.goal ?? '';
-  const context = proposal?.context ?? '';
-
-  const answers: Answer[] = [];
-  for (const q of clarifying) {
-    process.stderr.write(`${EMOJI.llm} Answering [${q.id}]... `);
-    const text = await askWithFallback(q, goal, context);
-    answers.push({
-      questionId: q.id,
-      text,
-      ts: new Date().toISOString(),
-    });
-    process.stderr.write(`${text}\n`);
-  }
-
-  applyAnswers(changeId, answers);
-  console.log(`${EMOJI.done} ${answers.length} clarifying question(s) auto-answered.`);
-  return { ok: true, exitCode: 0 };
-}
-
-async function readProposal(changeId: string): Promise<{ goal?: string; context?: string } | null> {
+// ─── Helpers ─────────────────────────────────────────────
+async function readProposalJson(changeId: string): Promise<{ goal?: string; context?: string } | null> {
   try {
-    const { readFileSync, existsSync } = await import('node:fs');
+    const { readFileSync: read, existsSync: exists } = await import('node:fs');
     const path = `changes/${changeId}/proposal.json`;
-    if (!existsSync(path)) return null;
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
-    return null;
-  }
+    if (!exists(path)) return null;
+    return JSON.parse(read(path, 'utf8'));
+  } catch { return null; }
 }
 
 function slugify(text: string): string {
@@ -180,5 +249,5 @@ function slugify(text: string): string {
     .replace(/[^a-zа-яё0-9\s-]/gi, '')
     .trim()
     .replace(/\s+/g, '-')
-    .slice(0, 64);
+    .slice(0, 48);
 }

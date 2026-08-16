@@ -27,6 +27,8 @@ export interface CliOptions {
   saveAs?: string;
   /** Auto-check blockers after refine (v0.59). */
   auto: boolean;
+  /** Full pipeline: forge + shield + out (v0.62). */
+  full: boolean;
 }
 
 /** Print JSON or plain text depending on the --json flag. */

@@ -155,6 +155,7 @@ export function parseArgs(argv: string[]): {
     watch: false,
     json: false,
     auto: false,
+    full: false,
     npm: false,
     port: 0,
     ui: true,
@@ -181,6 +182,7 @@ export function parseArgs(argv: string[]): {
       token: { type: "string" },
       lang: { type: "string" },
       auto: { type: "boolean" },
+      full: { type: "boolean" },
       "save-as": { type: "string" },
     },
   });
@@ -192,6 +194,7 @@ export function parseArgs(argv: string[]): {
   opts.watch = values.watch === true;
   opts.json = values.json === true;
   opts.auto = values.auto === true;
+  opts.full = values.full === true;
   opts.npm = values.npm === true;
   if (values.ui === true) opts.ui = true;
 
