@@ -80,7 +80,9 @@ async function resolveQuestions(
   prompt: string,
   auto: boolean,
 ): Promise<{ ok: boolean; exitCode: number }> {
-  const questions = generateQuestions(changeId);
+  const allQuestions = generateQuestions(changeId);
+  // Check if there are any NEW questions (unanswered blockers)
+  const questions = allQuestions.filter(q => !q.resolved);
   if (questions.length === 0) {
     // Re-entrant check
     if (hasUnansweredBlockers(changeId)) {
