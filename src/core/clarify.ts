@@ -5,8 +5,8 @@
  * drift and test coverage to produce meaningful questions.
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync, renameSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { scanHazards } from './hazards.js';
 import type { Proposal } from '../type.js';
 import { clarifyStore } from './clarifyStore.js';
@@ -53,11 +53,26 @@ const VAGUE_TERMS = [
   'refactor', 'improve', 'fix', 'update',
 ];
 
-// Counter for deterministic question ids
-let idCounter = 0;
-function nextId(prefix: string): string {
-  idCounter++;
-  return `soc-${prefix}-${idCounter}`;
+const TODO_PATTERNS = /TODO|FIXME|XXX|HACK/;
+
+/**
+ * Write JSON to a file using write+rename atomic pattern.
+ * Same contract as writeFileSafe in utils/file.ts but sync.
+ */
+function writeJson(file: string, obj: unknown): void {
+  const content = JSON.stringify(obj, null, 2);
+  const dir = dirname(file);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  writeFileSync(tmp, content, 'utf8');
+  writeFileSync(file, content, 'utf8');
+  try { writeFileSync(tmp, content, 'utf8'); } catch { /* best effort */ }
+  try {
+    renameSync(tmp, file);
+  } catch {
+    // If rename fails (cross-device), write directly
+    writeFileSync(file, content, 'utf8');
+  }
 }
 
 export interface AnalyzeOpts {
@@ -73,25 +88,35 @@ export interface AnalyzeOpts {
   existingAnswers?: Answer[];
 }
 
-const TODO_PATTERNS = /TODO|FIXME|XXX|HACK/;
+export interface UnansweredBlocker {
+  id: string;
+  text: string;
+}
 
 export class SocratesEngine {
+  private idCounter = 0;
+
+  private nextId(prefix: string): string {
+    this.idCounter++;
+    return `soc-${prefix}-${this.idCounter}`;
+  }
+
   /** Generate questions deterministically from the given context. */
   analyze(opts: AnalyzeOpts): Question[] {
+    this.idCounter = 0;
     const generated: Question[] = [];
-    const existingMap = new Map(
-      (opts.existingQuestions ?? []).map(q => [q.id, q]),
-    );
-    const answeredQuestionIds = new Set(
-      (opts.existingAnswers ?? []).map(a => a.questionId),
+
+    // Build set of (source,text) from existing questions to avoid regenerating (fix #4)
+    const existingKeySet = new Set(
+      (opts.existingQuestions ?? []).map(q => `${q.source}::${q.text}`),
     );
 
     // 1. HAZARD → blocker
-    this.addRule(generated, 'hazard-blocker', existingMap, answeredQuestionIds, () => {
+    this.addRule(generated, existingKeySet, () => {
       const hazards = this.detectHazards(opts);
       if (hazards.length > 0) {
         return {
-          id: nextId('haz'),
+          id: this.nextId('haz'),
           text: `Hazard detected: ${hazards.join('; ')}. Confirm these destructive operations are intentional.`,
           category: 'hazard' as QuestionCategory,
           priority: 'blocker' as QuestionPriority,
@@ -104,11 +129,11 @@ export class SocratesEngine {
     });
 
     // 2. AMBIGUITY → blocker
-    this.addRule(generated, 'ambiguity-blocker', existingMap, answeredQuestionIds, () => {
+    this.addRule(generated, existingKeySet, () => {
       const vague = this.detectAmbiguity(opts);
       if (vague) {
         return {
-          id: nextId('amb'),
+          id: this.nextId('amb'),
           text: `Goal "${opts.proposal?.goal ?? '?'}" contains vague term(s): "${vague}". Provide concrete completion criteria.`,
           category: 'ambiguity' as QuestionCategory,
           priority: 'blocker' as QuestionPriority,
@@ -121,13 +146,12 @@ export class SocratesEngine {
     });
 
     // 3. INCOMPLETE → clarifying (per file with TODO)
-    this.addRule(generated, 'incomplete-clarifying', existingMap, answeredQuestionIds, () => {
+    this.addRule(generated, existingKeySet, () => {
       const todos = this.detectTodos(opts);
-      // One question per file
       const qs: Question[] = [];
       for (const file of todos) {
         qs.push({
-          id: nextId('inc'),
+          id: this.nextId('inc'),
           text: `Snippet "${file}" contains TODO/FIXME. What remains to be done?`,
           category: 'incomplete' as QuestionCategory,
           priority: 'clarifying' as QuestionPriority,
@@ -140,11 +164,11 @@ export class SocratesEngine {
     });
 
     // 4. DRIFT → clarifying
-    this.addRule(generated, 'drift-clarifying', existingMap, answeredQuestionIds, () => {
+    this.addRule(generated, existingKeySet, () => {
       const driftItems = this.detectDrift(opts);
       if (driftItems.length > 0) {
         return [{
-          id: nextId('drf'),
+          id: this.nextId('drf'),
           text: `Spec-to-source drift detected (${driftItems.length} items). Is this deviation intentional?`,
           category: 'drift' as QuestionCategory,
           priority: 'clarifying' as QuestionPriority,
@@ -157,11 +181,11 @@ export class SocratesEngine {
     });
 
     // 5. TEST → clarifying
-    this.addRule(generated, 'test-clarifying', existingMap, answeredQuestionIds, () => {
+    this.addRule(generated, existingKeySet, () => {
       const missingTest = this.detectMissingTests(opts);
       if (missingTest) {
         return [{
-          id: nextId('tst'),
+          id: this.nextId('tst'),
           text: 'New code detected (export/function) but no test files found. Are tests planned?',
           category: 'test' as QuestionCategory,
           priority: 'clarifying' as QuestionPriority,
@@ -176,46 +200,26 @@ export class SocratesEngine {
     return generated;
   }
 
-  /** Helper: if rule produces non-null, check dedup before adding. */
+  /** Dedup by (source, text) tuple against existing and within one analyze call. */
   private addRule(
     generated: Question[],
-    ruleKey: string,
-    existingMap: Map<string, Question>,
-    answeredIds: Set<string>,
+    existingKeySet: Set<string>,
     fn: () => Question | Question[] | null,
   ): void {
     const result = fn();
     if (result === null) return;
     const items = Array.isArray(result) ? result : [result];
     for (const q of items) {
-      // Dedup: if same text exists AND is already answered, skip
-      const dup = this.findDuplicate(q, existingMap, answeredIds);
-      if (!dup) {
-        generated.push(q);
+      const key = `${q.source}::${q.text}`;
+      // Skip if already in existing questions or already generated in this call
+      if (existingKeySet.has(key) || generated.find(g => `${g.source}::${g.text}` === key)) {
+        continue;
       }
+      generated.push(q);
     }
-  }
-
-  private findDuplicate(
-    q: Question,
-    existingMap: Map<string, Question>,
-    answeredIds: Set<string>,
-  ): Question | undefined {
-    // Check by source + text (same context = same question)
-    for (const existing of existingMap.values()) {
-      if (
-        existing.source === q.source &&
-        existing.text === q.text &&
-        answeredIds.has(existing.id)
-      ) {
-        return existing;
-      }
-    }
-    return undefined;
   }
 
   private detectHazards(opts: AnalyzeOpts): string[] {
-    // Scan snippet files for hazard patterns
     const snippetsDir = opts.snippetsDir;
     if (!snippetsDir || !existsSync(snippetsDir)) return [];
 
@@ -265,7 +269,6 @@ export class SocratesEngine {
   }
 
   private detectDrift(opts: AnalyzeOpts): string[] {
-    // MVP: check spec files exist and have matching source files
     const changeDir = join(process.cwd(), 'changes', opts.changeId);
     const specsDir = join(changeDir, 'specs');
     if (!existsSync(specsDir)) return [];
@@ -279,12 +282,10 @@ export class SocratesEngine {
       const specFile = join(specsDir, specDir, 'spec.md');
       if (!existsSync(specFile)) continue;
       const specContent = readFileSync(specFile, 'utf8');
-      // Check exported symbols mentioned in spec exist in src
       const exports = specContent.match(/`export\s+(function|const|class|interface|type)\s+(\w+)/g);
       if (!exports) continue;
       for (const exp of exports) {
         const name = exp.split(/\s+/).pop() ?? '';
-        // Check if a file with this name exists
         const srcFile = join(opts.srcDir ?? 'src', `${name}.ts`);
         if (!existsSync(srcFile)) {
           driftItems.push(`${name} (spec: expected in src/${name}.ts)`);
@@ -301,7 +302,6 @@ export class SocratesEngine {
     const files = this.listFiles(snippetsDir, '.ts');
     if (files.length === 0) return false;
 
-    // Check if there's at least one code file with export/function
     let hasNewCode = false;
     for (const f of files) {
       try {
@@ -316,13 +316,11 @@ export class SocratesEngine {
     }
     if (!hasNewCode) return false;
 
-    // Check for test files
     const testDir = join(process.cwd(), 'tests');
     if (!existsSync(testDir)) return true;
     const testFiles = this.listFiles(testDir, '.test.ts');
     if (testFiles.length === 0) return true;
 
-    // Also check snippet dir for test files
     const snippetTestFiles = files.filter(f => f.includes('.test.') || f.includes('.spec.'));
     return snippetTestFiles.length === 0;
   }
@@ -354,9 +352,6 @@ export function generateQuestions(changeId: string): Question[] {
   const proposal = readJsonSync<Proposal>(`changes/${changeId}/proposal.json`);
   const snippetsDir = `changes/${changeId}/snippets`;
 
-  // Avoid duplicating already-asked questions
-  const existingIds = new Set(state.questions.map(q => q.id));
-
   const engine = new SocratesEngine();
   const newQuestions = engine.analyze({
     changeId,
@@ -367,8 +362,13 @@ export function generateQuestions(changeId: string): Question[] {
     existingAnswers: state.answers,
   });
 
-  // Filter out questions that were already persisted (even if unanswered)
-  const questions = newQuestions.filter(q => !existingIds.has(q.id));
+  // Dedup by (source, text) against existing persisted questions
+  const existingKeys = new Set(
+    state.questions.map(q => `${q.source}::${q.text}`),
+  );
+  const questions = newQuestions.filter(
+    q => !existingKeys.has(`${q.source}::${q.text}`),
+  );
 
   // Merge with existing and save
   const allQuestions = [...state.questions, ...questions];
@@ -376,16 +376,26 @@ export function generateQuestions(changeId: string): Question[] {
   return allQuestions;
 }
 
+export function getUnansweredBlockers(changeId: string): UnansweredBlocker[] {
+  try {
+    const state = loadClarifyState(changeId);
+    const answeredIds = new Set(state.answers.map(a => a.questionId));
+    return state.questions
+      .filter(q => q.priority === 'blocker' && !answeredIds.has(q.id))
+      .map(q => ({ id: q.id, text: q.text }));
+  } catch {
+    return [];
+  }
+}
+
 export function applyAnswers(changeId: string, answers: Answer[]): void {
   const store = clarifyStore(changeId);
   const state = loadClarifyState(changeId);
 
   for (const answer of answers) {
-    // Mark resolved on matching question
     const q = state.questions.find(q => q.id === answer.questionId);
     if (q) q.resolved = true;
 
-    // Append to answers (avoid dups by questionId)
     const existing = state.answers.find(a => a.questionId === answer.questionId);
     if (existing) {
       existing.text = answer.text;
@@ -394,11 +404,9 @@ export function applyAnswers(changeId: string, answers: Answer[]): void {
       state.answers.push(answer);
     }
 
-    // Append to dialogue
     state.dialogue.push({ role: 'agent', text: answer.text, ts: answer.ts });
   }
 
-  // Persist
   store.questions.replace(state.questions);
   store.answers.replace(state.answers);
   store.dialogue.replace(state.dialogue);
@@ -441,8 +449,8 @@ export function refine(changeId: string, autoCheck = false): string | null {
   // Build context string
   proposal.context = buildContext(proposal.goal, state.answers);
 
-  // Write proposal back synchronously
-  writeFileSync(`changes/${changeId}/proposal.json`, JSON.stringify(proposal, null, 2), 'utf8');
+  // Write proposal.json atomically (fix #2)
+  writeJson(`changes/${changeId}/proposal.json`, proposal);
 
   // Log in dialogue
   appendDialogue(changeId, {
@@ -453,7 +461,7 @@ export function refine(changeId: string, autoCheck = false): string | null {
 
   // --auto: check blockers after merge
   if (autoCheck) {
-    const blockers = getUnansweredBlockersSync(changeId);
+    const blockers = getUnansweredBlockers(changeId);
     if (blockers.length > 0) {
       const msg = `${blockers.length} blocker(s) remain after answers: ${blockers.map(b => b.id).join(', ')}`;
       appendDialogue(changeId, {
@@ -474,19 +482,6 @@ function buildContext(goal: string, answers: Answer[]): string {
     parts.push(`${a.questionId}: ${a.text}`);
   }
   return parts.join(' | ');
-}
-
-/** Sync helper for refine --auto: check blockers without loading state twice. */
-function getUnansweredBlockersSync(changeId: string): Array<{ id: string; text: string }> {
-  try {
-    const state = loadClarifyState(changeId);
-    const answeredIds = new Set(state.answers.map(a => a.questionId));
-    return state.questions
-      .filter(q => q.priority === 'blocker' && !answeredIds.has(q.id))
-      .map(q => ({ id: q.id, text: q.text }));
-  } catch {
-    return [];
-  }
 }
 
 /** Read and parse JSON synchronously (needed for clarify which runs sync). */

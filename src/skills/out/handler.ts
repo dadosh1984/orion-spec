@@ -7,7 +7,7 @@ import {
   lessonsForChange,
   recordPattern,
 } from "../../core/lessons.js";
-import { loadClarifyState } from "../../core/clarify.js";
+import { getUnansweredBlockers, loadClarifyState } from "../../core/clarify.js";
 import { recordCalibration } from "../../core/calibration.js";
 import { estimateChangeCost } from "../next/handler.js";
 import { buildReceipt, renderReceiptText, receiptJson } from "./receipt.js";
@@ -262,18 +262,6 @@ function lessonsSection(changeId: string, goal: string): string[] {
     }
   }
   return lines;
-}
-
-function getUnansweredBlockers(changeId: string): Array<{ id: string; text: string }> {
-  try {
-    const state = loadClarifyState(changeId);
-    const answeredIds = new Set(state.answers.map(a => a.questionId));
-    return state.questions
-      .filter(q => q.priority === 'blocker' && !answeredIds.has(q.id))
-      .map(q => ({ id: q.id, text: q.text }));
-  } catch {
-    return [];
-  }
 }
 
 async function buildIncompleteResult(
