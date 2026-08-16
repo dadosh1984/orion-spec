@@ -1,0 +1,22 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 5,
+  "skipped": 0,
+  "pending": [
+    "scaffold_project_structure",
+    "implement_core_capability",
+    "implement_функцию_iseven",
+    "cover_core_capability",
+    "document_usage_readme"
+  ],
+  "missingSnippets": [
+    "changes/функцию-iseven-проверяет-число/snippets/scaffold_project_structure.ts",
+    "changes/функцию-iseven-проверяет-число/snippets/implement_core_capability.ts",
+    "changes/функцию-iseven-проверяет-число/snippets/implement_функцию_iseven.ts",
+    "changes/функцию-iseven-проверяет-число/snippets/cover_core_capability.ts",
+    "changes/функцию-iseven-проверяет-число/snippets/document_usage_readme.ts"
+  ],
+  "reportPath": "changes/функцию-iseven-проверяет-число/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 5 pending — add snippets: changes/функцию-iseven-проверяет-число/snippets/scaffold_project_structure.ts, changes/функцию-iseven-проверяет-число/snippets/implement_core_capability.ts, changes/функцию-iseven-проверяет-число/snippets/implement_функцию_iseven.ts, changes/функцию-iseven-проверяет-число/snippets/cover_core_capability.ts, changes/функцию-iseven-проверяет-число/snippets/document_usage_readme.ts"
+}

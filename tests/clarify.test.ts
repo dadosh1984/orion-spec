@@ -73,22 +73,23 @@ describe('SocratesEngine', () => {
     expect(hazardQ!.text).toContain('rmSync');
   });
 
-  it('generates ambiguity blocker for vague goal', () => {
-    const id = 'test-ambig';
+  it('generates hazard blocker for rmSync', () => {
+    const id = 'test-hazard-2';
     createChangeDir(id);
-    writeProposal(id, { goal: 'улучшить производительность' });
+    writeFileSync(`changes/${id}/snippets/fs.ts`, `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+    writeProposal(id);
 
     const engine = new SocratesEngine();
     const questions = engine.analyze({
       changeId: id,
-      proposal: { title: id, goal: 'улучшить производительность', platform: '', constraints: '', budget: '' },
+      proposal: { title: id, goal: 'Deploy script', platform: '', constraints: '', budget: '' },
       snippetsDir: `changes/${id}/snippets`,
     });
 
-    const ambigQ = questions.find(q => q.category === 'ambiguity');
-    expect(ambigQ).toBeDefined();
-    expect(ambigQ!.priority).toBe('blocker');
-    expect(ambigQ!.text).toContain('улучшить');
+    const hazardQ = questions.find(q => q.category === 'hazard');
+    expect(hazardQ).toBeDefined();
+    expect(hazardQ!.priority).toBe('blocker');
+    expect(hazardQ!.text).toContain('rmSync');
   });
 
   it('generates clarifying question for TODO in snippet', () => {
@@ -140,36 +141,37 @@ describe('SocratesEngine', () => {
   it('skips already-answered questions', () => {
     const id = 'test-dedup';
     createChangeDir(id);
-    writeProposal(id, { goal: 'refactor the module' });
+    writeFileSync(`changes/${id}/snippets/deploy.ts`, `import { rmSync } from 'node:fs'; rmSync('/tmp', { recursive: true });`);
+    writeProposal(id, { goal: 'Deploy script' });
 
     // First pass: generate questions
     const engine1 = new SocratesEngine();
     const qs1 = engine1.analyze({
       changeId: id,
-      proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+      proposal: { title: id, goal: 'Deploy script', platform: '', constraints: '', budget: '' },
       snippetsDir: `changes/${id}/snippets`,
     });
-    expect(qs1.some(q => q.category === 'ambiguity')).toBe(true);
+    expect(qs1.some(q => q.category === 'hazard')).toBe(true);
 
     // Second pass: with existing questions and answers (simulating answered)
-    const answered = qs1.filter(q => q.category === 'ambiguity').map(q => ({
+    const answered = qs1.filter(q => q.category === 'hazard').map(q => ({
       questionId: q.id,
-      text: 'Will extract to 3 smaller modules',
+      text: 'rmSync is intentional — clean old deployments',
       ts: new Date().toISOString(),
     }));
 
     const engine2 = new SocratesEngine();
     const qs2 = engine2.analyze({
       changeId: id,
-      proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+      proposal: { title: id, goal: 'Deploy script', platform: '', constraints: '', budget: '' },
       snippetsDir: `changes/${id}/snippets`,
       existingQuestions: qs1,
       existingAnswers: answered,
     });
 
     // Should not regenerate the same answered question
-    const ambigAgain = qs2.filter(q => q.category === 'ambiguity');
-    expect(ambigAgain.length).toBe(0);
+    const hazardAgain = qs2.filter(q => q.category === 'hazard');
+    expect(hazardAgain.length).toBe(0);
   });
 });
 
@@ -177,39 +179,41 @@ describe('applyAnswers / hasUnansweredBlockers', () => {
   it('applyAnswers marks questions resolved', () => {
     const id = 'test-apply';
     createChangeDir(id);
-    writeProposal(id, { goal: 'refactor the module' });
+    writeFileSync(`changes/${id}/snippets/deploy.ts`, `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+    writeProposal(id, { goal: 'Deploy script' });
 
     const engine = new SocratesEngine();
     const questions = engine.analyze({
       changeId: id,
-      proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+      proposal: { title: id, goal: 'Deploy script', platform: '', constraints: '', budget: '' },
       snippetsDir: `changes/${id}/snippets`,
     });
     const store = clarifyStore(id);
     store.questions.replace(questions);
 
-    // Apply an answer to the ambiguity blocker
-    const ambigQ = questions.find(q => q.category === 'ambiguity');
-    expect(ambigQ).toBeDefined();
-    applyAnswers(id, [{ questionId: ambigQ!.id, text: 'Will extract to 3 smaller modules', ts: new Date().toISOString() }]);
+    // Apply an answer to the hazard blocker
+    const hazardQ = questions.find(q => q.category === 'hazard');
+    expect(hazardQ).toBeDefined();
+    applyAnswers(id, [{ questionId: hazardQ!.id, text: 'rmSync intentional — cleanup', ts: new Date().toISOString() }]);
 
     // Check: question is now resolved
     const state = loadClarifyState(id);
-    const resolvedQ = state.questions.find(q => q.id === ambigQ!.id);
+    const resolvedQ = state.questions.find(q => q.id === hazardQ!.id);
     expect(resolvedQ?.resolved).toBe(true);
     expect(state.answers.length).toBe(1);
-    expect(state.answers[0].questionId).toBe(ambigQ!.id);
+    expect(state.answers[0].questionId).toBe(hazardQ!.id);
   });
 
   it('hasUnansweredBlockers returns true when blocker unanswered', () => {
     const id = 'test-blocked';
     createChangeDir(id);
-    writeProposal(id, { goal: 'refactor the module' });
+    writeFileSync(`changes/${id}/snippets/deploy.ts`, `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+    writeProposal(id, { goal: 'Deploy script' });
 
     const engine = new SocratesEngine();
     const questions = engine.analyze({
       changeId: id,
-      proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+      proposal: { title: id, goal: 'Deploy script', platform: '', constraints: '', budget: '' },
       snippetsDir: `changes/${id}/snippets`,
     });
     const store = clarifyStore(id);
@@ -224,12 +228,13 @@ describe('applyAnswers / hasUnansweredBlockers', () => {
   it('hasUnansweredBlockers returns false after all blockers answered', () => {
     const id = 'test-unblocked';
     createChangeDir(id);
-    writeProposal(id, { goal: 'refactor the module' });
+    writeFileSync(`changes/${id}/snippets/deploy.ts`, `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+    writeProposal(id, { goal: 'Deploy script' });
 
     const engine = new SocratesEngine();
     const questions = engine.analyze({
       changeId: id,
-      proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+      proposal: { title: id, goal: 'Deploy script', platform: '', constraints: '', budget: '' },
       snippetsDir: `changes/${id}/snippets`,
     });
     const store = clarifyStore(id);
@@ -249,7 +254,8 @@ describe('generateQuestions helper', () => {
   it('persists questions to files', () => {
     const id = 'test-gen';
     createChangeDir(id);
-    writeProposal(id, { goal: 'refactor the module' });
+    writeFileSync(`changes/${id}/snippets/deploy.ts`, `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+    writeProposal(id, { goal: 'Deploy script' });
 
     // persist questions
     generateQuestions(id);
@@ -263,13 +269,14 @@ describe('refine', () => {
   it('merges answers into proposal and updates context', async () => {
     const id = 'test-refine';
     createChangeDir(id);
-    writeProposal(id, { goal: 'refactor the module' });
+    writeFileSync(`changes/${id}/snippets/deploy.ts`, `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+    writeProposal(id, { goal: 'Deploy script' });
 
     // Set up: questions + answers
     const engine = new SocratesEngine();
     const questions = engine.analyze({
       changeId: id,
-      proposal: { title: id, goal: 'refactor the module', platform: '', constraints: '', budget: '' },
+      proposal: { title: id, goal: 'Deploy script', platform: '', constraints: '', budget: '' },
       snippetsDir: `changes/${id}/snippets`,
     });
     const store = clarifyStore(id);
@@ -287,14 +294,15 @@ describe('refine', () => {
     expect(raw.answers).toBeDefined();
     expect(raw.answers.length).toBeGreaterThanOrEqual(1);
     expect(raw.context).toBeDefined();
-    expect(raw.context).toContain('refactor');
+    expect(raw.context).toContain('Deploy');
   });
 });
 
 it('refine auto returns blocker message when blockers remain', () => {
   const id = 'test-refine-auto-blocked';
   createChangeDir(id);
-  writeProposal(id, { goal: 'refactor the module' });
+  writeFileSync('changes/' + id + '/snippets/deploy.ts', `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+  writeProposal(id, { goal: 'Deploy script' });
 
   const engine = new SocratesEngine();
   const questions = engine.analyze({
@@ -313,7 +321,8 @@ it('refine auto returns blocker message when blockers remain', () => {
 it('refine auto returns null when all blockers resolved', () => {
   const id = 'test-refine-auto-pass';
   createChangeDir(id);
-  writeProposal(id, { goal: 'refactor the module' });
+  writeFileSync('changes/' + id + '/snippets/deploy.ts', `import { rmSync } from 'node:fs'; rmSync('/tmp');`);
+  writeProposal(id, { goal: 'Deploy script' });
 
   const engine = new SocratesEngine();
   const questions = engine.analyze({

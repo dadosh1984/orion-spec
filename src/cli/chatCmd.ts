@@ -177,14 +177,25 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
   }
 
   if (full) {
-    // ── STEP 4/6: FORGE — graceful, skip if no snippets ──
+    // ── STEP 4/6: FORGE — auto-generate snippets via AI if missing ──
     const t4 = process.hrtime.bigint();
-    const tasksFile = `changes/${changeId}/tasks.md`;
     const snippetsDir = `changes/${changeId}/snippets`;
-    if (!existsSync(tasksFile) || !existsSync(snippetsDir)) {
-      process.stderr.write(`${YELLOW}\u26A0${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}skipped — no tasks/snippets${RESET}  ${elapsed(t4)}\n`);
-    } else {
-      process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}writing code...${RESET}\n`);
+    const tasksFile = `changes/${changeId}/tasks.md`;
+
+    // Generate snippets if empty
+    if (!existsSync(snippetsDir) || !readdirSync(snippetsDir).some(f => f.endsWith('.ts'))) {
+      process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}AI generating code from tasks...${RESET}\n`);
+      try {
+        const generated = await generateSnippets(changeId);
+        process.stderr.write(`  ${DIM}${generated} snippet(s) written${RESET}\n`);
+      } catch (err) {
+        process.stderr.write(`  ${YELLOW}\u26A0${RESET} ${DIM}cannot generate: ${err instanceof Error ? err.message.slice(0, 30) : 'error'}${RESET}\n`);
+      }
+    }
+
+    // Run forge
+    if (existsSync(snippetsDir) && readdirSync(snippetsDir).some(f => f.endsWith('.ts'))) {
+      process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}applying code...${RESET}\n`);
       try {
         const summary = await forge(changeId, {
           noCache: false,
@@ -196,11 +207,13 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
         if (summary.ok) {
           process.stderr.write(`${icon(true)} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}${summary.done ?? '?'}/${summary.total ?? '?'} tasks done${RESET}  ${elapsed(t4)}\n`);
         } else {
-          process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}skipped — no implementable snippets${RESET}  ${elapsed(t4)}\n`);
+          process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}partial — ${summary.done ?? 0}/${summary.total ?? '?'}${RESET}  ${elapsed(t4)}\n`);
         }
       } catch (err) {
-        process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}skipped — ${err instanceof Error ? err.message.slice(0, 40) : 'error'}${RESET}\n`);
+        process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}failed — ${err instanceof Error ? err.message.slice(0, 40) : 'error'}${RESET}\n`);
       }
+    } else {
+      process.stderr.write(`${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}skipped — no snippets${RESET}  ${elapsed(t4)}\n`);
     }
 
     // ── STEP 5/6: SHIELD ────────────────────────
@@ -260,6 +273,45 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
 }
 
 // ─── Helpers ─────────────────────────────────────────────
+
+/** Generate stub snippets from tasks.md for each task. */
+async function generateSnippets(changeId: string): Promise<number> {
+  const { readFileSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const snippetsDir = `changes/${changeId}/snippets`;
+  const tasksFile = `changes/${changeId}/tasks.md`;
+
+  if (!existsSync(tasksFile)) return 0;
+  if (!existsSync(snippetsDir)) mkdirSync(snippetsDir, { recursive: true });
+
+  const tasks = readFileSync(tasksFile, 'utf8');
+  const lines = tasks.split('\n').filter(l => l.startsWith('- [ ]'));
+  let count = 0;
+
+  for (const line of lines) {
+    const name = line.replace(/^- \[ \] \[?\w+\]? */, '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 30);
+    if (!name) continue;
+    const file = `${snippetsDir}/${name}.ts`;
+    if (existsSync(file)) continue;
+
+    // Ask AI to generate code for this task
+    const goal = (await readProposalJson(changeId))?.goal ?? '';
+    const code = await askWithFallback(
+      { id: 'gen', text: `Write TypeScript code for task: ${name}\n\nProject: ${goal}\n\nTask from tasks.md: ${line}`, category: 'incomplete', priority: 'clarifying', source: 'forge:generate', resolved: false, ts: '' },
+      goal,
+      `Task: ${line}`,
+    );
+
+    const content = code && code.length > 10 && !code.startsWith('Acknowledged')
+      ? code
+      : `/**\n * ${name} — auto-generated stub\n */\n\nexport function ${name}(): void {\n  // TODO: implement\n  console.log('${name} called');\n}\n`;
+
+    writeFileSync(file, content, 'utf8');
+    count++;
+  }
+
+  return count;
+}
+
 async function readProposalJson(changeId: string): Promise<{ goal?: string; context?: string } | null> {
   try {
     const { readFileSync: read, existsSync: exists } = await import('node:fs');
