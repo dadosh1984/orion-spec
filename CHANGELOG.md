@@ -2,6 +2,60 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.65.0] — Post-audit hardening
+
+10 bugs fixed from deep audit: writeJson atomic, hazard gate in generateSnippets,
+--save-as git status, jsonlStore.replace atomic, detectMissingTests change-level,
+detectDrift code blocks, lint clean, duplicate aliases removed.
+
+## [0.64.0] — Full autonomous pipeline
+
+- orion chat --auto --full: think->draft->clarify->forge->shield->out
+- AI agent answers ALL questions (including blockers) in --auto mode
+- Visualisation: color-coded steps with timing, status, result summary
+- --force flag to bypass prompt drift guard
+
+## [0.63.0] — Visual pipeline
+
+- Pipeline visualisation: Orion v0.63 header, step-by-step with timing
+- --full flag: forge + shield + out automatic execution
+- VAGUE_TERMS removed from core (was hardcoded, never complete)
+
+## [0.62.0] — MCP Server v2
+
+- New MCP tools: chat, status, lessons for Claude/Cursor/Cline
+- chat title mismatch fixed (readdir match instead of slugify)
+- VAGUE_TERMS expanded with imperative forms (study, analyse, define)
+
+## [0.61.0] — LLM Socrates
+
+- src/core/llm/: adapter.ts, ollama.ts, prompts.ts (zero deps)
+- orion chat --auto: LLM answers clarifying questions via Ollama
+- Rule-based fallback when no LLM available
+
+## [0.60.0] — orion chat (one-command pipeline)
+
+- orion chat: think + draft + clarify in one command
+- Iterative: blockers/questions shown, user answers, re-enter continues
+- re-entrant: skips completed steps
+
+## [0.59.0] — refine --auto
+
+- refine --auto flag: checks blockers after merging answers
+- Returns non-null message when blockers remain
+
+## [0.58.0] — Socrates Engine
+
+- SocratesEngine class with 5 deterministic rules
+  - HAZARD -> blocker (rmSync, exec)
+  - INCOMPLETE -> clarifying (TODO/FIXME)
+  - DRIFT -> clarifying (spec vs source)
+  - TEST -> clarifying (code without tests)
+- src/core/clarify.ts, src/core/clarifyStore.ts
+- CLI commands: clarify, answer, refine
+- Integration with out: gate on unanswered blockers
+- dialogue.json: full Q&A history
+
 ## [0.57.0] — hardening
 
 Production-readiness: serve no longer leaks secrets or is DoS-able, and run

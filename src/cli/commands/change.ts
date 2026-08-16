@@ -17,7 +17,7 @@
  *   orion change <id> --pay-debt       Repay yagni debt
  *   orion change <id> --verify         Spec->source evidence pass
  *   orion change <id> --out            Run the out skill
- *   orion change <id> --shield         Run shield gates
+ *   orion change <id> --shield         Run hazard scan + drift check (fast guard)
  *   orion change <id> --export         Export profile+lessons snapshot
  *   orion change <id> --import <path>  Import profile+lessons snapshot
  */
@@ -35,7 +35,6 @@ import { nextStep } from "../../skills/next/handler.js";
 import { payDebt } from "../../skills/pay-debt/handler.js";
 import { verifyChange, formatVerifyReport } from "../../core/verify.js";
 import { replay } from "../../skills/replay/handler.js";
-import { shield } from "../../skills/shield/handler.js";
 import { out } from "../../skills/out/handler.js";
 import { exportProfile, importProfile } from "../../core/profile.js";
 import type { CommandHandler } from "../registry.js";

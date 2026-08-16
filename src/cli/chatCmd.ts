@@ -5,7 +5,8 @@
  * Each step is visualised with timing, status and useful info.
  */
 
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { writeFileSafe } from '../utils/file.js';
 import { think } from '../skills/think/handler.js';
 import { draft } from '../skills/draft/handler.js';
 import { forge } from '../skills/forge/handler.js';
@@ -179,9 +180,10 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
     // ── STEP 4/6: FORGE — auto-generate snippets via AI if missing ──
     const t4 = process.hrtime.bigint();
     const snippetsDir = `changes/${changeId}/snippets`;
+    const hasSnippets = existsSync(snippetsDir) && readdirSync(snippetsDir).some(f => f.endsWith('.ts'));
 
     // Generate snippets if empty
-    if (!existsSync(snippetsDir) || !readdirSync(snippetsDir).some(f => f.endsWith('.ts'))) {
+    if (!hasSnippets) {
       process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}AI generating code from tasks...${RESET}\n`);
       try {
         const generated = await generateSnippets(changeId);
@@ -192,7 +194,7 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
     }
 
     // Run forge
-    if (existsSync(snippetsDir) && readdirSync(snippetsDir).some(f => f.endsWith('.ts'))) {
+    if (hasSnippets) {
       process.stderr.write(`${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}applying code...${RESET}\n`);
       try {
         const summary = await forge(changeId, {
@@ -274,7 +276,7 @@ export async function chatCommand(prompt: string, auto = false, full = false, fo
 
 /** Generate stub snippets from tasks.md for each task. */
 async function generateSnippets(changeId: string): Promise<number> {
-  const { readFileSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { readFileSync, mkdirSync } = await import('node:fs');
   const snippetsDir = `changes/${changeId}/snippets`;
   const tasksFile = `changes/${changeId}/tasks.md`;
 
@@ -303,7 +305,7 @@ async function generateSnippets(changeId: string): Promise<number> {
       ? code
       : `/**\n * ${name} — auto-generated stub\n */\n\nexport function ${name}(): void {\n  // TODO: implement\n  throw new Error('${name}: not implemented');\n}\n`;
 
-    writeFileSync(file, content, 'utf8');
+    await writeFileSafe(file, content);
     count++;
   }
 
@@ -311,11 +313,10 @@ async function generateSnippets(changeId: string): Promise<number> {
 }
 
 async function readProposalJson(changeId: string): Promise<{ goal?: string; context?: string } | null> {
+  const path = `changes/${changeId}/proposal.json`;
+  if (!existsSync(path)) return null;
   try {
-    const { readFileSync: read, existsSync: exists } = await import('node:fs');
-    const path = `changes/${changeId}/proposal.json`;
-    if (!exists(path)) return null;
-    return JSON.parse(read(path, 'utf8'));
+    return JSON.parse(readFileSync(path, 'utf8'));
   } catch { return null; }
 }
 
