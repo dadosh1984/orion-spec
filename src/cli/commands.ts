@@ -61,6 +61,7 @@ import {
   answerCommand,
   refineCommand,
 } from "./clarifyCmd.js";
+import { chatCommand } from "./chatCmd.js";
 import { runDispatch } from "./runCmd.js";
 import { createScript, scriptPath, writeManifest } from "../core/runtime.js";
 import {
@@ -453,6 +454,12 @@ export async function main(argv: string[]): Promise<number> {
 
     case "answer":
       return await answerCommand(args, opts);
+
+    case "chat": {
+      const prompt = args.join(" ");
+      if (!prompt) return fail("chat requires a prompt, e.g. orion chat \"add date sorting to orders\"");
+      return await chatCommand(prompt);
+    }
 
     case "clarify":
       return await clarifyCommand(args);

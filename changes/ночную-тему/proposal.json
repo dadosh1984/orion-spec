@@ -1,0 +1,18 @@
+{
+  "title": "ночную-тему",
+  "goal": "добавить ночную тему",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2,
+  "appliesLessons": [
+    "v0-46-устранить-дубли:forge:71f6bf89533b",
+    "скилл-onec-converter-migration:forge:684890ea40c4"
+  ],
+  "answers": [],
+  "context": "добавить ночную тему"
+}
