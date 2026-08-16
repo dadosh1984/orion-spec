@@ -49,10 +49,10 @@ export async function clarifyCommand(args: string[]): Promise<number> {
 }
 
 /** orion answer <change-id> --json <file> */
-export async function answerCommand(args: string[], flags: { json?: string }): Promise<number> {
-  const [changeId] = args;
-  if (!changeId) {
-    console.error('orion: answer requires a change id, e.g. orion answer my-change --json answers.json');
+export async function answerCommand(args: string[], _flags: unknown): Promise<number> {
+  const [changeId, jsonPath] = args;
+  if (!changeId || !jsonPath) {
+    console.error('orion: answer requires: orion answer <change-id> <answers.json>');
     return 1;
   }
   if (!existsSync(`changes/${changeId}`)) {
@@ -61,12 +61,7 @@ export async function answerCommand(args: string[], flags: { json?: string }): P
   }
 
   let raw: string;
-  const jsonSrc = flags.json;
-  if (!jsonSrc) {
-    console.error('orion: --json <file> is required (use "-" for stdin)');
-    return 1;
-  }
-  if (jsonSrc === '-') {
+  if (jsonPath === '-') {
     // Read from stdin
     const chunks: Buffer[] = [];
     for await (const chunk of process.stdin) {
@@ -74,11 +69,11 @@ export async function answerCommand(args: string[], flags: { json?: string }): P
     }
     raw = Buffer.concat(chunks).toString('utf8');
   } else {
-    if (!existsSync(jsonSrc)) {
-      console.error(`orion: answers file not found: ${jsonSrc}`);
+    if (!existsSync(jsonPath)) {
+      console.error(`orion: answers file not found: ${jsonPath}`);
       return 1;
     }
-    raw = readFileSync(jsonSrc, 'utf8');
+    raw = readFileSync(jsonPath, 'utf8');
   }
 
   let parsed: unknown;

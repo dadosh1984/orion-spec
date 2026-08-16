@@ -452,7 +452,7 @@ export async function main(argv: string[]): Promise<number> {
       return await refineCommand(args);
 
     case "answer":
-      return await answerCommand(args, opts as never);
+      return await answerCommand(args, opts);
 
     case "clarify":
       return await clarifyCommand(args);
@@ -462,7 +462,7 @@ export async function main(argv: string[]): Promise<number> {
       if (!changeId) return fail("out requires a change id");
       const result = await out(changeId, opts);
       printOut(opts, result, `Result written to changes/${changeId}/result.md`);
-      return 0;
+      return result.allPass ? 0 : 1;
     }
 
     case "update": {
