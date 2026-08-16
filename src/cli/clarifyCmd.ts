@@ -30,17 +30,19 @@ export async function clarifyCommand(args: string[]): Promise<number> {
 
   const questions = generateQuestions(changeId);
 
-  if (questions.length === 0) {
+  // Show only unresolved questions
+  const unresolved = questions.filter(q => !q.resolved);
+  if (unresolved.length === 0) {
     console.log(`${EMOJI.done} No clarifying questions — all clear.`);
     return 0;
   }
 
-  for (const q of questions) {
+  for (const q of unresolved) {
     const icon = q.priority === 'blocker' ? EMOJI.blocker : EMOJI.clarifying;
     console.log(`${icon} [${q.id}] ${q.text} (${q.category})`);
   }
 
-  const blockers = questions.filter(q => q.priority === 'blocker').length;
+  const blockers = unresolved.filter(q => q.priority === 'blocker').length;
   if (blockers > 0) {
     console.error(`\norion: ${blockers} blocker(s) found — resolve before orion out`);
     return 1;
