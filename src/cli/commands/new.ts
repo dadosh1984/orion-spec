@@ -1,24 +1,23 @@
 /**
- * `orion new "<prompt>"` (v0.51) — pipeline driver.
+ * `orion new "<prompt>"` (v0.51) — autonomous pipeline driver.
  *
- * This is the v0.51+ entry point that replaces the deprecated top-level
- * `orion think` / `orion draft` / `orion forge` / `orion shield` / `orion out`
- * commands. By default it runs **only the first step** (`think`): it captures
- * the user's prompt, asks guided questions via the think-skill, and writes
- * `proposal.json` to `changes/<title>/`. The user can then review the
- * proposal and continue with explicit `orion draft <id>` / `orion forge <id>`
- * / `orion shield <id>` / `orion out <id>` calls.
+ * By default it runs the **full autonomous pipeline** (chat with clarify,
+ * atomic decomposition, forge, shield, out). This covers the cycle:
+ * prompt → think → draft (atomic if depth≥2) → clarify (Socrates) →
+ * forge → shield → out, with auto-learn and auto-promote after success.
+ *
+ * Use --step=think for the old behaviour: only capture the proposal.
  *
  * Flags:
- *   --step=think|draft|forge|shield|out   Run a specific step (default: think)
- *   --pipeline                            Run the full think→draft→forge→shield→out chain
- *   --dry                                 Show what would happen without writing files (alias for `orion plan`)
+ *   --step=think|draft|forge|shield|out   Run a specific step (default: full pipeline)
+ *   --pipeline                            Same as default (full chain)
+ *   --dry                                 Show what would happen without writing files
  *   --from=<change-id>                    Continue an existing change (skip think)
- *   --slug=<id>                          Force an ASCII kebab-case change slug (think)
+ *   --slug=<id>                          Force an ASCII kebab-case change slug
  *
  * Example:
- *   orion new "Build a CSV-to-JSON tool"
- *   orion new "Build a CSV-to-JSON tool" --pipeline
+ *   orion new "Build a CSV-to-JSON tool"     (full pipeline)
+ *   orion new "Build a CSV-to-JSON tool" --step=think   (just proposal)
  *   orion new "" --step=forge --from=my-csv-tool
  *   orion new "Сделай прогноз продаж" --slug=forecast-tool
  */
@@ -143,9 +142,23 @@ export const newHandler: CommandHandler = async (args, opts) => {
     return runPipeline(positional, from, opts, flags.slug);
   }
 
-  // Single-step mode. If --from is given, the positional can be empty.
-  const whichStep: Step = step ?? "think";
+  // Default (no --step): full autonomous pipeline with chat + clarify.
+  // Use --step=think for the old single-step mode.
+  const whichStep: Step =
+    step ?? (positional.length && !from ? "think" : "think");
   const changeId = from ?? positional[0];
+
+  if (whichStep === "think" && step === null) {
+    // Full autonomous pipeline: think → draft → clarify → forge → shield → out
+    const prompt = positional.join(" ").trim();
+    if (!prompt) {
+      return fail(
+        'orion new requires a prompt, e.g. orion new "Build a CSV-to-JSON tool"',
+      );
+    }
+    const { chatCommand } = await import("../chatCmd.js");
+    return chatCommand(prompt, true, true, opts.force ?? false);
+  }
 
   if (whichStep === "think") {
     const prompt = positional.join(" ").trim();

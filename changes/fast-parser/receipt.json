@@ -1,0 +1,10 @@
+{
+  "change": "fast-parser",
+  "ts": "2026-08-17T19:20:05.258Z",
+  "specSource": "not measured",
+  "tests": "900 passing, 2 skipped",
+  "coverage": "0% (no files with metrics)",
+  "hazards": "0 destructive patterns",
+  "sha256": "75850cb8a09a",
+  "status": "failing"
+}
