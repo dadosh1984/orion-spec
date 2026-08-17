@@ -280,13 +280,14 @@ export async function main(argv: string[]): Promise<number> {
               onTask,
             });
       printOut(opts, summary, summary.message);
-      // --save-as: сохранить результат как runnable script (v0.39.1)
+      // --save-as: save the result as a runnable script (v0.39.1)
       if (opts.saveAs && summary.ok) {
         const saveName = opts.saveAs;
         try {
-          // Конвенция: точка входа — changes/<title>/entry.js или entry.ts.
-          // Если её нет — forge правил существующие файлы, автономного скрипта
-          // не получилось. Честный отказ лучше молчаливой пустышки.
+          // Convention: the entry point is changes/<title>/entry.js or
+          // entry.ts. If neither exists, forge edited existing files and no
+          // standalone script was produced. An honest refusal is better than
+          // a silent empty stub.
           const entryCandidates = [
             `changes/${title}/entry.js`,
             `changes/${title}/entry.ts`,
@@ -300,7 +301,7 @@ export async function main(argv: string[]): Promise<number> {
           }
 
           if (!entryPath) {
-            // Второй шанс: git diff src/tasks/ — forge мог создать новые файлы
+            // Second chance: git diff src/tasks/ — forge may have created new files
             const { spawnSync } = await import("node:child_process");
             try {
               const gitCheck = spawnSync(
@@ -321,7 +322,7 @@ export async function main(argv: string[]): Promise<number> {
                 .map((l) => l.trim().split(/\s+/).pop())
                 .filter((f): f is string => Boolean(f));
               if (changed.length === 1) {
-                // Ровно один новый файл — используем как точку входа
+                // Exactly one new file — use it as the entry point
                 entryPath = changed[0] ?? null;
               }
             } catch {
@@ -330,17 +331,17 @@ export async function main(argv: string[]): Promise<number> {
           }
 
           if (!entryPath) {
-            // Честный отказ: нечего сохранять как автономный скрипт
+            // Honest refusal: nothing to save as a standalone script
             console.error(
-              `\n${statusMark("error")} --save-as failed: change "${title}" не содержит автономной точки входа.`,
+              `\n${statusMark("error")} --save-as failed: change "${title}" has no standalone entry point.`,
             );
             console.error(
-              `  Создайте changes/${title}/entry.js с финальным кодом и повторите forge --save-as.`,
+              `  Create changes/${title}/entry.js with the final code and re-run forge --save-as.`,
             );
             return 1;
           }
 
-          // Создаём скрипт и копируем реальный код. v0.51: fill domain +
+          // Create the script and copy the real code. v0.51: fill domain +
           // environmentFingerprint at save time (was "general"/none before).
           const { meta: skillMetaForSave } = await (async () => {
             const { resolveDomain, environmentFingerprint } =
@@ -362,7 +363,7 @@ export async function main(argv: string[]): Promise<number> {
           );
           const entryCode = readFileSync(entryPath, "utf8");
           writeFileSync(scriptPath(saveName), entryCode, "utf8");
-          // Записываем sourceChange для трассируемости
+          // Write sourceChange for traceability
           m.sourceChange = title;
           writeManifest(m);
           console.log(

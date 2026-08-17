@@ -42,49 +42,47 @@ const RULES: Array<{
   {
     re: CAT6_RE,
     cat: 6,
-    label: "Опасная / деструктивная",
+    label: "Dangerous / destructive",
     rec: "reject",
     reason:
-      "Содержит потенциально опасные паттерны. Требует явного подтверждения пользователя.",
+      "Contains potentially dangerous patterns. Requires explicit user confirmation.",
   },
   {
     re: CAT4_RE,
     cat: 4,
-    label: "Динамичная веб-задача",
+    label: "Dynamic web task",
     rec: "script_with_ai",
     reason:
-      "Веб-сайты меняют структуру. Скрипт потребует периодической починки ИИ.",
+      "Websites change structure. The script will need periodic AI repair.",
   },
   {
     re: CAT3_RE,
     cat: 3,
-    label: "Внешний API / сеть",
+    label: "External API / network",
     rec: "script",
-    reason:
-      "Использует стабильный внешний API. Можно автоматизировать скриптом.",
+    reason: "Uses a stable external API. Can be automated with a script.",
   },
   {
     re: CAT1_RE,
     cat: 1,
-    label: "Локальная детерминированная",
+    label: "Local deterministic",
     rec: "script",
     reason:
-      "Чёткие повторяемые шаги с файлами. Идеальный кандидат для автономного скрипта.",
+      "Clear, repeatable steps over files. Ideal candidate for a standalone script.",
   },
   {
     re: CAT2_RE,
     cat: 2,
-    label: "Локальная с неопределённостью",
+    label: "Local with uncertainty",
     rec: "script_with_ai",
-    reason:
-      "В основном детерминированная, но возможны нестандартные входные данные.",
+    reason: "Mostly deterministic but may see non-standard input data.",
   },
   {
     re: CAT5_RE,
     cat: 5,
-    label: "Творческая / аналитическая",
+    label: "Creative / analytical",
     rec: "ai_only",
-    reason: "Требует понимания контекста и творческого мышления.",
+    reason: "Requires context understanding and creative thinking.",
   },
 ];
 
@@ -101,9 +99,9 @@ export function classifyTask(prompt: string): ClassifyResult {
   }
   return {
     category: 5,
-    label: "Творческая / аналитическая",
+    label: "Creative / analytical",
     recommendation: "ai_only",
-    reason: "По умолчанию — решать через ИИ.",
+    reason: "By default — solve via AI.",
   };
 }
 
@@ -114,30 +112,30 @@ export function formatClassifyResult(
   if (r.recommendation === "reject") {
     return [
       "",
-      "🚫 Эта задача — «" + r.label + "».",
+      "🚫 This task is «" + r.label + "».",
       r.reason,
       "",
-      "Автоматизация отклонена. Требуется явное подтверждение пользователя.",
+      "Automation rejected. Explicit user confirmation required.",
       "",
     ].join("\n");
   }
   return r.recommendation === "script" || r.recommendation === "script_with_ai"
     ? [
         "",
-        "💡 Эта задача выглядит как «" + r.label + "».",
+        "💡 This task looks like «" + r.label + "».",
         r.reason,
         "",
         r.recommendation === "script"
-          ? "Рекомендуется: orion forge <change> --save-as <name> — создать автономный скрипт и запускать без токенов."
-          : "Рекомендуется: orion forge <change> --save-as <name> + orion run <name> для основной массы, ИИ для исключений.",
+          ? "Recommended: orion forge <change> --save-as <name> — create a standalone script and run it without tokens."
+          : "Recommended: orion forge <change> --save-as <name> + orion run <name> for the bulk, AI for exceptions.",
         "",
       ].join("\n")
     : [
         "",
-        "🧠 Эта задача — «" + r.label + "».",
+        "🧠 This task is «" + r.label + "».",
         r.reason,
         "",
-        "Автоматизация не рекомендуется. Лучше решать через ИИ напрямую.",
+        "Automation not recommended. Better to solve via AI directly.",
         "",
       ].join("\n");
 }

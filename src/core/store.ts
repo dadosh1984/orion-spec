@@ -1,9 +1,9 @@
 /**
  * Abstract storage layer — Store<T> (v0.57).
  *
- * Единый интерфейс для файловых хранилищ Orion (economy, lessons).
- * Реализации: fileStore (JSON array), jsonlStore (JSONL + O_APPEND),
- * memoryStore (для тестов).
+ * Single interface for Orion file stores (economy, lessons).
+ * Implementations: fileStore (JSON array), jsonlStore (JSONL + O_APPEND),
+ * memoryStore (for tests).
  */
 
 import {

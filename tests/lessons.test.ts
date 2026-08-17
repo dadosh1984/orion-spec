@@ -267,7 +267,7 @@ describe("honest auto-capture", () => {
   });
 });
 
-describe("out — «Уроки и решения» section (v0.14)", () => {
+describe("out — «Lessons & decisions» section (v0.14)", () => {
   function seedPassingChange(title: string, goal: string): void {
     seedChange(title, ["one", "two"]);
     // seedChange writes goal `build ${title}` — overwrite with the real one
@@ -312,19 +312,19 @@ describe("out — «Уроки и решения» section (v0.14)", () => {
     const result = await out("demo");
     expect(result.status).toBe("SUCCESS");
     const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
-    expect(md).toContain("## Уроки и решения");
+    expect(md).toContain("## Lessons & decisions");
     expect(md).toContain(
       "> drift: missing exported capability → export the capability, then re-run orion shield demo",
     );
   });
 
-  it("says «нет уроков» honestly when the ledger has nothing for the change", async () => {
+  it("says «no lessons» honestly when the ledger has nothing for the change", async () => {
     seedPassingChange("demo", "build demo");
     const result = await out("demo");
     expect(result.status).toBe("SUCCESS");
     const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
     expect(md).toContain(
-      "_Уроков нет — эта задача прошла без зафиксированных ошибок._",
+      "_No lessons — this change finished without recorded errors._",
     );
   });
 
@@ -339,7 +339,7 @@ describe("out — «Уроки и решения» section (v0.14)", () => {
     const result = await out("demo");
     expect(result.status).toBe("SUCCESS");
     const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
-    expect(md).toContain("## Уроки и решения");
+    expect(md).toContain("## Lessons & decisions");
     expect(md).toContain(
       "> [other-project] pytest run failed on flaky ordering → add --randomly-seed",
     );
@@ -350,7 +350,7 @@ describe("out — «Уроки и решения» section (v0.14)", () => {
     const result = await out("demo");
     expect(result.status).toBe("INCOMPLETE");
     const md = readFileSync(join("changes", "demo", "result.md"), "utf8");
-    expect(md).not.toContain("## Уроки и решения");
+    expect(md).not.toContain("## Lessons & decisions");
   });
 });
 

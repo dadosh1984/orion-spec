@@ -11,12 +11,12 @@ import { join } from "node:path";
 import { scriptsDir } from "./runtime.js";
 
 /**
- * Spec-driven script cache (v0.39) — кэширует скрипты по хэшу спецификации.
- * Если пользователь меняет описание задачи или outputSchema — ключ меняется,
- * и LLM генерирует новый скрипт. Если спецификация та же — hit кэша.
+ * Spec-driven script cache (v0.39) — caches scripts by spec hash.
+ * If the user changes the task description or outputSchema, the key changes
+ * and LLM regenerates a new script. If the spec is the same — cache hit.
  *
- * Кэш живёт в ~/.orion/scripts/.cache/<hash>.json
- * Каждая запись: { key, name, description, createdAt, hitCount }
+ * The cache lives in ~/.orion/scripts/.cache/<hash>.json
+ * Each entry: { key, name, description, createdAt, hitCount }
  */
 
 interface CacheEntry {

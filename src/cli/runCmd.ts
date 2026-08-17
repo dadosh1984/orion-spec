@@ -51,7 +51,7 @@ async function skillMeta() {
 }
 
 /**
- * `orion run` (v0.39) — автономные локальные скрипты.
+ * `orion run` (v0.39) — standalone local scripts.
  */
 export async function runDispatch(args: string[]): Promise<number> {
   const sub = args[0];

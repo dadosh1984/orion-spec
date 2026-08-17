@@ -1,14 +1,14 @@
 /**
- * Spec-driven output validation (v0.39) — проверяет результат скрипта
- * на соответствие JSON Schema без LLM. Zero-dependency: проходит по
- * ключам первого уровня, проверяет required-поля и типы.
+ * Spec-driven output validation (v0.39) — validates the script's result
+ * against the JSON Schema without LLM. Zero-dependency: walks the first-level
+ * keys, checks required fields and types.
  *
- * В production замените на AJV для полной поддержки JSON Schema draft-07.
+ * In production, swap in AJV for full JSON Schema draft-07 support.
  */
 export interface OutputSpec {
-  /** Обязательные поля в JSON-результате. */
+  /** Required fields in the JSON result. */
   required?: string[];
-  /** Типы полей (только первый уровень). */
+  /** Field types (first level only). */
   properties?: Record<string, { type: string }>;
 }
 
@@ -17,7 +17,7 @@ export interface ValidationResult {
   errors: string[];
 }
 
-/** Проверить stdout на соответствие outputSchema из manifest-а скрипта. */
+/** Validate stdout against the outputSchema from the script manifest. */
 export function validateOutput(
   stdout: string,
   spec?: OutputSpec,
@@ -26,7 +26,7 @@ export function validateOutput(
 
   if (!spec) return { ok: true, errors: [] };
 
-  // Пробуем распарсить JSON
+  // Try to parse JSON
   let parsed: unknown;
   try {
     parsed = JSON.parse(stdout.trim());
@@ -40,14 +40,14 @@ export function validateOutput(
 
   const obj = parsed as Record<string, unknown>;
 
-  // Проверяем required поля
+  // Check required fields
   for (const key of spec.required ?? []) {
     if (!(key in obj)) {
       errors.push(`missing required field: "${key}"`);
     }
   }
 
-  // Проверяем типы
+  // Check types
   for (const [key, prop] of Object.entries(spec.properties ?? {})) {
     if (key in obj) {
       const val = obj[key];
@@ -59,7 +59,7 @@ export function validateOutput(
     }
   }
 
-  // Проверяем поле status если есть
+  // Check the status field if present
   if ("status" in obj) {
     const valid = [
       "success",

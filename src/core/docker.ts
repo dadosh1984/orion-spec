@@ -1,17 +1,17 @@
 /**
  * Docker sandbox for skill execution (v0.45).
  *
- * Когда ORION_SANDBOX=docker, runScript запускает скрипт внутри
- * docker-контейнера с ограниченной FS, без сети, с timeout.
+ * When ORION_SANDBOX=docker, runScript runs the script inside a docker
+ * container with a restricted FS, no network, and a timeout.
  *
- * Использует образ orion:runtime из Dockerfile проекта.
+ * Uses the orion:runtime image from the project Dockerfile.
  */
 
 import { execSync } from "node:child_process";
 import type { RunManifest } from "./runtime.js";
 import { scriptExt } from "./runtime.js";
 
-/** Проверить, доступен ли Docker. */
+/** Check whether Docker is available. */
 export function dockerAvailable(): boolean {
   try {
     execSync("docker info", { stdio: "pipe", timeout: 3000 });
@@ -21,7 +21,7 @@ export function dockerAvailable(): boolean {
   }
 }
 
-/** Собрать docker run команду для безопасного выполнения навыка. */
+/** Build the docker run command for safely executing a skill. */
 export function dockerRunCommand(
   name: string,
   scriptPath: string,
@@ -56,7 +56,7 @@ export function dockerRunCommand(
     .join(" ");
 }
 
-/** Выполнить навык в Docker sandbox. */
+/** Run a skill inside a Docker sandbox. */
 export function runInDocker(
   name: string,
   scriptPath: string,
@@ -93,7 +93,7 @@ export function runInDocker(
   }
 }
 
-/** Выбрать sandbox: docker, browser (playwright) или basic (process). */
+/** Choose the sandbox: docker, browser (playwright) or basic (process). */
 export function sandboxLevel(): "docker" | "browser" | "basic" | "none" {
   const level = process.env.ORION_SANDBOX?.toLowerCase();
   if (level === "docker" && dockerAvailable()) return "docker";

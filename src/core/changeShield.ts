@@ -1,7 +1,7 @@
 /**
- * Change-level shield — проверяет артефакты одного change (v0.57).
- * Не заменяет проектный `orion shield`, а дополняет его для per-change
- * guard: hazard-scan сниппетов, spec drift, test gate.
+ * Change-level shield — checks the artifacts of a single change (v0.57).
+ * It does not replace project-wide `orion shield`, but complements it for
+ * per-change guards: hazard-scan of snippets, spec drift, test gate.
  */
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
@@ -45,7 +45,7 @@ export async function runChangeShield(
     };
   }
 
-  // 1. Hazard-scan snippets (поддерживаем .py)
+  // 1. Hazard-scan snippets (supports .py via adapter)
   const snippetsDir = join(changeDir, "snippets");
   const hazards: string[] = [];
   const adapter = detectAdapter(process.cwd());

@@ -28,14 +28,14 @@ import { runInDocker, sandboxLevel } from "./docker.js";
 import { sha256 } from "../utils/hash.js";
 
 /**
- * `orion run` runtime (v0.39) — локальные автономные скрипты.
+ * `orion run` runtime (v0.39) — local standalone scripts.
  *
- * Каждый скрипт живёт в ~/.orion/scripts/<name>/:
- *   run.sh (или run.js) — исполняемый файл
- *   orion.json           — метаданные
+ * Each script lives in ~/.orion/scripts/<name>/:
+ *   run.sh (or run.js) — the executable
+ *   orion.json           — metadata
  *
- * Идея: ИИ создаёт скрипт ОДИН раз (тратя токены), а запускается он
- * бесконечно через `orion run <name>` — без токенов, без интернета.
+ * Idea: AI creates the script ONCE (spending tokens), then it runs forever
+ * via `orion run <name>` — no tokens, no internet.
  */
 
 /** In-memory hazard-scan cache keyed by sha256(script) (v0.48). */
@@ -67,15 +67,15 @@ export interface RunManifest {
     required?: string[];
     properties?: Record<string, { type: string }>;
   };
-  /** Входные параметры (ключи из INPUT_JSON, которые скрипт ожидает). */
+  /** Input parameters (keys from INPUT_JSON that the script expects). */
   inputs?: string[];
-  /** Timestamp последнего запуска с --force (обход hazard gate). */
+  /** Timestamp of the last --force run (bypasses the hazard gate). */
   lastForceRun?: string;
   /** Risk level: low | medium | high | critical (v0.42). */
   risk_level?: "low" | "medium" | "high" | "critical";
-  /** Требуется подтверждение перед запуском (v0.42). */
+  /** Confirmation required before running (v0.42). */
   requires_confirmation?: boolean;
-  /** Необратимая операция (v0.42). */
+  /** Irreversible operation (v0.42). */
   irreversible?: boolean;
   /** Sandbox configuration (v0.42). */
   sandbox?: {
@@ -84,7 +84,7 @@ export interface RunManifest {
     max_memory_mb?: number;
     max_cpu_percent?: number;
   };
-  /** Состояние навыка: active | broken | needs_repair (v0.42). */
+  /** Skill state: active | broken | needs_repair (v0.42). */
   status?: "active" | "broken" | "needs_repair";
   /** SHA-256 of (args + script file) from the last run (v0.47) — lets idempotent runs skip re-execution. */
   lastRunHash?: string;
@@ -247,7 +247,7 @@ export function listScripts(): RunManifest[] {
     );
 }
 
-/** Создать новый скрипт из шаблона. */
+/** Create a new script from a template. */
 export function createScript(
   name: string,
   runtime: "bash" | "node" | "python",
@@ -414,7 +414,7 @@ function flushOverflow(content: string): void {
   }
 }
 
-/** Запустить скрипт и вернуть stdout + время выполнения. */
+/** Run the script and return stdout + run time. */
 export async function runScript(
   name: string,
   opts?: { force?: boolean; dryRun?: boolean; args?: string[] },
@@ -634,12 +634,12 @@ export async function runScript(
     m.lastRunHash = inputHash;
     writeManifest(m);
 
-    // Spec-driven validation (v0.39): проверить stdout по outputSchema
+    // Spec-driven validation (v0.39): validate stdout against outputSchema
     const validation = validateOutput(output.trim(), m.outputSchema);
 
-    // Token ledger (v0.41): записать событие и обновить метрики
+    // Token ledger (v0.41): record the event and update metrics
     const baseline = estimateBaselineTokens(m.description?.length ?? 0);
-    const saved = baseline; // локальный запуск — 0 токенов LLM
+    const saved = baseline; // local run — 0 LLM tokens
     recordTokenEvent({
       skillName: name,
       mode: "run",
@@ -669,7 +669,7 @@ export async function runScript(
   } catch (err) {
     const durationMs = Date.now() - start;
     const errMsg = err instanceof Error ? err.message : String(err);
-    // Repair log (v0.42): записать ошибку для будущего авто-ремонта
+    // Repair log (v0.42): record the error for future auto-repair
     const attempts = recordRepairAttempt(name, errMsg);
     const repairNote =
       attempts >= 2
@@ -679,7 +679,7 @@ export async function runScript(
   }
 }
 
-/** Удалить скрипт и его директорию. */
+/** Delete the script and its directory. */
 export function deleteScript(name: string): void {
   const m = readManifest(name);
   if (!m) throw new Error(`script "${name}" not found`);
@@ -700,7 +700,7 @@ export function assertCronSupported(): void {
   }
 }
 
-/** Обновить cron-расписание. Только linux/mac. */
+/** Update the cron schedule. Linux/mac only. */
 export function setSchedule(name: string, cronExpr: string | null): void {
   const m = readManifest(name);
   if (!m) throw new Error(`script "${name}" not found`);
@@ -708,7 +708,7 @@ export function setSchedule(name: string, cronExpr: string | null): void {
   assertCronSupported();
 
   withCronLock(() => {
-    // Удаляем старую cron-запись
+    // Drop the old cron entry
     unscheduleCronLocked(name);
 
     if (cronExpr) {
@@ -743,7 +743,7 @@ export function setSchedule(name: string, cronExpr: string | null): void {
   });
 }
 
-/** Убрать cron-запись для скрипта. */
+/** Remove the cron entry for a script. */
 export function unscheduleCron(name: string): void {
   assertCronSupported();
   withCronLock(() => unscheduleCronLocked(name));

@@ -1,11 +1,11 @@
 /**
- * Token Ledger (v0.41) — учёт токенов и ROI навыков.
+ * Token Ledger (v0.41) — token accounting and skill ROI.
  *
- * Каждый запуск `orion run` записывает TokenEvent.
- * skillMetrics агрегирует статистику по каждому навыку.
+ * Every `orion run` records a TokenEvent.
+ * skillMetrics aggregates per-skill statistics.
  *
- * Леджер хранится в ~/.orion/token-events.json + ~/.orion/skill-metrics.json.
- * Никаких внешних зависимостей.
+ * The ledger lives in ~/.orion/token-events.json + ~/.orion/skill-metrics.json.
+ * No external dependencies.
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -18,11 +18,11 @@ export interface TokenEvent {
   skillName: string;
   /** "run" | "create" | "repair" | "direct_ai" */
   mode: "run" | "create" | "repair" | "direct_ai";
-  /** Токены, потраченные на этот вызов (0 для run без LLM). */
+  /** Tokens spent on this call (0 for a run without LLM). */
   tokensIn: number;
-  /** Токены, сэкономленные по сравнению с прямым LLM-запуском. */
+  /** Tokens saved vs a direct LLM run. */
   tokensSaved: number;
-  /** Оценочная стоимость прямого LLM-запуска в токенах. */
+  /** Estimated cost of a direct LLM run in tokens. */
   baselineTokens: number;
   /** success | error | hazard_blocked | validation_failed */
   status: "success" | "error" | "hazard_blocked" | "validation_failed";
@@ -34,15 +34,15 @@ export interface SkillMetric {
   runs: number;
   successRuns: number;
   failedRuns: number;
-  /** Токены, потраченные на создание навыка. */
+  /** Tokens spent creating the skill. */
   creationTokens: number;
-  /** Токены, потраченные на ремонт. */
+  /** Tokens spent on repair. */
   repairTokens: number;
-  /** Средняя экономия токенов за один запуск. */
+  /** Average token saving per run. */
   avgTokensSavedPerRun: number;
-  /** Общая экономия токенов. */
+  /** Total token savings. */
   totalTokensSaved: number;
-  /** Чистая экономия (сэкономлено − создание − ремонт). */
+  /** Net savings (saved − creation − repair). */
   netTokensSaved: number;
   /** ROI: netTokensSaved / (creationTokens + repairTokens). */
   roiScore: number;
@@ -99,7 +99,7 @@ function writeMetrics(metrics: SkillMetric[]): void {
   writeFileSync(metricsPath(), JSON.stringify(metrics, null, 2), "utf8");
 }
 
-/** Записать одно событие. */
+/** Record a single event. */
 export function recordTokenEvent(event: Omit<TokenEvent, "id" | "ts">): void {
   const events = readEvents();
   events.push({
@@ -110,7 +110,7 @@ export function recordTokenEvent(event: Omit<TokenEvent, "id" | "ts">): void {
   writeEvents(events);
 }
 
-/** Обновить метрики навыка после запуска. */
+/** Update the skill metrics after a run. */
 export function updateSkillMetrics(
   skillName: string,
   run: {
@@ -165,22 +165,22 @@ export function updateSkillMetrics(
   return m;
 }
 
-/** Получить метрики всех навыков. */
+/** Get metrics for all skills. */
 export function getSkillMetrics(): SkillMetric[] {
   return readMetrics().sort((a, b) => b.totalTokensSaved - a.totalTokensSaved);
 }
 
-/** Получить метрики одного навыка. */
+/** Get metrics for one skill. */
 export function getSkillMetric(name: string): SkillMetric | null {
   return readMetrics().find((m) => m.skillName === name) ?? null;
 }
 
-/** Последние N событий. */
+/** Last N events. */
 export function getRecentEvents(n = 20): TokenEvent[] {
   return readEvents().slice(-n).reverse();
 }
 
-/** Суммарная статистика. */
+/** Aggregate statistics. */
 export function tokenSummary(): {
   totalEvents: number;
   totalSaved: number;
@@ -197,9 +197,9 @@ export function tokenSummary(): {
   };
 }
 
-/** Базовая оценка токенов для прямого LLM-запуска (эвристика). */
+/** Baseline token estimate for a direct LLM run (heuristic). */
 export function estimateBaselineTokens(promptLength: number): number {
-  // ~1 токен на 4 символа для system + user + response
+  // ~1 token per 4 chars for system + user + response
   const systemOverhead = 200;
   const responseOverhead = 300;
   return systemOverhead + Math.ceil(promptLength / 4) + responseOverhead;

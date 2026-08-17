@@ -1,9 +1,9 @@
 /**
- * Skill Generator v2 (v0.44) — создаёт полноценный навык:
+ * Skill Generator v2 (v0.44) — produces a complete skill:
  *   manifest (orion.json), entrypoint, tests, README.
  *
- * Используется `orion run generate <name> --from "<prompt>"`
- * или `orion forge <title> --save-as <name>`.
+ * Used via `orion run generate <name> --from "<prompt>"`
+ * or `orion forge <title> --save-as <name>`.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -23,7 +23,7 @@ export interface GeneratedSkill {
 }
 
 /**
- * Сгенерировать полноценный навык: manifest + скрипт + тесты + README.
+ * Generate a complete skill: manifest + script + tests + README.
  */
 export function generateSkill(
   name: string,
@@ -34,7 +34,7 @@ export function generateSkill(
   const dir = join(scriptsDir(), name);
   const files: string[] = [];
 
-  // 1. Создать базовый скрипт. v0.51: fill domain from the explicit resolver
+  // 1. Create the base script. v0.51: fill domain from the explicit resolver
   //    (config.json / env) + an environment fingerprint on generation.
   const m = createScript(name, runtime, prompt, {
     domain: resolveDomain(),
@@ -44,7 +44,7 @@ export function generateSkill(
   });
   files.push("run.sh");
 
-  // 2. Обогатить manifest
+  // 2. Enrich the manifest
   m.risk_level =
     cat.category <= 2 ? "low" : cat.category === 3 ? "medium" : "medium";
   m.requires_confirmation = cat.category >= 3;
@@ -65,7 +65,7 @@ export function generateSkill(
   writeManifest(m);
   files.push("orion.json");
 
-  // 3. Создать README.md
+  // 3. Create README.md
   const readme = [
     `# ${name}`,
     "",
@@ -92,7 +92,7 @@ export function generateSkill(
   writeFileSync(join(dir, "README.md"), readme, "utf8");
   files.push("README.md");
 
-  // 4. Создать тестовый скрипт
+  // 4. Create the test script
   const testBody =
     runtime === "node"
       ? [

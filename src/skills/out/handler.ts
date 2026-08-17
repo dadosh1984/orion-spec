@@ -247,18 +247,20 @@ function lessonsSection(changeId: string, goal: string): string[] {
   const all = lessonsForChange(changeId, goal);
   const errors = all.filter((l) => l.kind !== "success");
   const successes = all.filter((l) => l.kind === "success");
-  const lines = ["## Уроки и решения", ""];
+  const lines = ["## Lessons \u0026 decisions", ""];
   if (errors.length === 0) {
-    lines.push("_Уроков нет — эта задача прошла без зафиксированных ошибок._");
+    lines.push(
+      "_No lessons \u2014 this change finished without recorded errors._",
+    );
   } else {
     for (const l of errors) {
       const prefix = l.changeId === changeId ? "" : `[${l.changeId}] `;
-      const fix = l.fix ? ` → ${l.fix}` : "";
+      const fix = l.fix ? ` \u2192 ${l.fix}` : "";
       lines.push(`> ${prefix}${l.error}${fix}`);
     }
   }
   if (successes.length > 0) {
-    lines.push("", "++ Успешные паттерны:");
+    lines.push("", "++ Successful patterns:");
     for (const l of successes) {
       lines.push(`  + ${l.pattern ?? l.error}`);
     }
