@@ -70,7 +70,7 @@ export async function askQuestion(msg: string): Promise<string> {
  */
 export async function think(
   prompt: string,
-  opts?: { noCache?: boolean; force?: boolean },
+  opts?: { noCache?: boolean; force?: boolean; slug?: string },
   ask: (msg: string) => Promise<string> = askQuestion,
 ): Promise<Proposal> {
   const base = normalizePrompt(prompt);
@@ -86,7 +86,16 @@ export async function think(
   }
   const assessment: PromptAssessment = assessPrompt(base);
   const track = OrionTrack.init();
-  const { title, existing } = await resolveTitle(base, ask, track);
+  // Explicit --slug wins over auto-derivation; validates ASCII-safe.
+  if (opts?.slug) {
+    const safe = slugify(opts.slug);
+    if (safe !== opts.slug) {
+      throw new Error(
+        `--slug must be an ASCII kebab-case identifier (got '${opts.slug}', suggest '${safe}')`,
+      );
+    }
+  }
+  const { title, existing } = await resolveTitle(base, ask, track, opts?.slug);
   if (existing) return existing;
 
   // v0.51 «eat an elephant» complexity classifier (zero-LLM).
@@ -210,8 +219,9 @@ async function resolveTitle(
   prompt: string,
   ask: (msg: string) => Promise<string>,
   track: OrionTrack,
+  explicitSlug?: string,
 ): Promise<{ title: string; existing: Proposal | null }> {
-  const base = shortTitle(prompt);
+  const base = explicitSlug ?? shortTitle(prompt);
   let suffix = 1;
   for (;;) {
     const title = suffix === 1 ? base : `${base}-${suffix}`;

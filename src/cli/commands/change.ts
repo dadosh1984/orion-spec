@@ -20,6 +20,7 @@
  *   orion change <id> --shield         Run hazard scan + drift check (fast guard)
  *   orion change <id> --export         Export profile+lessons snapshot
  *   orion change <id> --import <path>  Import profile+lessons snapshot
+ *   orion change <id> --open           Open the change dir in file manager
  */
 import { fail, printOut } from "../helpers.js";
 import { statusMark } from "../../utils/term.js";
@@ -240,6 +241,25 @@ export const changeHandler: CommandHandler = async (args, opts) => {
     const r = importProfile(raw);
     printOut(opts, r, `imported profile from ${target}`);
     return 0;
+  }
+
+  // --open: open the change directory in the platform file manager / IDE.
+  if (rest.includes("--open")) {
+    const dir = join(process.cwd(), "changes", id);
+    try {
+      const { spawnSync } = await import("node:child_process");
+      const cmd =
+        process.platform === "win32"
+          ? "explorer"
+          : process.platform === "darwin"
+            ? "open"
+            : "xdg-open";
+      const r = spawnSync(cmd, [dir], { stdio: "inherit" });
+      if (r.error) return fail(`could not open change dir: ${r.error.message}`);
+      return 0;
+    } catch (e) {
+      return fail(`open failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   // Default: show short summary.

@@ -2,8 +2,11 @@
 // ponytail: rung-4 — no runtime deps, pure TS types
 
 /**
- * Language-agnostic guard interface.
- * Each language (TypeScript, Python, Go, ...) implements this interface.
+ * A guard-rail command: an external binary plus its arguments.
+ * `cmd` is executed argv-safe (no shell); optional `parser` maps stdout
+ * to a PASS/FAIL verdict when the exit code alone is insufficient.
+ *
+ * @example `{ cmd: "python3", args: ["-m", "ruff", "check", "."] }`
  */
 export interface GuardCommand {
   cmd: string;
@@ -12,25 +15,35 @@ export interface GuardCommand {
   parser?: (stdout: string) => { status: "PASS" | "FAIL"; detail: string };
 }
 
+/**
+ * Language-agnostic guard interface. Each language (TypeScript, Python,
+ * Go, ...) implements one adapter; `shield` picks the best match for the
+ * project via `detect()` and delegates every guard-rail to it.
+ */
 export interface ShieldAdapter {
   /** Unique id, e.g. "typescript", "python" */
   readonly id: string;
 
-  /** Detect if this adapter applies to the project at cwd */
+  /**
+   * Detect if this adapter applies to the project at `cwd`. Pure and
+   * deterministic: checks for language markers (package.json, pyproject.toml,
+   * go.mod). Called by `detectAdapter`, which returns the first adapter whose
+   * `detect()` returns true.
+   */
   detect(cwd: string): boolean;
 
-  /** Guard commands; null means the step is skipped */
+  /** Lint / type-check / test guard commands; null means the step is skipped. */
   getLintCommand(): GuardCommand | null;
   getTypeCheckCommand(): GuardCommand | null;
   getTestCommand(): GuardCommand | null;
 
-  /** Extract public API symbols from source files (for drift check) */
+  /** Extract public API symbols from `files` (for drift check). */
   extractApi(files: string[]): string[];
 
-  /** Security patterns to scan source for */
+  /** Security patterns to scan source for. */
   getSecurityPatterns(): Array<{ re: RegExp; label: string }>;
 
-  /** File metrics for YAGNI check */
+  /** File metrics (LOC + import count) for the YAGNI check. */
   fileMetrics(file: string): { loc: number; imports: number };
 }
 

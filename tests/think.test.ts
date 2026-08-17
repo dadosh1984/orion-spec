@@ -174,6 +174,22 @@ describe("think skill", () => {
     expect(third.title).toBe("build-tool-3");
   });
 
+  it("accepts an explicit --slug overriding auto-derived title", async () => {
+    const proposal = await think(
+      "сделай прогноз продаж на русском",
+      { noCache: true, slug: "forecast-tool" },
+      async () => "",
+    );
+    expect(proposal.title).toBe("forecast-tool");
+    expect(proposal.goal).toBe("сделай прогноз продаж на русском");
+  });
+
+  it("rejects a non-ASCII --slug with a clear error", async () => {
+    await expect(
+      think("build a tool", { noCache: true, slug: "прогноз-продаж" }, async () => ""),
+    ).rejects.toThrow(/must be an ASCII kebab-case/);
+  });
+
   it("asks clarifying questions for a vague prompt and refines the goal", async () => {
     const asked: string[] = [];
     const answers = [

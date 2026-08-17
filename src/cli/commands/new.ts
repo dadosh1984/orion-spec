@@ -14,11 +14,13 @@
  *   --pipeline                            Run the full think→draft→forge→shield→out chain
  *   --dry                                 Show what would happen without writing files (alias for `orion plan`)
  *   --from=<change-id>                    Continue an existing change (skip think)
+ *   --slug=<id>                          Force an ASCII kebab-case change slug (think)
  *
  * Example:
  *   orion new "Build a CSV-to-JSON tool"
  *   orion new "Build a CSV-to-JSON tool" --pipeline
  *   orion new "" --step=forge --from=my-csv-tool
+ *   orion new "Сделай прогноз продаж" --slug=forecast-tool
  */
 import { fail, printOut } from "../helpers.js";
 import type { CliOptions } from "../helpers.js";
@@ -42,6 +44,7 @@ function parseNewFlags(args: string[]): {
   from: string | null;
   dry: boolean;
   oracle: boolean;
+  slug: string | null;
 } {
   const positional: string[] = [];
   let step: Step | null = null;
@@ -49,6 +52,7 @@ function parseNewFlags(args: string[]): {
   let from: string | null = null;
   let dry = false;
   let oracle = false;
+  let slug: string | null = null;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--step") {
@@ -71,6 +75,12 @@ function parseNewFlags(args: string[]): {
       oracle = true;
     } else if (a === "--dry") {
       dry = true;
+    } else if (a === "--slug") {
+      slug = args[++i] ?? null;
+      if (!slug) throw new Error("--slug requires a value");
+    } else if (a.startsWith("--slug=")) {
+      slug = a.slice("--slug=".length);
+      if (!slug) throw new Error("--slug requires a value");
     } else if (a === "--from") {
       from = args[++i] ?? null;
       if (!from) throw new Error("--from requires a change id");
@@ -81,7 +91,7 @@ function parseNewFlags(args: string[]): {
       positional.push(a);
     }
   }
-  return { positional, step, pipeline, from, dry, oracle };
+  return { positional, step, pipeline, from, dry, oracle, slug };
 }
 
 export const newHandler: CommandHandler = async (args, opts) => {
@@ -130,7 +140,7 @@ export const newHandler: CommandHandler = async (args, opts) => {
 
   // --pipeline: run the full chain think→draft→forge→shield→out
   if (pipeline) {
-    return runPipeline(positional, from, opts);
+    return runPipeline(positional, from, opts, flags.slug);
   }
 
   // Single-step mode. If --from is given, the positional can be empty.
@@ -144,7 +154,10 @@ export const newHandler: CommandHandler = async (args, opts) => {
         'orion new requires a prompt, e.g. orion new "Build a CSV-to-JSON tool"',
       );
     }
-    const proposal = await think(prompt, opts);
+    const proposal = await think(prompt, {
+      ...opts,
+      slug: flags.slug ?? undefined,
+    });
     printOut(
       opts,
       proposal,
@@ -240,6 +253,7 @@ async function runPipeline(
   positional: string[],
   from: string | null,
   opts: CliOptions,
+  slug?: string | null,
 ): Promise<number> {
   const prompt = positional.join(" ").trim();
   if (!from && !prompt) {
@@ -255,7 +269,7 @@ async function runPipeline(
     console.log(`[pipeline] continuing existing change: ${changeId}`);
   } else {
     console.log(`[pipeline] step 1/5: think`);
-    const proposal = await think(prompt, opts);
+    const proposal = await think(prompt, { ...opts, slug: slug ?? undefined });
     changeId = proposal.title;
     console.log(`  → ${changeId}`);
   }

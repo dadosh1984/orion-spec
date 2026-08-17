@@ -819,8 +819,7 @@ export function literalRanges(code: string): LiteralRange[] {
       code[i + 1] !== "/" &&
       code[i + 1] !== "*" &&
       // Previous char must NOT be alphanumeric, _ $ ) ] } — heuristic
-      (i === 0 ||
-        /[^a-zA-Z0-9_$)\]}]/.test(code[i - 1]))
+      (i === 0 || /[^a-zA-Z0-9_$)\]}]/.test(code[i - 1]))
     ) {
       const start = i;
       i++;

@@ -303,10 +303,14 @@ export async function main(argv: string[]): Promise<number> {
             // Второй шанс: git diff src/tasks/ — forge мог создать новые файлы
             const { spawnSync } = await import("node:child_process");
             try {
-              const gitCheck = spawnSync("git", ["status", "--porcelain", "--", "src/tasks/"], {
-                encoding: "utf8",
-                timeout: 5000,
-              });
+              const gitCheck = spawnSync(
+                "git",
+                ["status", "--porcelain", "--", "src/tasks/"],
+                {
+                  encoding: "utf8",
+                  timeout: 5000,
+                },
+              );
               if (gitCheck.error || gitCheck.status !== 0) {
                 throw new Error("git not available");
               }

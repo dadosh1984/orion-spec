@@ -726,7 +726,11 @@ export function setSchedule(name: string, cronExpr: string | null): void {
           .join("\n")
           .trim();
         const next = (cleaned ? cleaned + "\n" : "") + cronLine + "\n";
-        spawnSync("crontab", ["-"], { input: next, encoding: "utf8", timeout: 5000 });
+        spawnSync("crontab", ["-"], {
+          input: next,
+          encoding: "utf8",
+          timeout: 5000,
+        });
       } catch (err) {
         throw new Error(
           `cron setup failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -757,7 +761,11 @@ function unscheduleCronLocked(name: string): void {
       .filter((l) => !l.includes(`# orion:${name}`) && l.trim() !== "")
       .join("\n");
     if (cleaned.trim()) {
-      spawnSync("crontab", ["-"], { input: cleaned + "\n", encoding: "utf8", timeout: 5000 });
+      spawnSync("crontab", ["-"], {
+        input: cleaned + "\n",
+        encoding: "utf8",
+        timeout: 5000,
+      });
     } else {
       spawnSync("crontab", ["-r"], { timeout: 5000 });
     }
