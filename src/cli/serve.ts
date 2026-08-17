@@ -599,5 +599,12 @@ export function startServer(
       (server as http.Server & { authToken?: string }).authToken = authToken;
       resolve(server);
     });
+    // Clean up rate-limit timer on server close (CRIT-1).
+    server.on("close", () => {
+      if (_rateCleanup !== null) {
+        clearInterval(_rateCleanup);
+        _rateCleanup = null;
+      }
+    });
   });
 }

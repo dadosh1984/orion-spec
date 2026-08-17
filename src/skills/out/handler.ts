@@ -54,7 +54,7 @@ export async function out(
     const state = loadClarifyState(changeId);
     return await buildIncompleteResult(
       changeId,
-      `Unanswered blocker questions: ${socratesBlockers.map(b => b.id).join(', ')}`,
+      `Unanswered blocker questions: ${socratesBlockers.map((b) => b.id).join(", ")}`,
       socratesBlockers,
       state,
     );
@@ -210,9 +210,11 @@ export async function out(
   const socratesDialogue = (() => {
     try {
       const state = loadClarifyState(changeId);
-      if (state.dialogue.length === 0) return '';
+      if (state.dialogue.length === 0) return "";
       return `\n## Socrates Dialogue\n\n${state.dialogue.length} exchanges. All blockers resolved.\n`;
-    } catch { return ''; }
+    } catch {
+      return "";
+    }
   })();
 
   const summary = summaryLines + socratesDialogue;
@@ -272,20 +274,20 @@ async function buildIncompleteResult(
 ): Promise<OutResult> {
   const summary = [
     `# Result — ${changeId}`,
-    '',
+    "",
     `- **Status:** INCOMPLETE`,
     `- **Socrates blockers:** ${blockers.length} unanswered blocker(s)`,
-    '',
-    '## Socrates Dialogue',
-    '',
+    "",
+    "## Socrates Dialogue",
+    "",
     `${state.dialogue.length} exchange(s). Blocker questions remain:`,
-    '',
-    ...blockers.map(b => `- 🚨 **${b.id}**: ${b.text}`),
-    '',
-    '## Next steps',
-    '',
+    "",
+    ...blockers.map((b) => `- 🚨 **${b.id}**: ${b.text}`),
+    "",
+    "## Next steps",
+    "",
     `Resolve blockers via \`orion answer ${changeId} --json answers.json\` then \`orion refine ${changeId}\`.`,
-  ].join('\n');
+  ].join("\n");
 
   await writeFileSafe(`changes/${changeId}/result.md`, summary);
 
@@ -296,10 +298,10 @@ async function buildIncompleteResult(
   return {
     changeId,
     resultPath: `changes/${changeId}/result.md`,
-    receiptPath: '',
+    receiptPath: "",
     allPass: false,
     summary,
-    status: 'INCOMPLETE',
+    status: "INCOMPLETE",
     tasksDone: 0,
     tasksTotal: 0,
     artifacts: [],

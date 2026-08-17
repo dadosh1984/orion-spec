@@ -63,7 +63,8 @@ const RU_ACTIONS =
 
 const EN_CONJUNCTIONS =
   /\b(and then|then also|as well as|plus|along with|after that|and also)\b/gi;
-const RU_CONJUNCTIONS = /(^|[^а-яё])(а также|затем|потом|и ещё|и еще|плюс|вместе с)(?=$|[^а-яё])/gi;
+const RU_CONJUNCTIONS =
+  /(^|[^а-яё])(а также|затем|потом|и ещё|и еще|плюс|вместе с)(?=$|[^а-яё])/gi;
 // Bare "and"/"и" is too noisy in English; count it only between two
 // action-shaped words. Kept simple: count multiple "and"/"и" occurrences.
 const EN_AND = /\band\b/gi;
@@ -139,12 +140,14 @@ export function classifyComplexity(
     };
   }
 
-  const actions =
-    (prompt.match(language === "ru" ? RU_ACTIONS : EN_ACTIONS) ?? []).length;
+  const actions = (
+    prompt.match(language === "ru" ? RU_ACTIONS : EN_ACTIONS) ?? []
+  ).length;
   const conjunctions = countConjunctions(prompt, language);
   const entities = countEntities(prompt);
-  const scaleWords =
-    (prompt.match(language === "ru" ? RU_SCALE : EN_SCALE) ?? []).length;
+  const scaleWords = (
+    prompt.match(language === "ru" ? RU_SCALE : EN_SCALE) ?? []
+  ).length;
 
   // Weighted score: entities and scale matter most; actions and "and"
   // signal compound intent; length is a mild tiebreaker.

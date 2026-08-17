@@ -114,28 +114,28 @@ describe("think skill", () => {
     );
   });
 
-  it("shortTitle keeps Cyrillic words — Russian prompts stay short", () => {
-    // Cyrillic must survive (slugify alone would strip it to "untitled").
+  it("shortTitle returns ASCII-only slug — Cyrillic prompts fall back to slugify", () => {
+    // Pure Cyrillic has no Latin words → slugify yields "untitled"
     expect(
       shortTitle("проверить проект и убедиться что все файлы авторские"),
-    ).toBe("проверить-проект-убедиться-файлы");
+    ).toBe("untitled");
+    // Mixed EN+RU: only English words are kept
     expect(
       shortTitle(
         "добавить возможность экспорта данных в Excel и синхронизацию с облаком",
       ),
-    ).toBe("возможность-экспорта-данных-excel");
-    expect(shortTitle("починить интерфейс приложения")).toBe(
-      "интерфейс-приложения",
-    );
+    ).toBe("excel");
+    expect(shortTitle("починить интерфейс приложения")).toBe("untitled");
   });
 
-  it("shortTitle falls back to the raw prompt when too little core remains", () => {
+  it("shortTitle falls back to slugify when too few Latin words remain", () => {
     // One significant word in the core → fall back to the raw prompt's
-    // first significant words (stopwords like "a" dropped).
+    // first significant Latin words.
     expect(shortTitle("build a calculator")).toBe("build-calculator");
-    // Mostly-Cyrillic prompt: the raw-prompt fallback keeps it meaningful.
+    // Mixed RU+EN: only Latin word "CLI" survives → slugify of the whole
+    // prompt yields "cli" (the only ASCII word).
     expect(shortTitle("сделай CLI калькулятор с историей операций")).toBe(
-      "cli-калькулятор-историей-операций",
+      "cli",
     );
   });
 

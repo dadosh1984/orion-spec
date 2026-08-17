@@ -1,25 +1,46 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { detectAdapter } from "./shield/adapter.js";
 
 /**
  * Shared drift gate (v0.37) — extracted from serve.ts so both the dashboard
  * and review/handler.ts reuse the same deterministic logic. Memoized by
  * change directory mtime; a stat-only cache that invalidates on any edit.
+ *
+ * v0.58: supports Python adapter for drift check.
  */
 
 const SYMBOL =
   /^export (?:const|function|class)\s+([A-Za-z0-9_$]+)\s*(?:=|\()/gm;
 
+/** Python symbols: def, class, async def at top level */
+const PY_SYMBOL =
+  /^(?:async\s+)?(?:def|class)\s+([A-Za-z_][A-Za-z0-9_]*)\s*[:(]/gm;
+
 const driftCache = new Map<
   string,
   { mtime: number; ok: boolean | null; symbols: string[] }
 >();
+const DRIFT_CACHE_MAX = 100;
 
-/** Symbols exported from src/tasks/*.ts (cached by directory mtime). */
-export function taskSymbols(): string[] {
-  const dir = join(process.cwd(), "src", "tasks");
+function pruneDriftCache(): void {
+  if (driftCache.size > DRIFT_CACHE_MAX) {
+    const iter = driftCache.keys();
+    for (let i = 0; i < 10 && driftCache.size > DRIFT_CACHE_MAX; i++) {
+      const key = iter.next().value;
+      if (key !== undefined) driftCache.delete(key);
+    }
+  }
+}
+
+/** Symbols exported from src/tasks/* (cached by directory mtime).
+ *  Supports Python adapter: scans .py files when Python is detected. */
+export function taskSymbols(cwd = process.cwd()): string[] {
+  const adapter = detectAdapter(cwd);
+  const ext = adapter?.id === "python" ? ".py" : ".ts";
+  const dir = join(cwd, "src", "tasks");
   if (!existsSync(dir)) return [];
-  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
+  const files = readdirSync(dir).filter((f) => f.endsWith(ext));
   let mtime = 0;
   for (const f of files) {
     try {
@@ -33,11 +54,13 @@ export function taskSymbols(): string[] {
   if (hit) return hit.symbols;
 
   const out: string[] = [];
+  const re = ext === ".py" ? PY_SYMBOL : SYMBOL;
   for (const f of files) {
     const code = readFileSync(join(dir, f), "utf8");
-    for (const m of code.matchAll(SYMBOL)) out.push(m[1]);
+    for (const m of code.matchAll(re)) out.push(m[1]);
   }
   driftCache.set(cacheKey, { mtime, ok: null, symbols: out });
+  pruneDriftCache();
   return out;
 }
 
@@ -96,5 +119,6 @@ export function driftOf(changeId: string): boolean | null {
     }
   }
   driftCache.set(changeId, { mtime, ok, symbols: [] });
+  pruneDriftCache();
   return ok;
 }

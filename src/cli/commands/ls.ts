@@ -23,24 +23,14 @@
  */
 import { fail, printOut } from "../helpers.js";
 import { statusMark } from "../../utils/term.js";
-import {
-  scanChanges,
-  listTable,
-  projectStats,
-} from "../overviewCmd.js";
-import {
-  compareCmd,
-  assumptionsCmd,
-} from "../compareCmd.js";
+import { scanChanges, listTable, projectStats } from "../overviewCmd.js";
+import { compareCmd, assumptionsCmd } from "../compareCmd.js";
 import { selfAudit } from "../selfauditCmd.js";
 import { statusWatch } from "../statusWatchCmd.js";
 import { OrionTrack } from "../../core/track.js";
 import { profileView } from "../../tasks/profile_cli_view.js";
 import { readLessons } from "../../core/lessons.js";
-import {
-  exportLessons,
-  importLessons,
-} from "../../core/lessons.js";
+import { exportLessons, importLessons } from "../../core/lessons.js";
 import type { CommandHandler } from "../registry.js";
 
 export const lsHandler: CommandHandler = async (args, opts) => {
@@ -102,15 +92,18 @@ export const lsHandler: CommandHandler = async (args, opts) => {
   if (args.includes("--cache") || args[0] === "status" || args[0] === "stats") {
     const track = OrionTrack.init();
     const stats = track.getStats();
-    printOut(opts, stats, `${statusMark("info")} Cache: ${stats.count} entries, ${stats.size} bytes`);
+    printOut(
+      opts,
+      stats,
+      `${statusMark("info")} Cache: ${stats.count} entries, ${stats.size} bytes`,
+    );
     return 0;
   }
 
   // --metrics: token-economy metrics
   if (args.includes("--metrics")) {
-    const { metricsReport, formatMetricsReport } = await import(
-      "../../core/metrics.js"
-    );
+    const { metricsReport, formatMetricsReport } =
+      await import("../../core/metrics.js");
     const { OrionTrack } = await import("../../core/track.js");
     const { readVersionSafe } = await import("../../utils/version.js");
     const report = await metricsReport(OrionTrack.init(), readVersionSafe());
@@ -147,17 +140,16 @@ export const lsHandler: CommandHandler = async (args, opts) => {
     const all = readLessons();
     const filtered = id ? all.filter((l) => l.id === id) : all;
     if (filtered.length === 0) {
-      console.log(id ? `No lesson with id '${id}'.` : "No lessons recorded yet.");
+      console.log(
+        id ? `No lesson with id '${id}'.` : "No lessons recorded yet.",
+      );
       return id ? 1 : 0;
     }
     printOut(
       opts,
       filtered,
       filtered
-        .map(
-          (l) =>
-            `  ${l.id}  ${l.step}  ${l.error}  (${l.ts})`,
-        )
+        .map((l) => `  ${l.id}  ${l.step}  ${l.error}  (${l.ts})`)
         .join("\n"),
     );
     return 0;

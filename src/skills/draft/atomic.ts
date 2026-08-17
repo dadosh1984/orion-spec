@@ -42,10 +42,7 @@ const RU_SPLITTERS =
  * "run the check" count as ONE action, not two. The leading/real verb of a
  * fragment drives atomicity.
  */
-export function countActions(
-  text: string,
-  lan: "en" | "ru",
-): number {
+export function countActions(text: string, lan: "en" | "ru"): number {
   const re = lan === "ru" ? RU_ACTIONS : EN_ACTIONS; // /g flag
   re.lastIndex = 0;
   let n = 0;
@@ -90,7 +87,10 @@ export function splitStep(text: string): string[] {
     const left = text.slice(0, m.index).trim();
     let right = text.slice(m.index + m[0].length).trim();
     // Drop dangling conjunction at the start of the right clause.
-    right = right.replace(lan === "ru" ? /^(и|а|затем|потом)\s+/i : /^(and|then|also|to)\s+/i, "");
+    right = right.replace(
+      lan === "ru" ? /^(и|а|затем|потом)\s+/i : /^(and|then|also|to)\s+/i,
+      "",
+    );
     if (left && right && left !== right) return [left, right];
   }
   // No splitter: wrap long text at the first comma or ';' if present.
@@ -131,7 +131,11 @@ export function atomicTree(
     return items.map((i) => ({ text: i.text, mark: i.mark, depth: 0 }));
   }
   const out: AtomicLeaf[] = [];
-  const walk = (text: string, level: number, mark: "fact" | "assumption"): void => {
+  const walk = (
+    text: string,
+    level: number,
+    mark: "fact" | "assumption",
+  ): void => {
     if (isAtomicStep(text) || level >= maxDepth) {
       out.push({
         text,

@@ -108,6 +108,7 @@ export function estimateTokens(bytes: number): number {
 }
 
 const DEFAULT_MAX_LEN = 160;
+const COMPRESS_INPUT_MAX = 10_000_000; // 10MB limit (HIGH-7)
 const TOKEN_CAVEAT = "≈ tokens: bytes/4 estimate (no tokenizer)";
 const ELLIPSIS_MARKER = " … [+N ch]";
 
@@ -578,7 +579,9 @@ function migrateLegacyEconomy(): void {
     if (!existsSync(oldPath) || existsSync(newPath)) return;
     const raw = JSON.parse(readFileSync(oldPath, "utf8"));
     if (Array.isArray(raw)) {
-      const lines = raw.map((e: EconomyEntry) => JSON.stringify(e) + "\n").join("");
+      const lines = raw
+        .map((e: EconomyEntry) => JSON.stringify(e) + "\n")
+        .join("");
       writeFileSync(newPath, lines, "utf8");
     }
   } catch {
@@ -593,10 +596,15 @@ function migrateLegacyEconomy(): void {
 export function currentProject(): string {
   try {
     if (existsSync("package.json")) {
-      const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { name?: unknown };
-      if (typeof pkg.name === "string" && pkg.name.trim()) return pkg.name.trim();
+      const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+        name?: unknown;
+      };
+      if (typeof pkg.name === "string" && pkg.name.trim())
+        return pkg.name.trim();
     }
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
   const root = gitRoot();
   if (root) return basename(root);
   return basename(process.cwd());
@@ -617,7 +625,10 @@ function gitRoot(): string | null {
 /** Append one economy entry (JSONL, atomic). */
 export function appendEconomy(entry: EconomyEntry): void {
   try {
-    economyStore().append({ ...entry, project: entry.project ?? currentProject() });
+    economyStore().append({
+      ...entry,
+      project: entry.project ?? currentProject(),
+    });
   } catch {
     /* best effort — economy must never break the caller */
   }
@@ -627,7 +638,8 @@ export function appendEconomy(entry: EconomyEntry): void {
 export function readEconomy(): EconomyEntry[] {
   try {
     const rows = economyStore().load();
-    if (rows.length > MAX_ECONOMY_ROWS) rows.splice(0, rows.length - MAX_ECONOMY_ROWS);
+    if (rows.length > MAX_ECONOMY_ROWS)
+      rows.splice(0, rows.length - MAX_ECONOMY_ROWS);
     return rows;
   } catch {
     return [];
@@ -685,6 +697,19 @@ export function compress(
 ): CompressResult {
   const input = [stdout ?? "", stderr ?? ""].filter(Boolean).join("\n");
   const inBytes = Buffer.byteLength(input, "utf8");
+  // Guard against gigabyte-sized input (HIGH-7)
+  if (inBytes > COMPRESS_INPUT_MAX) {
+    return {
+      out: `[input too large: ${(inBytes / 1024 / 1024).toFixed(1)} MB > ${(COMPRESS_INPUT_MAX / 1024 / 1024).toFixed(0)} MB limit]`,
+      inBytes,
+      outBytes: 0,
+      savedBytes: 0,
+      savedPct: 0,
+      matched: false,
+      cached: false,
+      note: `truncated at ${COMPRESS_INPUT_MAX} bytes`,
+    };
+  }
   // ANSI color codes would blind the line rules (vitest paints its output);
   // strip them so pattern matching sees plain text.
   const cleaned = input.replace(/\x1b\[[0-9;]*m/g, "");

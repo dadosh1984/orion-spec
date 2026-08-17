@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { scanHazards } from "./hazards.js";
 import { driftOf } from "./drift.js";
 import { type Store, memoryStore } from "./store.js";
+import { detectAdapter } from "./shield/adapter.js";
 
 export interface ChangeShieldResult {
   ok: boolean;
@@ -44,12 +45,14 @@ export async function runChangeShield(
     };
   }
 
-  // 1. Hazard-scan snippets
+  // 1. Hazard-scan snippets (поддерживаем .py)
   const snippetsDir = join(changeDir, "snippets");
   const hazards: string[] = [];
+  const adapter = detectAdapter(process.cwd());
+  const exts = adapter?.id === "python" ? [".py"] : [".ts", ".js"];
   if (existsSync(snippetsDir)) {
     for (const f of readdirSync(snippetsDir)) {
-      if (!f.endsWith(".ts") && !f.endsWith(".js")) continue;
+      if (!exts.some((e) => f.endsWith(e))) continue;
       const src = readFileSync(join(snippetsDir, f), "utf8");
       hazards.push(...scanHazards(src));
     }

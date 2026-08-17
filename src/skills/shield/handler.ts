@@ -12,6 +12,14 @@ import { recordLesson } from "../../core/lessons.js";
 import { recordDebt, closeDebt } from "../../core/debt.js";
 import { assessVerifiability } from "../../core/verifiability.js";
 import { loadPolicy, policyFingerprint, scanPolicyFiles } from "./policy.js";
+import {
+  registerAdapter,
+  getAdapters,
+  detectAdapter,
+} from "../../core/shield/adapter.js";
+import { type ShieldAdapter } from "../../core/shield/adapter.js";
+import { TypeScriptAdapter } from "../../core/shield/typescript.js";
+import { loadShieldConfig } from "../../core/shield/config.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
 const execAsync = promisify(exec);
@@ -30,6 +38,26 @@ const STEPS: StepName[] = [
   "policy",
   "verifiability",
 ];
+
+/**
+ * Initialize adapters. Registers TypeScript adapter first (backward compat).
+ */
+export function initAdapters(): void {
+  if (getAdapters().length === 0) {
+    registerAdapter(TypeScriptAdapter);
+  }
+}
+
+/** Resolve the active adapter for the project at cwd */
+export function resolveAdapter(cwd = process.cwd()): ShieldAdapter | null {
+  initAdapters();
+  const config = loadShieldConfig(cwd);
+  if (config?.language) {
+    const match = getAdapters().find((a) => a.id === config.language);
+    if (match) return match;
+  }
+  return detectAdapter(cwd) ?? TypeScriptAdapter; // fallback to TS
+}
 
 /**
  * `orion shield` — run every guard-rail against the change:
@@ -63,6 +91,7 @@ export async function shield(
   // only the deterministic drift + security gates.
   const skipShell = process.env.ORION_SHIELD_SKIP_SHELL === "1";
   const hash = projectHash(changeId);
+  const adapter = resolveAdapter();
 
   for (const step of STEPS) {
     // The policy gate's cache key embeds the policy fingerprint: editing
@@ -97,7 +126,7 @@ export async function shield(
       });
       continue;
     }
-    const result = await runStep(step, changeId);
+    const result = await runStep(step, changeId, adapter);
     // Honesty about a test PASS on weak tests (verifiability-aware): a
     // passing test step with no real assertions is marked `weak` — it cannot
     // fully support a strong verdict.
@@ -263,34 +292,47 @@ export function projectHash(changeId: string): string {
 async function runStep(
   step: StepName,
   changeId: string,
+  adapter: ShieldAdapter | null = null,
 ): Promise<GuardCheckResult> {
   switch (step) {
     case "lint": {
-      const cmd = stepCommand("lint");
-      return cmd
-        ? shellCheck(step, cmd)
-        : { step, status: "SKIP", detail: "no lint script in package.json" };
+      const gc = adapter?.getLintCommand();
+      if (!gc) {
+        const cmd = stepCommand("lint");
+        return cmd
+          ? shellCheck(step, cmd)
+          : { step, status: "SKIP", detail: "no lint configured" };
+      }
+      return shellCheck(step, `${gc.cmd} ${gc.args.join(" ")}`, gc.parser);
     }
     case "type": {
-      const cmd = stepCommand("type");
-      return cmd
-        ? shellCheck(step, cmd)
-        : { step, status: "SKIP", detail: "no typecheck script" };
+      const gc = adapter?.getTypeCheckCommand();
+      if (!gc) {
+        const cmd = stepCommand("type");
+        return cmd
+          ? shellCheck(step, cmd)
+          : { step, status: "SKIP", detail: "no typecheck configured" };
+      }
+      return shellCheck(step, `${gc.cmd} ${gc.args.join(" ")}`, gc.parser);
     }
     case "test": {
-      const cmd = stepCommand("test");
-      return cmd
-        ? shellCheck(step, cmd)
-        : { step, status: "SKIP", detail: "no test script in package.json" };
+      const gc = adapter?.getTestCommand();
+      if (!gc) {
+        const cmd = stepCommand("test");
+        return cmd
+          ? shellCheck(step, cmd)
+          : { step, status: "SKIP", detail: "no test configured" };
+      }
+      return shellCheck(step, `${gc.cmd} ${gc.args.join(" ")}`, gc.parser);
     }
     case "drift":
-      return driftCheck(changeId);
+      return driftCheck(changeId, adapter);
     case "yagni":
       return yagniCheck(changeId);
     case "economy":
       return economyCheck();
     case "security":
-      return securityScan(changeId);
+      return securityScan(changeId, adapter);
     case "policy": {
       const cfg = loadPolicy();
       const findings = scanPolicyFiles(process.cwd(), changeId, cfg);
@@ -377,12 +419,17 @@ function stripOrionNoise(output: string): string {
 async function shellCheck(
   step: StepName,
   cmd: string,
+  parser?: (stdout: string) => { status: "PASS" | "FAIL"; detail: string },
 ): Promise<GuardCheckResult> {
   try {
     const { stdout, stderr } = await execAsync(cmd, {
       cwd: process.cwd(),
       timeout: 300_000,
     });
+    // Use custom parser if provided
+    if (parser) {
+      return { step, ...parser(stdout) };
+    }
     const clean = stripOrionNoise(stdout + stderr);
     const r = compress(cmd, clean, "");
     const detail = (r.matched ? r.out : clean.slice(0, 200)) || "ok";
@@ -392,6 +439,10 @@ async function shellCheck(
       detail: detail.slice(0, 500),
     };
   } catch (err) {
+    // Use parser on error output if available
+    if (parser && err instanceof Error) {
+      return { step, ...parser(err.message) };
+    }
     const raw = stripOrionNoise(
       err instanceof Error ? err.message : "command failed",
     );
@@ -415,7 +466,10 @@ const CAPABILITY_IDENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
  * `read-only-mypy-...` can never be exported, so the spec (not the code)
  * is what needs fixing.
  */
-function driftCheck(changeId: string): GuardCheckResult {
+function driftCheck(
+  changeId: string,
+  adapter: ShieldAdapter | null = null,
+): GuardCheckResult {
   const specsDir = `changes/${changeId}/specs`;
   if (!existsSync(specsDir)) {
     return { step: "drift", status: "PASS", detail: "no specs to compare" };
@@ -449,9 +503,24 @@ function driftCheck(changeId: string): GuardCheckResult {
     };
   }
 
+  // Use adapter's extractApi if available, else fallback to TS-only
   const srcDir = "src";
   const exports = new Set<string>();
-  if (existsSync(srcDir)) {
+  if (existsSync(srcDir) && adapter) {
+    // Collect source files matching adapter's language
+    const ext = adapter.id === "python" ? ".py" : ".ts";
+    const files: string[] = [];
+    const walkDir = (dir: string): void => {
+      for (const ent of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, ent.name);
+        if (ent.isDirectory()) walkDir(p);
+        else if (ent.name.endsWith(ext)) files.push(p);
+      }
+    };
+    walkDir(srcDir);
+    for (const sym of adapter.extractApi(files)) exports.add(sym);
+  } else if (existsSync(srcDir)) {
+    // Fallback: original TS-only logic
     const walk = (dir: string): void => {
       for (const ent of readdirSync(dir, { withFileTypes: true })) {
         const p = join(dir, ent.name);
@@ -744,6 +813,36 @@ export function literalRanges(code: string): LiteralRange[] {
       ranges.push({ start, end: i, kind: "string" });
       continue;
     }
+    // RegExp literal /pattern/flags — not // or /*
+    if (
+      c === "/" &&
+      code[i + 1] !== "/" &&
+      code[i + 1] !== "*" &&
+      // Previous char must NOT be alphanumeric, _ $ ) ] } — heuristic
+      (i === 0 ||
+        /[^a-zA-Z0-9_$)\]}]/.test(code[i - 1]))
+    ) {
+      const start = i;
+      i++;
+      let escaped = false;
+      while (i < n) {
+        if (code[i] === "\\" && !escaped) {
+          escaped = true;
+          i++;
+          continue;
+        }
+        if (code[i] === "/" && !escaped) {
+          i++;
+          break;
+        }
+        escaped = false;
+        i++;
+      }
+      // Consume optional flags
+      while (i < n && /[dgimsuvy]/.test(code[i])) i++;
+      ranges.push({ start, end: i, kind: "string" });
+      continue;
+    }
     i++;
   }
   return ranges;
@@ -767,55 +866,65 @@ function startsInLiteral(
  * begin inside a comment or string literal are ignored (see literalRanges)
  * — a heuristic barrier, honestly labeled, never a sandbox.
  */
-function securityScan(changeId: string): GuardCheckResult {
+function securityScan(
+  changeId: string,
+  adapter: ShieldAdapter | null = null,
+): GuardCheckResult {
   const roots = ["src/tasks", `changes/${changeId}/snippets`].filter((p) =>
     existsSync(p),
   );
   if (roots.length === 0)
     return { step: "security", status: "PASS", detail: "no source to scan" };
   const findings: string[] = [];
-  const patterns: Array<[RegExp, string]> = [
-    [new RegExp("\\beval\\s*\\("), "eval()"],
-    [new RegExp("\\bnew\\s+Function\\s*\\("), "new Function()"],
-    [new RegExp("process\\.env\\."), "process.env.*"],
-    [new RegExp("\\bchild_process\\b"), "child_process usage"],
-    [
-      new RegExp("(?:exec|execSync|spawnSync|spawn|fork)\\s*\\([^)]*\\$\\{"),
-      "interpolated variable in shell exec",
-    ],
-    [
-      new RegExp(
-        "(?:exec|execSync|spawnSync)\\s*\\([^)]*[\"'`][^\"'`]*\\$\\s*\\(",
-      ),
-      "shell command substitution $(...) in exec",
-    ],
-    [
-      new RegExp("(?:exec|execSync|spawnSync)\\s*\\([^)]*[|;&]"),
-      "shell command chaining in exec",
-    ],
-    [
-      new RegExp(
-        "(?:require\\s*\\(\\s*[\"'](?:node:)?vm[\"']\\s*\\)|from\\s*[\"'](?:node:)?vm[\"'])",
-      ),
-      "node:vm sandbox escape risk",
-    ],
-    [
-      new RegExp(
-        "(?:api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*[\"'][^\"']{16,}",
-        "i",
-      ),
-      "hardcoded credential",
-    ],
-    [
-      new RegExp(
-        "\\b(?:API[_-]?KEY|KEY|SECRET|PASSWORD|TOKEN)\\b\\s*[:=]\\s*[\"'][^\"']{16,}",
-      ),
-      "hardcoded credential (UPPERCASE)",
-    ],
-  ];
+  // Use adapter patterns if available, else default TS patterns
+  const adapterPatterns = adapter?.getSecurityPatterns();
+  const patterns: Array<[RegExp, string]> = adapterPatterns
+    ? adapterPatterns.map((p) => [p.re, p.label])
+    : [
+        [new RegExp("\\beval\\s*\\("), "eval()"],
+        [new RegExp("\\bnew\\s+Function\\s*\\("), "new Function()"],
+        [new RegExp("process\\.env\\."), "process.env.*"],
+        [new RegExp("\\bchild_process\\b"), "child_process usage"],
+        [
+          new RegExp(
+            "(?:exec|execSync|spawnSync|spawn|fork)\\s*\\([^)]*\\$\\{",
+          ),
+          "interpolated variable in shell exec",
+        ],
+        [
+          new RegExp(
+            "(?:exec|execSync|spawnSync)\\s*\\([^)]*[\"'`][^\"'`]*\\$\\s*\\(",
+          ),
+          "shell command substitution $(...) in exec",
+        ],
+        [
+          new RegExp("(?:exec|execSync|spawnSync)\\s*\\([^)]*[|;&]"),
+          "shell command chaining in exec",
+        ],
+        [
+          new RegExp(
+            "(?:require\\s*\\(\\s*[\"'](?:node:)?vm[\"']\\s*\\)|from\\s*[\"'](?:node:)?vm[\"'])",
+          ),
+          "node:vm sandbox escape risk",
+        ],
+        [
+          new RegExp(
+            "(?:api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*[\"'][^\"']{16,}",
+            "i",
+          ),
+          "hardcoded credential",
+        ],
+        [
+          new RegExp(
+            "\\b(?:API[_-]?KEY|KEY|SECRET|PASSWORD|TOKEN)\\b\\s*[:=]\\s*[\"'][^\"']{16,}",
+          ),
+          "hardcoded credential (UPPERCASE)",
+        ],
+      ];
   for (const root of roots) {
     for (const file of walk(root)) {
-      if (!file.endsWith(".ts")) continue;
+      const scanExt = adapter?.id === "python" ? ".py" : ".ts";
+      if (!file.endsWith(scanExt)) continue;
       const code = readFileSync(file, "utf8");
       const literals = literalRanges(code);
       for (const [re, label] of patterns) {

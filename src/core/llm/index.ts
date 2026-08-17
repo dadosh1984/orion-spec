@@ -5,12 +5,12 @@
  * when no backend is configured or reachable.
  */
 
-import type { LlmAdapter } from './adapter.js';
-import { defaultAnswer } from './prompts.js';
-import { ollamaAdapter } from './ollama.js';
-import type { Question } from '../clarify.js';
+import type { LlmAdapter } from "./adapter.js";
+import { defaultAnswer } from "./prompts.js";
+import { ollamaAdapter } from "./ollama.js";
+import type { Question } from "../clarify.js";
 
-export type { LlmAdapter, LlmResult } from './adapter.js';
+export type { LlmAdapter, LlmResult } from "./adapter.js";
 
 let _adapter: LlmAdapter | null = null;
 let _pinged = false;
@@ -48,7 +48,10 @@ export async function askWithFallback(
   const adapter = await detectAdapter();
 
   if (adapter) {
-    const result = await adapter.ask(question.text, `${proposalGoal}\n${existingContext}`);
+    const result = await adapter.ask(
+      question.text,
+      `${proposalGoal}\n${existingContext}`,
+    );
     if (result.ok && result.text) {
       return result.text;
     }

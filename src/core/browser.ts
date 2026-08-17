@@ -36,7 +36,11 @@ async function importSkillAsEsm(scriptFile: string): Promise<any> {
   try {
     return await import(pathToFileURL(tmp).href);
   } finally {
-    try { rmSync(dir, { recursive: true, force: true }); } catch { /* ok */ }
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* ok */
+    }
   }
 }
 
@@ -111,10 +115,13 @@ export async function runInBrowser(
           : JSON.stringify(
               {
                 status: "success",
-                summary: typeof result === "object" && result && "summary" in (result as object)
-                  ? (result as any).summary
-                  : `${name} completed`,
-                ...((result && typeof result === "object") ? result : {}),
+                summary:
+                  typeof result === "object" &&
+                  result &&
+                  "summary" in (result as object)
+                    ? (result as any).summary
+                    : `${name} completed`,
+                ...(result && typeof result === "object" ? result : {}),
               },
               null,
               2,
@@ -143,7 +150,11 @@ export async function runInBrowser(
     };
   } finally {
     if (browser && typeof browser.close === "function") {
-      try { await browser.close(); } catch { /* ok */ }
+      try {
+        await browser.close();
+      } catch {
+        /* ok */
+      }
     }
   }
 }

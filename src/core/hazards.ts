@@ -36,7 +36,10 @@ const HAZARDS_JS: { re: RegExp; what: string }[] = [
   { re: /\beval\s*\(/, what: "dynamic eval" },
   { re: /new\s+Function\s*\(/, what: "dynamic Function constructor" },
   { re: /\bprocess\.exit\s*\(/, what: "process termination (own process)" },
-  { re: /fetch\s*\(\s*["']http:\/\//, what: "insecure (http://) outbound network call" },
+  {
+    re: /fetch\s*\(\s*["']http:\/\//,
+    what: "insecure (http://) outbound network call",
+  },
   {
     re: /fetch\s*\(\s*["']https:\/\//,
     what: "outbound network call (https://)",
@@ -90,7 +93,7 @@ const HAZARDS = HAZARDS_JS;
  *  `fetch("https://x.com")` breaks the URL. */
 export function normalizeSource(source: string): string {
   return source
-    .replace(/\s+/g, " ")              // collapse ws (inc newlines)
+    .replace(/\s+/g, " ") // collapse ws (inc newlines)
     .trim();
 }
 
@@ -109,7 +112,7 @@ export function scanHazards(source: string): string[] {
 export function scanHazardsForRuntime(
   source: string,
   runtime: "bash" | "node" | "python",
-  options?: { allowHttps?: boolean; allowOwnExit?: boolean }
+  options?: { allowHttps?: boolean; allowOwnExit?: boolean },
 ): string[] {
   const normal = normalizeSource(source);
   const patterns =

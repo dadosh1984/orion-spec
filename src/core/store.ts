@@ -6,7 +6,13 @@
  * memoryStore (для тестов).
  */
 
-import { existsSync, readFileSync, writeFileSync, appendFileSync, renameSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+  renameSync,
+} from "node:fs";
 
 /** Generic persistent store. cap keeps the last `max` entries (after optional sort ascending). */
 export interface Store<T> {
@@ -24,7 +30,9 @@ export function fileStore<T>(path: string): Store<T> {
       if (!existsSync(path)) return [];
       const raw = JSON.parse(readFileSync(path, "utf8"));
       return Array.isArray(raw) ? (raw as T[]) : [];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   }
   function write(rows: T[]): void {
     writeFileSync(path, JSON.stringify(rows), "utf8");
@@ -59,14 +67,21 @@ export function jsonlStore<T>(path: string): Store<T> {
           try {
             const parsed = JSON.parse(trimmed);
             if (parsed && typeof parsed === "object") rows.push(parsed as T);
-          } catch { /* skip corrupt */ }
+          } catch {
+            /* skip corrupt */
+          }
         }
         return rows;
-      } catch { return []; }
+      } catch {
+        return [];
+      }
     },
     append(entry: T): void {
-      try { appendFileSync(path, JSON.stringify(entry) + "\n", "utf8"); }
-      catch { /* best effort */ }
+      try {
+        appendFileSync(path, JSON.stringify(entry) + "\n", "utf8");
+      } catch {
+        /* best effort */
+      }
     },
     replace(entries: T[]): void {
       try {
@@ -74,7 +89,9 @@ export function jsonlStore<T>(path: string): Store<T> {
         const tmp = path + "." + process.pid + ".tmp";
         writeFileSync(tmp, text, "utf8");
         renameSync(tmp, path);
-      } catch { /* best effort */ }
+      } catch {
+        /* best effort */
+      }
     },
     cap(max: number, sortBy?: (a: T, b: T) => number): void {
       try {
@@ -82,7 +99,9 @@ export function jsonlStore<T>(path: string): Store<T> {
         if (sortBy) rows.sort(sortBy);
         if (rows.length > max) rows = rows.slice(-max);
         this.replace(rows);
-      } catch { /* best effort */ }
+      } catch {
+        /* best effort */
+      }
     },
   };
 }
@@ -93,7 +112,10 @@ export function memoryStore<T>(): Store<T> {
   return {
     load: () => [...buf],
     append: (e) => buf.push(e),
-    replace: (es) => { buf.length = 0; buf.push(...es); },
+    replace: (es) => {
+      buf.length = 0;
+      buf.push(...es);
+    },
     cap: (max, sortBy) => {
       if (sortBy) buf.sort(sortBy);
       if (buf.length > max) buf.splice(0, buf.length - max);

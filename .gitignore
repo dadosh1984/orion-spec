@@ -40,6 +40,9 @@ changes/*/.orion-vitest-cache/
 changes/*/.pytest_cache/
 changes/*/cwd/
 
+# Shield reports (regenerated on every run)
+reports/
+
 # One-off scratch
 tmp/
 orion-spec docs/

@@ -152,10 +152,10 @@ describe("main dispatcher", () => {
 
   it("treats a whole quoted phrase as a prompt (single argv with spaces)", async () => {
     expect(await main(["сделай CLI калькулятор с историей"])).toBe(0);
-    // Short title keeps the Cyrillic words (was "cli" before v0.20).
+    // Only ASCII words survive in the slug: "CLI" → "cli"
     expect(
       existsSync(
-        join(dir, "changes", "cli-калькулятор-историей", "proposal.json"),
+        join(dir, "changes", "cli", "proposal.json"),
       ),
     ).toBe(true);
   });

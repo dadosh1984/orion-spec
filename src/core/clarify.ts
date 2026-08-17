@@ -5,14 +5,22 @@
  * drift and test coverage to produce meaningful questions.
  */
 
-import { readFileSync, writeFileSync, renameSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { scanHazards } from './hazards.js';
-import type { Proposal } from '../type.js';
-import { clarifyStore } from './clarifyStore.js';
+import {
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  existsSync,
+  readdirSync,
+  mkdirSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
+import { scanHazards } from "./hazards.js";
+import type { Proposal } from "../type.js";
+import { clarifyStore } from "./clarifyStore.js";
 
-export type QuestionCategory = 'hazard' | 'ambiguity' | 'incomplete' | 'drift' | 'test';
-export type QuestionPriority = 'blocker' | 'clarifying';
+export type QuestionCategory =
+  "hazard" | "ambiguity" | "incomplete" | "drift" | "test";
+export type QuestionPriority = "blocker" | "clarifying";
 
 export interface Question {
   id: string;
@@ -31,7 +39,7 @@ export interface Answer {
 }
 
 export interface DialogueEntry {
-  role: 'orion' | 'agent';
+  role: "orion" | "agent";
   text: string;
   ts: string;
 }
@@ -58,12 +66,12 @@ function writeJson(file: string, obj: unknown): void {
   const dir = dirname(file);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
-  writeFileSync(tmp, content, 'utf8');
+  writeFileSync(tmp, content, "utf8");
   try {
     renameSync(tmp, file);
   } catch {
     // Fallback: rename can fail cross-device; write directly
-    writeFileSync(file, content, 'utf8');
+    writeFileSync(file, content, "utf8");
   }
 }
 
@@ -100,7 +108,7 @@ export class SocratesEngine {
 
     // Build set of (source,text) from existing questions to avoid regenerating (fix #4)
     const existingKeySet = new Set(
-      (opts.existingQuestions ?? []).map(q => `${q.source}::${q.text}`),
+      (opts.existingQuestions ?? []).map((q) => `${q.source}::${q.text}`),
     );
 
     // 1. HAZARD → blocker
@@ -108,11 +116,11 @@ export class SocratesEngine {
       const hazards = this.detectHazards(opts);
       if (hazards.length > 0) {
         return {
-          id: this.nextId('haz'),
-          text: `Hazard detected: ${hazards.join('; ')}. Confirm these destructive operations are intentional.`,
-          category: 'hazard' as QuestionCategory,
-          priority: 'blocker' as QuestionPriority,
-          source: 'hazard:scan',
+          id: this.nextId("haz"),
+          text: `Hazard detected: ${hazards.join("; ")}. Confirm these destructive operations are intentional.`,
+          category: "hazard" as QuestionCategory,
+          priority: "blocker" as QuestionPriority,
+          source: "hazard:scan",
           resolved: false,
           ts: now(),
         };
@@ -126,10 +134,10 @@ export class SocratesEngine {
       const qs: Question[] = [];
       for (const file of todos) {
         qs.push({
-          id: this.nextId('inc'),
+          id: this.nextId("inc"),
           text: `Snippet "${file}" contains TODO/FIXME. What remains to be done?`,
-          category: 'incomplete' as QuestionCategory,
-          priority: 'clarifying' as QuestionPriority,
+          category: "incomplete" as QuestionCategory,
+          priority: "clarifying" as QuestionPriority,
           source: `snippet:${file}`,
           resolved: false,
           ts: now(),
@@ -142,15 +150,17 @@ export class SocratesEngine {
     this.addRule(generated, existingKeySet, () => {
       const driftItems = this.detectDrift(opts);
       if (driftItems.length > 0) {
-        return [{
-          id: this.nextId('drf'),
-          text: `Spec-to-source drift detected (${driftItems.length} items). Is this deviation intentional?`,
-          category: 'drift' as QuestionCategory,
-          priority: 'clarifying' as QuestionPriority,
-          source: 'drift:review',
-          resolved: false,
-          ts: now(),
-        }];
+        return [
+          {
+            id: this.nextId("drf"),
+            text: `Spec-to-source drift detected (${driftItems.length} items). Is this deviation intentional?`,
+            category: "drift" as QuestionCategory,
+            priority: "clarifying" as QuestionPriority,
+            source: "drift:review",
+            resolved: false,
+            ts: now(),
+          },
+        ];
       }
       return [];
     });
@@ -159,15 +169,17 @@ export class SocratesEngine {
     this.addRule(generated, existingKeySet, () => {
       const missingTest = this.detectMissingTests(opts);
       if (missingTest) {
-        return [{
-          id: this.nextId('tst'),
-          text: 'New code detected (export/function) but no test files found. Are tests planned?',
-          category: 'test' as QuestionCategory,
-          priority: 'clarifying' as QuestionPriority,
-          source: 'test:coverage',
-          resolved: false,
-          ts: now(),
-        }];
+        return [
+          {
+            id: this.nextId("tst"),
+            text: "New code detected (export/function) but no test files found. Are tests planned?",
+            category: "test" as QuestionCategory,
+            priority: "clarifying" as QuestionPriority,
+            source: "test:coverage",
+            resolved: false,
+            ts: now(),
+          },
+        ];
       }
       return [];
     });
@@ -187,7 +199,10 @@ export class SocratesEngine {
     for (const q of items) {
       const key = `${q.source}::${q.text}`;
       // Skip if already in existing questions or already generated in this call
-      if (existingKeySet.has(key) || generated.find(g => `${g.source}::${g.text}` === key)) {
+      if (
+        existingKeySet.has(key) ||
+        generated.find((g) => `${g.source}::${g.text}` === key)
+      ) {
         continue;
       }
       generated.push(q);
@@ -199,13 +214,13 @@ export class SocratesEngine {
     if (!snippetsDir || !existsSync(snippetsDir)) return [];
 
     const hazards: string[] = [];
-    const files = this.listFiles(snippetsDir, '.ts');
+    const files = this.listFiles(snippetsDir, ".ts");
     for (const f of files) {
       try {
-        const code = readFileSync(f, 'utf8');
+        const code = readFileSync(f, "utf8");
         const found = scanHazards(code);
         if (found.length > 0) {
-          hazards.push(...found.map(h => `${f}: ${h}`));
+          hazards.push(...found.map((h) => `${f}: ${h}`));
         }
       } catch {
         // skip unreadable
@@ -218,12 +233,12 @@ export class SocratesEngine {
     if (!snippetsDir || !existsSync(snippetsDir)) return [];
 
     const filesWithTodos: string[] = [];
-    const files = this.listFiles(snippetsDir, '.ts');
+    const files = this.listFiles(snippetsDir, ".ts");
     for (const f of files) {
       try {
-        const code = readFileSync(f, 'utf8');
+        const code = readFileSync(f, "utf8");
         if (TODO_PATTERNS.test(code)) {
-          filesWithTodos.push(f.replace(/\\/g, '/'));
+          filesWithTodos.push(f.replace(/\\/g, "/"));
         }
       } catch {
         // skip
@@ -233,19 +248,19 @@ export class SocratesEngine {
   }
 
   private detectDrift(opts: AnalyzeOpts): string[] {
-    const changeDir = join(process.cwd(), 'changes', opts.changeId);
-    const specsDir = join(changeDir, 'specs');
+    const changeDir = join(process.cwd(), "changes", opts.changeId);
+    const specsDir = join(changeDir, "specs");
     if (!existsSync(specsDir)) return [];
 
     const driftItems: string[] = [];
     const specDirs = readdirSync(specsDir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .map(d => d.name);
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
 
     for (const specDir of specDirs) {
-      const specFile = join(specsDir, specDir, 'spec.md');
+      const specFile = join(specsDir, specDir, "spec.md");
       if (!existsSync(specFile)) continue;
-      const specContent = readFileSync(specFile, 'utf8');
+      const specContent = readFileSync(specFile, "utf8");
 
       // Extract code blocks (```typescript ... ```) and inline backticks
       const codeBlocks: string[] = [];
@@ -254,13 +269,15 @@ export class SocratesEngine {
       while ((m = blockRegex.exec(specContent)) !== null) {
         codeBlocks.push(m[1]);
       }
-      const codeText = codeBlocks.join('\n') + '\n' + specContent;
+      const codeText = codeBlocks.join("\n") + "\n" + specContent;
 
-      const exports = codeText.match(/`?export\s+(function|const|class|interface|type)\s+(\w+)/g);
+      const exports = codeText.match(
+        /`?export\s+(function|const|class|interface|type)\s+(\w+)/g,
+      );
       if (!exports) continue;
       for (const exp of exports) {
-        const name = exp.split(/\s+/).pop() ?? '';
-        const srcFile = join(opts.srcDir ?? 'src', `${name}.ts`);
+        const name = exp.split(/\s+/).pop() ?? "";
+        const srcFile = join(opts.srcDir ?? "src", `${name}.ts`);
         if (!existsSync(srcFile)) {
           driftItems.push(`${name} (spec: expected in src/${name}.ts)`);
         }
@@ -273,13 +290,13 @@ export class SocratesEngine {
     const snippetsDir = opts.snippetsDir;
     if (!snippetsDir || !existsSync(snippetsDir)) return false;
 
-    const files = this.listFiles(snippetsDir, '.ts');
+    const files = this.listFiles(snippetsDir, ".ts");
     if (files.length === 0) return false;
 
     let hasNewCode = false;
     for (const f of files) {
       try {
-        const code = readFileSync(f, 'utf8');
+        const code = readFileSync(f, "utf8");
         if (/export\s|function\s/.test(code)) {
           hasNewCode = true;
           break;
@@ -291,16 +308,23 @@ export class SocratesEngine {
     if (!hasNewCode) return false;
 
     // Check change-level tests/ directory
-    const changeDir = join(process.cwd(), 'changes', opts.changeId);
-    const changeTestDir = join(changeDir, 'tests');
-    if (existsSync(changeTestDir) && this.listFiles(changeTestDir, '.test.ts').length > 0) return false;
+    const changeDir = join(process.cwd(), "changes", opts.changeId);
+    const changeTestDir = join(changeDir, "tests");
+    if (
+      existsSync(changeTestDir) &&
+      this.listFiles(changeTestDir, ".test.ts").length > 0
+    )
+      return false;
 
     // Check project-level tests/ directory
-    const testDir = join(process.cwd(), 'tests');
-    if (existsSync(testDir) && this.listFiles(testDir, '.test.ts').length > 0) return false;
+    const testDir = join(process.cwd(), "tests");
+    if (existsSync(testDir) && this.listFiles(testDir, ".test.ts").length > 0)
+      return false;
 
     // Check .test.ts / .spec.ts in snippets
-    const snippetTestFiles = files.filter(f => f.includes('.test.') || f.includes('.spec.'));
+    const snippetTestFiles = files.filter(
+      (f) => f.includes(".test.") || f.includes(".spec."),
+    );
     return snippetTestFiles.length === 0;
   }
 
@@ -336,17 +360,17 @@ export function generateQuestions(changeId: string): Question[] {
     changeId,
     proposal,
     snippetsDir: existsSync(snippetsDir) ? snippetsDir : null,
-    srcDir: 'src',
+    srcDir: "src",
     existingQuestions: state.questions,
     existingAnswers: state.answers,
   });
 
   // Dedup by (source, text) against existing persisted questions
   const existingKeys = new Set(
-    state.questions.map(q => `${q.source}::${q.text}`),
+    state.questions.map((q) => `${q.source}::${q.text}`),
   );
   const questions = newQuestions.filter(
-    q => !existingKeys.has(`${q.source}::${q.text}`),
+    (q) => !existingKeys.has(`${q.source}::${q.text}`),
   );
 
   // Merge with existing and save
@@ -358,10 +382,10 @@ export function generateQuestions(changeId: string): Question[] {
 export function getUnansweredBlockers(changeId: string): UnansweredBlocker[] {
   try {
     const state = loadClarifyState(changeId);
-    const answeredIds = new Set(state.answers.map(a => a.questionId));
+    const answeredIds = new Set(state.answers.map((a) => a.questionId));
     return state.questions
-      .filter(q => q.priority === 'blocker' && !answeredIds.has(q.id))
-      .map(q => ({ id: q.id, text: q.text }));
+      .filter((q) => q.priority === "blocker" && !answeredIds.has(q.id))
+      .map((q) => ({ id: q.id, text: q.text }));
   } catch {
     return [];
   }
@@ -372,10 +396,12 @@ export function applyAnswers(changeId: string, answers: Answer[]): void {
   const state = loadClarifyState(changeId);
 
   for (const answer of answers) {
-    const q = state.questions.find(q => q.id === answer.questionId);
+    const q = state.questions.find((q) => q.id === answer.questionId);
     if (q) q.resolved = true;
 
-    const existing = state.answers.find(a => a.questionId === answer.questionId);
+    const existing = state.answers.find(
+      (a) => a.questionId === answer.questionId,
+    );
     if (existing) {
       existing.text = answer.text;
       existing.ts = answer.ts;
@@ -383,7 +409,11 @@ export function applyAnswers(changeId: string, answers: Answer[]): void {
       state.answers.push(answer);
     }
 
-    state.dialogue.push({ role: 'agent', text: answer.text, ts: answer.ts ?? now() });
+    state.dialogue.push({
+      role: "agent",
+      text: answer.text,
+      ts: answer.ts ?? now(),
+    });
   }
 
   store.questions.replace(state.questions);
@@ -393,9 +423,9 @@ export function applyAnswers(changeId: string, answers: Answer[]): void {
 
 export function hasUnansweredBlockers(changeId: string): boolean {
   const state = loadClarifyState(changeId);
-  const answeredIds = new Set(state.answers.map(a => a.questionId));
+  const answeredIds = new Set(state.answers.map((a) => a.questionId));
   return state.questions.some(
-    q => q.priority === 'blocker' && !answeredIds.has(q.id),
+    (q) => q.priority === "blocker" && !answeredIds.has(q.id),
   );
 }
 
@@ -433,8 +463,8 @@ export function refine(changeId: string, autoCheck = false): string | null {
 
   // Log in dialogue
   appendDialogue(changeId, {
-    role: 'orion',
-    text: 'Context updated via answers. Re-run orion forge <change-id> to apply.',
+    role: "orion",
+    text: "Context updated via answers. Re-run orion forge <change-id> to apply.",
     ts: now(),
   });
 
@@ -442,9 +472,9 @@ export function refine(changeId: string, autoCheck = false): string | null {
   if (autoCheck) {
     const blockers = getUnansweredBlockers(changeId);
     if (blockers.length > 0) {
-      const msg = `${blockers.length} blocker(s) remain after answers: ${blockers.map(b => b.id).join(', ')}`;
+      const msg = `${blockers.length} blocker(s) remain after answers: ${blockers.map((b) => b.id).join(", ")}`;
       appendDialogue(changeId, {
-        role: 'orion',
+        role: "orion",
         text: msg,
         ts: now(),
       });
@@ -460,14 +490,14 @@ function buildContext(goal: string, answers: Answer[]): string {
   for (const a of answers) {
     parts.push(`${a.questionId}: ${a.text}`);
   }
-  return parts.join(' | ');
+  return parts.join(" | ");
 }
 
 /** Read and parse JSON synchronously (needed for clarify which runs sync). */
 function readJsonSync<T>(file: string): T | null {
   try {
     if (!existsSync(file)) return null;
-    return JSON.parse(readFileSync(file, 'utf8')) as T;
+    return JSON.parse(readFileSync(file, "utf8")) as T;
   } catch {
     return null;
   }

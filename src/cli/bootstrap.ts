@@ -26,8 +26,7 @@ export function registerAllCommands(): void {
 
   registerCommand({
     name: "new",
-    description:
-      "Pipeline: think→draft→forge→shield→out (or --step=...)",
+    description: "Pipeline: think→draft→forge→shield→out (or --step=...)",
     handler: newHandler,
   });
   registerCommand({

@@ -40,7 +40,10 @@ export function loadPolicy(cwd = process.cwd()): PolicyConfig {
       denyImport: Array.isArray(cfg.denyImport) ? cfg.denyImport : undefined,
       denyPattern: Array.isArray(cfg.denyPattern) ? cfg.denyPattern : undefined,
     };
-  } catch {
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      process.stderr.write(`[orion] warning: .orion/policy.json has invalid JSON — ${err.message}\n`);
+    }
     return {};
   }
 }

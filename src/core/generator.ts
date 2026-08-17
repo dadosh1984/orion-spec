@@ -38,7 +38,9 @@ export function generateSkill(
   //    (config.json / env) + an environment fingerprint on generation.
   const m = createScript(name, runtime, prompt, {
     domain: resolveDomain(),
-    environmentFingerprint: environmentFingerprint({ runtime: process.version }),
+    environmentFingerprint: environmentFingerprint({
+      runtime: process.version,
+    }),
   });
   files.push("run.sh");
 

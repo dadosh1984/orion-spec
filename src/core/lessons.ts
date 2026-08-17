@@ -213,8 +213,14 @@ export async function importLessons(source: string): Promise<{
   let added = 0;
   let skipped = 0;
   for (const row of parsed) {
-    if (!isLessonRow(row)) { skipped++; continue; }
-    if (seen.has(signature(row))) { skipped++; continue; }
+    if (!isLessonRow(row)) {
+      skipped++;
+      continue;
+    }
+    if (seen.has(signature(row))) {
+      skipped++;
+      continue;
+    }
     existing.push({
       ...row,
       id: row.id || genLessonId(row),

@@ -56,11 +56,7 @@ import { cleanCmd } from "./cleanCmd.js";
 import { statusWatch } from "./statusWatchCmd.js";
 import { diffCmd } from "./diffCmd.js";
 import { envCmd } from "./envCmd.js";
-import {
-  clarifyCommand,
-  answerCommand,
-  refineCommand,
-} from "./clarifyCmd.js";
+import { clarifyCommand, answerCommand, refineCommand } from "./clarifyCmd.js";
 import { chatCommand } from "./chatCmd.js";
 import { runDispatch } from "./runCmd.js";
 import { createScript, scriptPath, writeManifest } from "../core/runtime.js";
@@ -305,17 +301,21 @@ export async function main(argv: string[]): Promise<number> {
 
           if (!entryPath) {
             // Второй шанс: git diff src/tasks/ — forge мог создать новые файлы
-            const { execSync } = await import("node:child_process");
+            const { spawnSync } = await import("node:child_process");
             try {
-              const changed = execSync(
-                "git status --porcelain -- src/tasks/",
-                { encoding: "utf8" },
-              )
+              const gitCheck = spawnSync("git", ["status", "--porcelain", "--", "src/tasks/"], {
+                encoding: "utf8",
+                timeout: 5000,
+              });
+              if (gitCheck.error || gitCheck.status !== 0) {
+                throw new Error("git not available");
+              }
+              const changed = (gitCheck.stdout ?? "")
                 .trim()
                 .split("\n")
                 .filter((l) => l.trim().endsWith(".ts"))
                 .map((l) => l.trim().split(/\s+/).pop())
-                .filter((f): f is string => Boolean(f))
+                .filter((f): f is string => Boolean(f));
               if (changed.length === 1) {
                 // Ровно один новый файл — используем как точку входа
                 entryPath = changed[0] ?? null;
@@ -440,7 +440,10 @@ export async function main(argv: string[]): Promise<number> {
 
     case "chat": {
       const prompt = args.join(" ");
-      if (!prompt) return fail("chat requires a prompt, e.g. orion chat \"add date sorting to orders\"");
+      if (!prompt)
+        return fail(
+          'chat requires a prompt, e.g. orion chat "add date sorting to orders"',
+        );
       return await chatCommand(prompt, opts.auto, opts.full, opts.force);
     }
 

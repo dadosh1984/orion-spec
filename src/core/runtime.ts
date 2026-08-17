@@ -14,7 +14,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { execSync, spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { scanHazardsForRuntime } from "./hazards.js";
 import { denyEnv } from "./denyEnv.js";
 import { validateOutput } from "./specValidator.js";
@@ -122,9 +122,11 @@ export function whichExists(cmd: string): boolean {
 export function resolveBinary(cmd: string): string | null {
   if (process.platform !== "win32") {
     try {
-      const out = execSync(`command -v ${cmd} 2>/dev/null || true`, {
+      const result = spawnSync("which", [cmd], {
         encoding: "utf8",
-      }).trim();
+        timeout: 3000,
+      });
+      const out = (result.stdout ?? "").trim();
       return out || null;
     } catch {
       return null;
@@ -713,16 +715,18 @@ export function setSchedule(name: string, cronExpr: string | null): void {
       const scriptFile = scriptPath(name);
       const cronLine = `${cronExpr} cd ${join(scriptsDir(), name)} && bash "${scriptFile}" # orion:${name}`;
       try {
-        const existing = execSync("crontab -l 2>/dev/null || true", {
+        const result = spawnSync("crontab", ["-l"], {
           encoding: "utf8",
+          timeout: 5000,
         });
+        const existing = result.status === 0 ? (result.stdout ?? "") : "";
         const cleaned = existing
           .split("\n")
           .filter((l) => !l.includes(`# orion:${name}`))
           .join("\n")
           .trim();
         const next = (cleaned ? cleaned + "\n" : "") + cronLine + "\n";
-        execSync("crontab -", { input: next, encoding: "utf8" });
+        spawnSync("crontab", ["-"], { input: next, encoding: "utf8", timeout: 5000 });
       } catch (err) {
         throw new Error(
           `cron setup failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -743,17 +747,19 @@ export function unscheduleCron(name: string): void {
 
 function unscheduleCronLocked(name: string): void {
   try {
-    const existing = execSync("crontab -l 2>/dev/null || true", {
+    const result = spawnSync("crontab", ["-l"], {
       encoding: "utf8",
+      timeout: 5000,
     });
+    const existing = result.status === 0 ? (result.stdout ?? "") : "";
     const cleaned = existing
       .split("\n")
       .filter((l) => !l.includes(`# orion:${name}`) && l.trim() !== "")
       .join("\n");
     if (cleaned.trim()) {
-      execSync("crontab -", { input: cleaned + "\n", encoding: "utf8" });
+      spawnSync("crontab", ["-"], { input: cleaned + "\n", encoding: "utf8", timeout: 5000 });
     } else {
-      execSync("crontab -r 2>/dev/null || true");
+      spawnSync("crontab", ["-r"], { timeout: 5000 });
     }
   } catch {
     /* best effort */

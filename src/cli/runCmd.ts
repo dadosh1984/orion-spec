@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { statusMark, paint } from "../utils/term.js";
+import { denyEnv } from "../core/denyEnv.js";
 import { confirmAction, lineDiff } from "./helpers.js";
 import {
   listScripts,
@@ -206,6 +207,7 @@ export async function runDispatch(args: string[]): Promise<number> {
               spawnSync(process.execPath, [cli, "run", wName], {
                 stdio: "inherit",
                 timeout: 60_000,
+                env: denyEnv(process.env),
               });
             } catch {
               /* watcher continues */

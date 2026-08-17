@@ -25,9 +25,7 @@ export const scaleHandler: CommandHandler = async (args, opts) => {
     if (stage !== "tdd") {
       return fail(`unknown --stage '${stage}' (only 'tdd' is supported)`);
     }
-    const tddArgs = args
-      .slice(0, stageIdx)
-      .concat(args.slice(stageIdx + 2));
+    const tddArgs = args.slice(0, stageIdx).concat(args.slice(stageIdx + 2));
     return await tddCommand(tddArgs, opts);
   }
   const stageEq = args.find((a) => a.startsWith("--stage="));

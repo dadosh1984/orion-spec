@@ -264,12 +264,15 @@ export function renderAtomicTree(leaves: AtomicLeaf[], title: string): string {
     const group = byDepth.get(level) ?? [];
     if (!group.length) continue;
     const heading =
-      level === 1 ? `## ✦ ${title} — big step` : `### ${title} — level ${level}`;
+      level === 1
+        ? `## ✦ ${title} — big step`
+        : `### ${title} — level ${level}`;
     blocks.push(heading);
     for (const l of group) blocks.push(`- [ ] [${l.mark}] ${l.text}`);
   }
   // Guards: also emit any stray depth-0 leaves so nothing is dropped.
-  for (const l of byDepth.get(0) ?? []) blocks.push(`- [ ] [${l.mark}] ${l.text}`);
+  for (const l of byDepth.get(0) ?? [])
+    blocks.push(`- [ ] [${l.mark}] ${l.text}`);
   return blocks.join("\n");
 }
 
@@ -284,7 +287,8 @@ export function renderTasksBody(
   // Purpose-built plans (maintenance RED→fix→verify) are already atomic by
   // design — do not re-split them. Detect via the RED/GREEN markers that
   // uniquely tag `deriveTasks` maintenance output.
-  if (tasks.some((t) => /\(RED\)|\(GREEN\)/.test(t.text))) return flat.join("\n");
+  if (tasks.some((t) => /\(RED\)|\(GREEN\)/.test(t.text)))
+    return flat.join("\n");
 
   // Honest atomic decomposition (v0.51): recursively split each step until
   // it is atomic (one action / verifiable / no hidden decision), with a

@@ -531,12 +531,17 @@ export function getMcpTools(): McpTool[] {
     },
     {
       name: "chat",
-      description: "Execute a software change via Orion autonomous pipeline (draft + clarify + answer + refine). Call repeatedly — blockers are returned so the agent can provide answers via the answer tool.",
+      description:
+        "Execute a software change via Orion autonomous pipeline (draft + clarify + answer + refine). Call repeatedly — blockers are returned so the agent can provide answers via the answer tool.",
       inputSchema: {
         type: "object",
         properties: {
           prompt: { type: "string", description: "The change goal" },
-          auto: { type: "boolean", description: "Auto-answer clarifying questions via LLM (default false)" },
+          auto: {
+            type: "boolean",
+            description:
+              "Auto-answer clarifying questions via LLM (default false)",
+          },
         },
         required: ["prompt"],
       },
@@ -550,7 +555,8 @@ export function getMcpTools(): McpTool[] {
     },
     {
       name: "status",
-      description: "Get the current status of all changes: task progress, guard verdict, artifact completeness.",
+      description:
+        "Get the current status of all changes: task progress, guard verdict, artifact completeness.",
       inputSchema: { type: "object", properties: {} },
       handler: async () => {
         const changes = scanChanges();
@@ -559,11 +565,15 @@ export function getMcpTools(): McpTool[] {
     },
     {
       name: "lessons",
-      description: "List recorded self-correction lessons (optionally filtered by change id).",
+      description:
+        "List recorded self-correction lessons (optionally filtered by change id).",
       inputSchema: {
         type: "object",
         properties: {
-          changeId: { type: "string", description: "Filter by change id (optional)" },
+          changeId: {
+            type: "string",
+            description: "Filter by change id (optional)",
+          },
         },
       },
       handler: async (args) => {

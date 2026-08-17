@@ -100,10 +100,10 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    // Short title keeps the Cyrillic words (was "cli" before v0.20).
-    await draft("cli-калькулятор-историей-операций", { noCache: true });
+    // Only ASCII words survive in the slug: "CLI" → "cli"
+    await draft("cli", { noCache: true });
     const tasks = readFileSync(
-      join("changes", "cli-калькулятор-историей-операций", "tasks.md"),
+      join("changes", "cli", "tasks.md"),
       "utf8",
     );
     expect(tasks).toContain("CLI entry point");
@@ -180,9 +180,10 @@ describe("draft skill", () => {
       { noCache: true },
       async () => "",
     );
-    await draft("сломанный-парсер-csv-модуле", { noCache: true });
+    // Only ASCII words survive: "csv", "parse", "ts" → "csv-parse-ts"
+    await draft("csv-parse-ts", { noCache: true });
     const ruTasks = readFileSync(
-      join("changes", "сломанный-парсер-csv-модуле", "tasks.md"),
+      join("changes", "csv-parse-ts", "tasks.md"),
       "utf8",
     );
     // "почини" is stripped; the fix target is restated as a fact.

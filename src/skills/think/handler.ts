@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
 import { readJson, writeJson } from "../../utils/file.js";
-import { significantWords } from "../../core/titles.js";
+import { TITLE_STOPWORDS } from "../../core/titles.js";
 import { OrionTrack } from "../../core/track.js";
 import { findLessons } from "../../core/lessons.js";
 import { loadQuestions } from "../../core/templates.js";
@@ -231,6 +231,7 @@ async function resolveTitle(
 }
 
 /** Turn a free-form prompt into a filesystem-safe identifier. */
+/** Turn a free-form prompt into a filesystem-safe identifier (ASCII only). */
 export function slugify(input: string): string {
   return (
     input
@@ -243,23 +244,34 @@ export function slugify(input: string): string {
 }
 
 /**
- * Short, readable change title (3–4 words) derived from the prompt:
- * strip the leading action verb and fillers, drop stopwords, keep the
- * first few significant words — Latin **and** Cyrillic — so Russian
- * prompts get short meaningful titles instead of `untitled` or a single
- * stray ASCII word. Falls back to the raw prompt's first significant
- * words when too little remains (keeps "build a calculator" →
- * build-a-calculator exactly as before). `slugify` itself is unchanged,
- * so forge task slugs are unaffected.
+ * Short, readable ASCII-only change title (3-4 words) derived from the
+ * prompt. Strips stopwords, keeps only Latin-alphabet significant words.
+ * Falls back to slugify(prompt) when too few Latin words remain —
+ * guarantees the result is always a valid filesystem path.
+ *
+ * This is the key function that ensures ALL change directory names are
+ * English/ASCII, regardless of the user's prompt language.
  */
 export function shortTitle(prompt: string): string {
-  // Significant words of the core (leading verb already stripped).
-  const words = significantWords(extractCore(prompt), 4);
+  // Extract core (leading verb stripped), split into words, keep only ASCII
+  const core = extractCore(prompt).toLowerCase();
+  const words: string[] = [];
+  for (const w of core.split(/[^a-z0-9]+/)) {
+    if (!w || TITLE_STOPWORDS.has(w)) continue;
+    words.push(w);
+    if (words.length >= 4) break;
+  }
   if (words.length >= 2) return words.join("-");
-  // Too little survives the core filter — fall back to the raw prompt's
-  // first significant words (Cyrillic included), never a 64-char slug or
-  // "untitled" for a non-empty idea.
-  const raw = significantWords(prompt, 4);
-  if (raw.length >= 2) return raw.join("-");
-  return slugify(prompt) || "untitled";
+
+  // Fallback: try the full prompt (user may have English words mixed in)
+  const fullWords: string[] = [];
+  for (const w of prompt.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (!w || TITLE_STOPWORDS.has(w)) continue;
+    fullWords.push(w);
+    if (fullWords.length >= 4) break;
+  }
+  if (fullWords.length >= 2) return fullWords.join("-");
+
+  // Last resort: slugify the entire prompt (removes all non-ASCII)
+  return slugify(prompt);
 }
