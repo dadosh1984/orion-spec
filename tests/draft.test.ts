@@ -290,3 +290,84 @@ describe("maintenance detection v0.25 (leading verb only)", () => {
     expect(tasks).toContain("Reproduce the failure");
   });
 });
+
+describe("change-type plans v0.66 (signal #3: no scaffold noise)", () => {
+  it("delete goal → delete-oriented tasks, NO feature scaffolding", async () => {
+    const proposal = await think(
+      "delete the dead vendor folder X.ts",
+      { noCache: true },
+      async () => "",
+    );
+    expect(proposal.title).toBe("delete-dead-vendor-folder");
+    await draft(proposal.title, { noCache: true });
+    const tasks = readFileSync(
+      join("changes", proposal.title, "tasks.md"),
+      "utf8",
+    );
+    expect(tasks).toContain("Locate all references");
+    expect(tasks).toContain("Remove");
+    expect(tasks).not.toContain("Scaffold project structure");
+    expect(tasks).not.toContain("Document usage in README");
+  });
+
+  it("Cyrillic cleanup goal → delete-oriented tasks", async () => {
+    const proposal = await think(
+      "удали мёртвый vendor X",
+      { noCache: true },
+      async () => "",
+    );
+    await draft(proposal.title, { noCache: true });
+    const tasks = readFileSync(
+      join("changes", proposal.title, "tasks.md"),
+      "utf8",
+    );
+    expect(tasks).toContain("Locate all references");
+    expect(tasks).not.toContain("Scaffold project structure");
+  });
+
+  it("refactor goal → RED→fix→verify path, NO scaffold", async () => {
+    const proposal = await think(
+      "refactor the auth module to a plugin interface",
+      { noCache: true },
+      async () => "",
+    );
+    await draft(proposal.title, { noCache: true });
+    const tasks = readFileSync(
+      join("changes", proposal.title, "tasks.md"),
+      "utf8",
+    );
+    expect(tasks).toContain("Refactor");
+    expect(tasks).toContain("behavior regression");
+    expect(tasks).not.toContain("Scaffold project structure");
+  });
+
+  it("docs goal → documentation tasks, NOT scaffolding", async () => {
+    const proposal = await think(
+      "document the CSV tool API",
+      { noCache: true },
+      async () => "",
+    );
+    await draft(proposal.title, { noCache: true });
+    const tasks = readFileSync(
+      join("changes", proposal.title, "tasks.md"),
+      "utf8",
+    );
+    expect(tasks).toContain("Draft documentation");
+    expect(tasks).not.toContain("Scaffold project structure");
+  });
+
+  it("feature goal stays byte-identical (scaffold present)", async () => {
+    const proposal = await think(
+      "build a CLI calculator",
+      { noCache: true },
+      async () => "",
+    );
+    await draft(proposal.title, { noCache: true });
+    const tasks = readFileSync(
+      join("changes", proposal.title, "tasks.md"),
+      "utf8",
+    );
+    expect(tasks).toContain("Scaffold project structure");
+    expect(tasks).toContain("CLI entry point");
+  });
+});

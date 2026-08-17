@@ -148,31 +148,52 @@ export interface DerivedTask {
   mark: "fact" | "assumption";
 }
 
+/**
+ * Change-plan type, discriminated from the goal verb (EN + RU).
+ * v0.66 (signal #3): a delete/docs goal must NOT get the generic build
+ * scaffolding — each type maps to purpose-built tasks in deriveTasks.
+ * Fires on the LEADING action verb only, so "updates" inside a feature
+ * description is content, not a repair request. Order matters: more
+ * specific verbs (delete/docs) are checked after maintenance.
+ */
+export type ChangePlanType =
+  "feature" | "maintain" | "refactor" | "delete" | "docs";
+
+const MAINTENANCE_VERBS =
+  /\b(fix(?:es|ed|ing)?|bug(?:s)?|broken|regression|upgrade(?:d|s)?|upgrading|update(?:d|s)?|repair(?:s|ed)?|maintain(?:ing)?|maintenance)\b|почин|исправ|обнов|ремонтир|леч/i;
+const REFACTOR_VERBS =
+  /\b(?:refactor(?:ed|ing)?|restructur(?:e|ing|ed)?|rewrit(?:e|ing|ten)?)\b|рефактор|переработ/i;
+const DELETE_VERBS =
+  /\b(delete|remove|drop|uninstall|cleanup|clean|purge|stripp?|toss)\b|удал|очист|выброс/i;
+const DOCS_VERBS =
+  /\b(document|docs|explain|comment|write readme|annotate)\b|документ|инструкц|поясни/i;
+
+export function changePlanOf(goal: string): ChangePlanType {
+  const leading = goal.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
+  if (MAINTENANCE_VERBS.test(leading)) return "maintain";
+  if (REFACTOR_VERBS.test(leading)) return "refactor";
+  if (DELETE_VERBS.test(leading)) return "delete";
+  if (DOCS_VERBS.test(leading)) return "docs";
+  return "feature";
+}
+
 export function deriveTasks(proposal: Proposal): DerivedTask[] {
   const goal = proposal.goal.toLowerCase();
   const platform = proposal.platform.toLowerCase();
   const core = toEnglish(extractCore(goal));
   const tasks: DerivedTask[] = [];
+  const clause = toEnglish(extractCoreClause(goal));
 
-  // Maintenance goals (fix/upgrade/refactor) get a RED→fix→verify plan
-  // instead of build templates: "Scaffold project structure" and
-  // "Document usage in README" are noise for a bug fix. Fires before the
-  // feature categories so e.g. "fix the CLI parser" plans a fix, not a
-  // new CLI.
-  //
-  // v0.25: maintenance is decided by the LEADING action verb only, not by
-  // any keyword anywhere in the goal — "updates" inside a feature
-  // description is content, not a repair request. "Fix the CLI parser"
-  // → maintenance; "Add a converter that updates CSV files" → feature.
-  const MAINTENANCE_VERBS =
-    /\b(fix(?:es|ed|ing)?|bug(?:s)?|broken|regression|upgrade(?:d|s)?|upgrading|update(?:d|s)?|refactor(?:ed|ing)?|polish|repair(?:s|ed)?|maintain(?:ing)?|maintenance)\b|ошибк|сломан|почин|исправ|обнов|регресс/i;
-  const leadingVerb = goal.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
-  if (MAINTENANCE_VERBS.test(leadingVerb)) {
+  // v0.66 (signal #3): pick a purpose-built plan for the change type
+  // instead of always falling back to build scaffolding. Maintenance keeps
+  // its RED→fix→verify plan; delete/docs get their own concrete task sets.
+  const plan = changePlanOf(goal);
+
+  if (plan === "maintain") {
     tasks.push({
-      text: "Reproduce the failure: write a test that fails on the current code (RED)",
+      text: "Reproduce the failure: write/run a test that fails on the current code (RED)",
       mark: "assumption",
     });
-    const clause = toEnglish(extractCoreClause(goal));
     if (clause) {
       tasks.push({ text: `Implement the fix: ${clause}`, mark: "fact" });
     }
@@ -182,6 +203,66 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
     });
     tasks.push({
       text: "Verify the full test suite and gates still pass (GREEN)",
+      mark: "assumption",
+    });
+    return tasks;
+  }
+
+  if (plan === "refactor") {
+    if (clause) {
+      tasks.push({
+        text: `Map current behavior/surface of: ${clause} (behavior baseline)`,
+        mark: "fact",
+      });
+    }
+    tasks.push({
+      text: "Refactor to the target structure without changing external behavior/API",
+      mark: "assumption",
+    });
+    tasks.push({
+      text: "Run the existing test suite to prove no behavior regression (GREEN)",
+      mark: "assumption",
+    });
+    return tasks;
+  }
+
+  if (plan === "delete") {
+    if (clause) {
+      tasks.push({
+        text: `Locate all references to: ${clause}`,
+        mark: "assumption",
+      });
+      tasks.push({
+        text: `Remove ${clause} and its now-dead references/imports`,
+        mark: "fact",
+      });
+    } else {
+      tasks.push({
+        text: "Remove the target and its now-dead references/imports",
+        mark: "assumption",
+      });
+    }
+    tasks.push({
+      text: "Verify tests, lint and type-check still pass (no dangling imports)",
+      mark: "assumption",
+    });
+    return tasks;
+  }
+
+  if (plan === "docs") {
+    if (clause) {
+      tasks.push({
+        text: `Draft documentation for: ${clause}`,
+        mark: "fact",
+      });
+    } else {
+      tasks.push({
+        text: "Draft the documentation/README",
+        mark: "assumption",
+      });
+    }
+    tasks.push({
+      text: "Review accuracy against the current behavior/API",
       mark: "assumption",
     });
     return tasks;
