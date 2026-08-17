@@ -114,18 +114,21 @@ describe("think skill", () => {
     );
   });
 
-  it("shortTitle returns ASCII-only slug — Cyrillic prompts fall back to slugify", () => {
-    // Pure Cyrillic has no Latin words → slugify yields "untitled"
+  it("shortTitle returns ASCII-only slug — Cyrillic prompts get a script-tag title", () => {
+    // Pure Cyrillic has no Latin words → script-tagged placeholder
     expect(
       shortTitle("проверить проект и убедиться что все файлы авторские"),
-    ).toBe("untitled");
+    ).toBe("task-cyrillic");
     // Mixed EN+RU: only English words are kept
     expect(
       shortTitle(
         "добавить возможность экспорта данных в Excel и синхронизацию с облаком",
       ),
     ).toBe("excel");
-    expect(shortTitle("починить интерфейс приложения")).toBe("untitled");
+    expect(shortTitle("починить интерфейс приложения")).toBe("task-cyrillic");
+    // CJK / Arabic prompts → script-tagged placeholders (honest, not "untitled")
+    expect(shortTitle("計算機を作る工具")).toBe("task-cjk");
+    expect(shortTitle("أداة تحويل البيانات")).toBe("task-arabic");
   });
 
   it("shortTitle falls back to slugify when too few Latin words remain", () => {

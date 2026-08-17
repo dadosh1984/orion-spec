@@ -254,13 +254,45 @@ export function slugify(input: string): string {
 }
 
 /**
+ * Detect the dominant Unicode script for a prompt (best-effort). Returns a
+ * stable ASCII tag used to derive a meaningful fallback slug when the
+ * prompt has no Latin words at all (e.g. Japanese, Arabic, Korean).
+ * Undefined/ASCII-only input → "latin".
+ */
+export function detectScript(prompt: string): string {
+  let cyrillic = 0,
+    cjk = 0,
+    arabic = 0;
+  for (const ch of prompt) {
+    const code = ch.codePointAt(0)!;
+    if (code >= 0x0400 && code <= 0x04ff) cyrillic++;
+    else if (
+      (code >= 0x3040 && code <= 0x30ff) ||
+      (code >= 0x4e00 && code <= 0x9fff) ||
+      (code >= 0xac00 && code <= 0xd7af)
+    )
+      cjk++;
+    else if (
+      (code >= 0x0600 && code <= 0x06ff) ||
+      (code >= 0x0750 && code <= 0x077f)
+    )
+      arabic++;
+  }
+  const max = Math.max(cyrillic, cjk, arabic);
+  if (max === 0) return "latin";
+  if (cyrillic === max) return "task-cyrillic";
+  if (cjk === max) return "task-cjk";
+  if (arabic === max) return "task-arabic";
+  return "task";
+}
+
+/**
  * Short, readable ASCII-only change title (3-4 words) derived from the
  * prompt. Strips stopwords, keeps only Latin-alphabet significant words.
- * Falls back to slugify(prompt) when too few Latin words remain —
- * guarantees the result is always a valid filesystem path.
- *
- * This is the key function that ensures ALL change directory names are
- * English/ASCII, regardless of the user's prompt language.
+ * Falls back to slugify(prompt) when too few Latin words remain, and to a
+ * script-tagged slug (task-ja, task-ar, ...) when the prompt has no Latin
+ * words at all — guarantees the result is always a valid ASCII path while
+ * remaining honest that the slug is a placeholder, not a translation.
  */
 export function shortTitle(prompt: string): string {
   // Extract core (leading verb stripped), split into words, keep only ASCII
@@ -282,6 +314,11 @@ export function shortTitle(prompt: string): string {
   }
   if (fullWords.length >= 2) return fullWords.join("-");
 
-  // Last resort: slugify the entire prompt (removes all non-ASCII)
-  return slugify(prompt);
+  // One ASCII token surviving (e.g. a lib name): use it as-is.
+  if (fullWords.length === 1) return fullWords[0];
+
+  // No Latin words at all — derive an honest placeholder from the script.
+  const slug = slugify(prompt);
+  if (slug && slug !== "untitled") return slug;
+  return detectScript(prompt);
 }
