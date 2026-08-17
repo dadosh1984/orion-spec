@@ -307,8 +307,21 @@ async function runPipeline(
   console.log(`[pipeline] step 4/5: shield`);
   const report = await shield(changeId, opts);
   if (!report.allPass) {
-    console.error(`[pipeline] step 4/5: shield failed`);
-    return 1;
+    console.log(
+      `[pipeline] shield failed — handing control to autopilot (bounded):`,
+    );
+    const { runAutopilot } = await import("../../core/autopilot.js");
+    const auto = await runAutopilot({ changeId });
+    for (const line of auto.trace) console.log(line);
+    if (!auto.ok) {
+      console.error(
+        `[pipeline] autopilot could not close the loop (${auto.outcome.status}).`,
+      );
+      console.error(auto.summary);
+      return 1;
+    }
+    console.log(`[pipeline] autopilot: ${auto.summary}`);
+    return 0;
   }
 
   console.log(`[pipeline] step 5/5: out`);

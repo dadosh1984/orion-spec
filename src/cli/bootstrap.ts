@@ -17,6 +17,7 @@ import { scaleHandler } from "./commands/scale.js";
 import { doctorHandler } from "./commands/doctor.js";
 import { serveHandler } from "./commands/serve.js";
 import { pluginHandler } from "./commands/plugin.js";
+import { autopilotHandler } from "./commands/autopilot.js";
 
 let registered = false;
 
@@ -67,6 +68,12 @@ export function registerAllCommands(): void {
     name: "plugin",
     description: "Plugin manager: list/install/remove/new",
     handler: pluginHandler,
+  });
+  registerCommand({
+    name: "autopilot",
+    description:
+      "Closed-loop orchestrator: route failing change through correction until green or honest stop",
+    handler: autopilotHandler,
   });
 }
 
