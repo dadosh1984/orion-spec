@@ -74,6 +74,11 @@ interface AutopilotOptions {
       budgetExceeded?: { limit: number; spent: number; estimated: number };
     }>;
     think?: (prompt: string) => Promise<{ title: string }>;
+    draft?: (id: string) => Promise<unknown>;
+    forge?: (
+      id: string,
+      opts?: unknown,
+    ) => Promise<{ ok?: boolean; message?: string }>;
     shield?: (id: string) => Promise<GuardReport>;
     out?: (id: string) => Promise<{ status: string }>;
     repairScript?: (name: string) => { ok: boolean };
@@ -162,6 +167,7 @@ export async function runAutopilot(
   const changeId = n.selfCorrection?.changeId ?? opts.changeId ?? n.next ?? "";
   const budget = maxBudgetTokens();
   let estimated = 0;
+  let lastAction = "";
 
   // 4. Autonomous correction loop, bounded. Treat the initial `n` as the
   // first iteration's decision; re-ask only AFTER performing an action, so
@@ -229,10 +235,30 @@ export async function runAutopilot(
           add("verify", "shield FAIL", "guard red, re-route", 0);
         }
       } else if (/^orion (draft|forge)/.test(action)) {
-        // Advance one step; the loop picks up shield next iteration.
-        add("advance", action, "one step forward", 0);
+        // Execute draft/forge so the change actually progresses.
+        if (/^orion draft/.test(action)) {
+          const draftFn =
+            d.draft ?? (await import("../skills/draft/handler.js")).draft;
+          await draftFn(changeId);
+          add("advance", "draft", "executed draft", 0);
+        } else {
+          const forgeFn =
+            d.forge ?? (await import("../skills/forge/handler.js")).forge;
+          await forgeFn(changeId, {});
+          add("advance", "forge", "executed forge", 0);
+        }
+      } else {
+        // Unknown action — advance anyway via generic call.
+        add("advance", action, "generic action (non-route)", 0);
       }
     }
+
+    // Guard against stalling: if the SAME action appeared twice, stop.
+    if (action === lastAction) {
+      add("gate", "stop", `stalled on same action: "${action}"`, 0);
+      break;
+    }
+    lastAction = action;
 
     // Re-ask the router for the next decision.
     try {
