@@ -7,6 +7,7 @@ import {
   lessonsForChange,
   recordPattern,
 } from "../../core/lessons.js";
+import { trace } from "../../core/telemetry.js";
 import { getUnansweredBlockers, loadClarifyState } from "../../core/clarify.js";
 import { recordCalibration } from "../../core/calibration.js";
 import { estimateChangeCost } from "../next/handler.js";
@@ -100,6 +101,26 @@ export async function out(
       pattern: `SUCCESS: ${tasksDone}/${tasksTotal} tasks + non-stale guard → result.md written`,
       sourceChange: changeId,
     });
+    // Auto-learn from session files after a successful out (Step B).
+    // Best-effort: if no .jsonl files exist, nothing happens.
+    try {
+      const { learnFromSessions, sessionFiles } =
+        await import("../../core/sessions.js");
+      const files = sessionFiles(process.cwd());
+      if (files.length > 0) {
+        const r = learnFromSessions(files);
+        if (r.lessons > 0) {
+          trace({
+            type: "autopilot",
+            action: "auto-learn",
+            reason: `learned ${r.lessons} lesson(s) from ${r.records} session record(s)`,
+            tokenCost: 0,
+          });
+        }
+      }
+    } catch {
+      // Best-effort: skip if sessions module is unavailable.
+    }
   }
 
   const artifacts = listArtifacts(changeId);
