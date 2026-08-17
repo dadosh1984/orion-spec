@@ -121,6 +121,25 @@ export async function out(
     } catch {
       // Best-effort: skip if sessions module is unavailable.
     }
+    // Auto-promote (Step D): check miss-log for promotion candidates.
+    try {
+      const { promotionCandidates } =
+        await import("../../core/skillMissLog.js");
+      const { proposeFromMissLog } = await import("../../core/promotion.js");
+      const cands = promotionCandidates(3);
+      for (const c of cands) {
+        const stepId = c.entry.step.slice(0, 40);
+        proposeFromMissLog(stepId, c.entry.step, c.entry.domain, []);
+        trace({
+          type: "autopilot",
+          action: "auto-promote",
+          reason: `proposed promotion for "${stepId}" (×${c.repeat} misses)`,
+          tokenCost: 0,
+        });
+      }
+    } catch {
+      // Best-effort.
+    }
   }
 
   const artifacts = listArtifacts(changeId);
