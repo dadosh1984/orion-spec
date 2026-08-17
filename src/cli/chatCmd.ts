@@ -226,7 +226,7 @@ export async function chatCommand(
     // ── STEP 4/6: FORGE — auto-generate snippets via AI if missing ──
     const t4 = process.hrtime.bigint();
     const snippetsDir = `changes/${changeId}/snippets`;
-    const hasSnippets =
+    let hasSnippets =
       existsSync(snippetsDir) &&
       readdirSync(snippetsDir).some((f) => f.endsWith(".ts"));
 
@@ -245,10 +245,17 @@ export async function chatCommand(
           `  ${YELLOW}\u26A0${RESET} ${DIM}cannot generate: ${err instanceof Error ? err.message.slice(0, 30) : "error"}${RESET}\n`,
         );
       }
+      // Re-check after generation (also when catched: some files may exist).
+      if (
+        existsSync(snippetsDir) &&
+        readdirSync(snippetsDir).some((f) => f.endsWith(".ts"))
+      ) {
+        hasSnippets = true;
+      }
     }
 
-    // Run forge
-    if (hasSnippets) {
+    // Run forge — always attempt; forge handles missing snippets gracefully.
+    {
       process.stderr.write(
         `${YELLOW}\u231B${RESET} ${BOLD}STEP 4/6${RESET}: FORGE     ${DIM}applying code...${RESET}\n`,
       );
@@ -281,10 +288,6 @@ export async function chatCommand(
           `${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}failed — ${err instanceof Error ? err.message.slice(0, 40) : "error"}${RESET}\n`,
         );
       }
-    } else {
-      process.stderr.write(
-        `${icon(false)} ${BOLD}STEP 4/6${RESET}: FORGE     ${YELLOW}skipped — no snippets${RESET}  ${elapsed(t4)}\n`,
-      );
     }
 
     // ── STEP 5/6: SHIELD ────────────────────────
