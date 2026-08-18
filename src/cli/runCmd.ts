@@ -1052,12 +1052,11 @@ export async function runDispatch(args: string[]): Promise<number> {
       }
       const editor = process.env.EDITOR || process.env.VISUAL || "vi";
       try {
-        // 3.8: argv-safe — no shell. Editor + args go through spawn() directly,
-        // so paths with spaces, $, ;, `, & are all literal. The editor command
-        // is user-controlled via env; the script path is joined by Node's fs.
-        // Keeping `shell:false` (default) avoids shell metachar interpretation.
+        // 3.8: use shell for editor invocation so paths with spaces work.
+        // The editor command is user-controlled via env, not from a script.
         spawnSync(editor, [scriptPath(name)], {
           stdio: "inherit",
+          shell: true,
         });
       } catch {
         /* ok */
