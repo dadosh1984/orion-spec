@@ -70,10 +70,20 @@ pnpm run format              # prettier --write (run before committing; format m
   dynamic `import("playwright")`, zero-dep by default); loads user skills as ESM.
 - `src/core/hazards.ts` — pre-execution scan (destructive/network/exit patterns).
 - `src/core/router.ts` — skill-first router (existing/new/direct/ask/reject).
-- `src/core/uzum.ts` — extracted Uzum.uz parsers (`parsePriceBlock`,
-  `parseRatingReviews`) with unit tests in `tests/uzum.test.ts`.
+- `src/core/store.ts` (v0.58) — generic `Store<T>` layer (jsonlStore + memoryStore);
+  replaces raw fs writes in economy/lessons/clarify/track.
+- `src/core/changeShield.ts` (v0.58) — hazard+drift guard for `orion change --shield`.
+- `src/core/autopilot.ts` (v0.63) — closed-loop orchestrator: bounded `next ↔ repair
+  ↔ forge ↔ shield`, telemetry, exits honestly on loopDetected/budgetExceeded.
+- `src/core/selfAudit.ts` + `src/core/promotion.ts` (v0.65) — auto-promote skill
+  lessons after `orion out` SUCCESS, dedupe via lineage.
+- `src/core/llm/` (v0.61) — optional LLM adapter (Ollama, zero-deps default).
+- `src/core/shield/adapter.ts` (v0.66) — language-agnostic ShieldAdapter
+  (TypeScriptAdapter + PythonAdapter + gradle.ts).
 - `examples/skills/` — committed real browser skills (find-uzum-book,
   find-uzum-notebook, find-uzum-calculator, find-uzum-calculator-sold).
+  ВАЖНО: `src/core/uzum.ts` удалён (v0.66, commit `87dee91`) — parsers
+  живут внутри example-скиллов, не в core.
 - `changes/<title>/` — Orion change-store (proposal, specs, tasks, snippets).
 
 ## Conventions
@@ -300,3 +310,38 @@ shield не гонялся (нет change), но ручной прогон вс�
 - `out` shield-gate — `out` отказывается писать SUCCESS если `change --shield` FAIL
 - `Store<T>` для `track.ts` — последний модуль с raw file I/O
 - Shell completion, TypeDoc — низкий приоритет
+
+### SESSION-SAVE 2026-08-18 — queue cleanup + audit (v0.66.0)
+
+**Состояние:** HEAD clean (`f7247cf`), `orion --version` 0.66.0, npm **0.66.0 published**. **Active changes: 3** (было 24). **148 src / 90 tests / 934 passing, 2 skipped. gate зелёный.**
+
+**Что сделано в сессии (6 коммитов):**
+1. `0ee26e2` **chore(archive):** 21 stale changes → archived/
+2. `5d03f67` **chore(archive):** remove 21 phantom changes (deletions)
+3. `6d70091` **chore(reports):** drop dangling guard-reports
+4. `d9e2dee` **feat(benchmark):** seed e-164 phone validator workflow comparison
+5. `6ebb2e9` **fix(security):** drop shell:true from orion run edit (ОТКАЗАНО)
+6. `f7247cf` **Revert** коммита 5 — застрял в защитном тесте `tests/security-exec.test.ts:66`
+
+**Аудит проекта:**
+- ✅ B2 (vitest `--reporter=basic`) — **не баг**, мой артефакт. В `package.json`/`scripts/`/`vitest.config.ts` нигде не используется.
+- ⚠️ B1 (security: `shell:true` в editor) — **backlog**: тест явно закрепляет «v0.57 path-with-spaces safe». Любая правка требует синхронного изменения теста + согласования с решением #7 (`23d9ca5`).
+- ❌ B5/B6 (stale `e-164-phone-number-2` draft, устаревший session-save) — частично решено архивацией, частично перенесено в новый блок.
+
+**Архивированные (21):** `forge-language-agnostic`, `shield-should-be-language`, `shield-language-agnostic`, `внедрить-сопоставление-атомарного-шага`, `closed-loop-orchestrator-orion`, `socrates-engine-rule-based`, `draft-artifact-generation-produces`, `file-watcher-prevent-zombie`, `llm-socrates-optional-llm`, `orion-chat-one-command`, `race-condition-appendeconomy-switch`, `rate-limit-memory-leak`, `refine-auto-after-merging`, `task-manager-app-like`, `test-автономный-режим-auto`, `добавить-поиск`, `ночную-тему`, `пофиксить-багу-быстро`, `улучшить-производительность`, `улучшить-производительность-запросов`, `функцию-iseven-проверяет-число`.
+
+**Активные (3):**
+- `benchmark-10-different-orion` — план 10 workflow'ов на E.164 validator
+- `e-164-phone-number-2` — рабочая задача для benchmark'а
+- `25-bugs-implement-15` — большой bug-bash, не форджен (4 tasks scaffold)
+
+**Между 0.58 и 0.66 (50 коммитов, не разбираем подробно):** autopilot (closed-loop orchestrator), self-audit + auto-promote, auto-learn из session-файлов, draft purpose-built plans (signal #3 fix), language-agnostic forge+shield (ShieldAdapter TypeScript+Python), script-tag fallback для non-Latin prompts, audit 10 багов в 0.65, full-pipeline по умолчанию в `new`. Все эти фичи уже в текущем HEAD.
+
+**ОТКРЫТО (следующая сессия):**
+- `benchmark-10-different-orion` — активная задача, можно стартовать `orion forge`. Понадобится wall-clock + iterations + code quality метрики.
+- `e-164-phone-number-2` — target-задача для benchmark'а.
+- `25-bugs-implement-15` — крупный bug-bash, не форджен. Нишевый.
+- B1 (security в editor) — нужна парная правка теста + кода, **не делать без явного запроса** (защитный тест = осознанный выбор).
+- Bump 0.67.0 — преждевременно (queue cleanup без substance).
+
+**Рекомендация:** начать с `orion forge e-164-phone-number-2` (дешевле, чем benchmark; даст материал для benchmark-фазы). **Не делать превентивный polish B1** — ждать явного запроса.
