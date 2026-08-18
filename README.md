@@ -53,13 +53,13 @@ walkthrough and [Commands Reference](docs/commands.md) for every command.
 
 ## The pipeline
 
-| Step     | What it does |
-| -------- | ------------ |
-| `think`  | Turns a raw idea into a proposal. Asks language‑aware clarifying questions (platform, constraints, budget), refines vague prompts and resolves them to `changes/<title>/proposal.json`. |
-| `draft`  | Generates `proposal.md`, `specs/<capability>/spec.md`, `design.md` and `tasks.md`. Never clobbers your hand edits; supports `--lang en\|ru` or auto‑picks from your profile. |
-| `forge`  | Drives every open `- [ ]` task in `tasks.md` through TDD, ticking each off live in the terminal. Optional `--parallel <n>` runs tasks in isolated worker waves. |
+| Step     | What it does                                                                                                                                                                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `think`  | Turns a raw idea into a proposal. Asks language‑aware clarifying questions (platform, constraints, budget), refines vague prompts and resolves them to `changes/<title>/proposal.json`.                  |
+| `draft`  | Generates `proposal.md`, `specs/<capability>/spec.md`, `design.md` and `tasks.md`. Never clobbers your hand edits; supports `--lang en\|ru` or auto‑picks from your profile.                             |
+| `forge`  | Drives every open `- [ ]` task in `tasks.md` through TDD, ticking each off live in the terminal. Optional `--parallel <n>` runs tasks in isolated worker waves.                                          |
 | `shield` | Runs the guard‑rails: lint, type‑check, unit tests, drift‑check, YAGNI signal, cache‑economy budget, security scan and project policy gates. Each step caches `PASS`; a report lands in `reports/<id>/`. |
-| `out`    | Writes the final `result.md`: a verdict assembled from tasks, guard report and artifacts — including any lessons learned. |
+| `out`    | Writes the final `result.md`: a verdict assembled from tasks, guard report and artifacts — including any lessons learned.                                                                                |
 
 ### Supporting commands (v0.51+ — 8 total)
 
@@ -67,16 +67,16 @@ The CLI has been shrunk from 43 top-level commands to **8**. Every other
 command from earlier versions is now a **deprecated alias** that prints
 a warning and forwards to one of these:
 
-| Command | Purpose |
-| ------- | ------- |
-| `orion new "<prompt>"` | Pipeline driver: runs think→draft→forge→shield→out (or `--step=<name>`, `--pipeline`, `--dry`, `--from=<id>`). Replaces the old `think`/`draft`/`forge`/`shield`/`out`/`verify`/`tasks`/`next`/`pay-debt`/`resume`/`init`/`plan` commands. |
-| `orion ls` | List/inspect changes. Flags: `--watch` (live refresh), `--diff <a> <b>`, `--assumptions <id>`, `--stats`, `--audit`, `--cache`, `--profile`, `--lessons` (with `export`/`import`). Replaces `list`/`status`/`compare`/`stats`/`self-audit`/`track`/`profile`/`lessons`/`history`/`metrics`/`tokens`/`learn`. |
-| `orion change <id>` | Per-change ops. Flags: `--tasks`, `--review`, `--archive`, `--diff`, `--changelog`, `--resume`, `--next`, `--pay-debt`, `--verify`, `--shield`, `--out`, `--export`, `--import`. |
-| `orion run` | Offline scripts (22 sub-commands: `new`, `generate`, `show`, `edit`, `delete`, `schedule`, `watch`, `repair`, `explain`, `log`, `stats`, `cache`, …). |
-| `orion scale <file>` | YAGNI ladder (with `--dry`). `--stage=tdd` runs a TDD step (replaces `orion tdd`). |
-| `orion doctor` | Health/init/repair. Flags: `--init`, `--config`, `--clean`, `--backup`, `--restore`, `--env`. Replaces `init`/`config`/`clean`/`backup`/`restore`/`env`. |
-| `orion serve` | Web dashboard (default) + `orion serve mcp` (MCP stdio server for AI agents). Replaces `serve`/`mcp`. |
-| `orion plugin` | Plugin manager: `list`, `install`, `remove`, `new`. |
+| Command                | Purpose                                                                                                                                                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `orion new "<prompt>"` | Pipeline driver: runs think→draft→forge→shield→out (or `--step=<name>`, `--pipeline`, `--dry`, `--from=<id>`). Replaces the old `think`/`draft`/`forge`/`shield`/`out`/`verify`/`tasks`/`next`/`pay-debt`/`resume`/`init`/`plan` commands.                                                                   |
+| `orion ls`             | List/inspect changes. Flags: `--watch` (live refresh), `--diff <a> <b>`, `--assumptions <id>`, `--stats`, `--audit`, `--cache`, `--profile`, `--lessons` (with `export`/`import`). Replaces `list`/`status`/`compare`/`stats`/`self-audit`/`track`/`profile`/`lessons`/`history`/`metrics`/`tokens`/`learn`. |
+| `orion change <id>`    | Per-change ops. Flags: `--tasks`, `--review`, `--archive`, `--diff`, `--changelog`, `--resume`, `--next`, `--pay-debt`, `--verify`, `--shield`, `--out`, `--export`, `--import`.                                                                                                                             |
+| `orion run`            | Offline scripts (22 sub-commands: `new`, `generate`, `show`, `edit`, `delete`, `schedule`, `watch`, `repair`, `explain`, `log`, `stats`, `cache`, …).                                                                                                                                                        |
+| `orion scale <file>`   | YAGNI ladder (with `--dry`). `--stage=tdd` runs a TDD step (replaces `orion tdd`).                                                                                                                                                                                                                           |
+| `orion doctor`         | Health/init/repair. Flags: `--init`, `--config`, `--clean`, `--backup`, `--restore`, `--env`. Replaces `init`/`config`/`clean`/`backup`/`restore`/`env`.                                                                                                                                                     |
+| `orion serve`          | Web dashboard (default) + `orion serve mcp` (MCP stdio server for AI agents). Replaces `serve`/`mcp`.                                                                                                                                                                                                        |
+| `orion plugin`         | Plugin manager: `list`, `install`, `remove`, `new`.                                                                                                                                                                                                                                                          |
 
 **Migration from v0.50:** every old command still works (e.g. `orion list`,
 `orion think`, `orion shield my-id`, `orion mcp`) but prints a deprecation
@@ -184,6 +184,32 @@ as honest as the code.
 
 ---
 
+## Phone number validator (E.164)
+
+Structural validation only — checks format and length per ITU-T E.164.
+
+```typescript
+import {
+  parsePhone, // throws on malformed input
+  validatePhone, // non-throwing: { ok, phone?, error? }
+  formatPhone, // "+XXX NNN NNN NN"
+} from "./src/tasks/phoneValidator.js";
+
+parsePhone("+14155552671"); // → { countryCode: "141", nationalNumber: "55552671", raw: "+14155552671" }
+validatePhone("+998901234567"); // → { ok: true, phone: {...} }
+validatePhone("14155552671"); // → { ok: false, error: "Must start with +" }
+formatPhone({
+  countryCode: "141",
+  nationalNumber: "55552671",
+  raw: "+14155552671",
+});
+// → "+141 555 526 71"
+```
+
+Rules: must start with `+`; 7–15 digits total; digits only after `+`; country
+code is the first 3 digits. Not in scope: libphonenumber, country-code
+assignment lookup, number-in-use check (zero-dep project).
+
 ## Development
 
 ```bash
@@ -214,7 +240,7 @@ Node 22 / 24) and uploads build artifacts.
 
 > **Security note.** The `shield` security scan is a best‑effort pattern lint
 > (`eval`, `new Function`, `process.env.*`, `child_process`, injection chains,
-> secrets) — it flags *obvious* issues and can both over‑ and under‑match.
+> secrets) — it flags _obvious_ issues and can both over‑ and under‑match.
 > Treat a PASS as "no obvious issues" and review security‑sensitive code by
 > hand. See [CONTRIBUTING.md](CONTRIBUTING.md#security).
 
