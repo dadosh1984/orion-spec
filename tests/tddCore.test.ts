@@ -167,6 +167,44 @@ describe("TddEngine", () => {
       rmSync(isolated, { recursive: true, force: true });
     }
   });
+
+  it("refactor uses forgeRuntime.refactor when available", async () => {
+    let called = false;
+    const engine = new TddEngine("refx2", track, config);
+    // Inject a custom forgeRuntime with a refactor that succeeds
+    (engine as any).forgeRuntime = {
+      refactor: async (root: string) => {
+        called = true;
+        expect(root).toBe(process.cwd());
+        return true;
+      },
+    };
+    const ok = await engine.refactor();
+    expect(ok).toBe(true);
+    expect(called).toBe(true);
+    expect(engine.state).toBe(State.REFACTOR);
+  });
+
+  it("refactor falls back to eslint+prettier when no forgeRuntime.refactor", async () => {
+    // Without forgeRuntime, refactor should use the default path
+    // (eslint+prettier). In isolation, eslint fails → false.
+    const prior = process.cwd();
+    const isolated = mkdtempSync(join(tmpdir(), "orion-tdd-fallback-"));
+    try {
+      process.chdir(isolated);
+      const engine = new TddEngine(
+        "refx3",
+        new OrionTrack(join(isolated, "cache")),
+      );
+      // Ensure forgeRuntime is intentionally absent (or undefined refactor)
+      (engine as any).forgeRuntime = {};
+      const ok = await engine.refactor();
+      expect(ok).toBe(false);
+    } finally {
+      process.chdir(prior);
+      rmSync(isolated, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("TddEngine hazard gate (v0.23)", () => {

@@ -19,6 +19,7 @@ import {
 } from "../../core/shield/adapter.js";
 import { type ShieldAdapter } from "../../core/shield/adapter.js";
 import { TypeScriptAdapter } from "../../core/shield/typescript.js";
+import { GradleAdapter } from "../../core/shield/gradle.js";
 import { loadShieldConfig } from "../../core/shield/config.js";
 import type { GuardCheckResult, GuardReport } from "../../type.js";
 
@@ -40,10 +41,12 @@ const STEPS: StepName[] = [
 ];
 
 /**
- * Initialize adapters. Registers TypeScript adapter first (backward compat).
+ * Initialize adapters. GradleAdapter first (takes priority for projects
+ * with both build.gradle and package.json), TypeScriptAdapter second.
  */
 export function initAdapters(): void {
   if (getAdapters().length === 0) {
+    registerAdapter(GradleAdapter);
     registerAdapter(TypeScriptAdapter);
   }
 }

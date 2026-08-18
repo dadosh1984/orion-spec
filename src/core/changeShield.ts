@@ -9,7 +9,9 @@ import { join } from "node:path";
 import { scanHazards } from "./hazards.js";
 import { driftOf } from "./drift.js";
 import { type Store, memoryStore } from "./store.js";
-import { detectAdapter } from "./shield/adapter.js";
+import { detectAdapter, registerAdapter } from "./shield/adapter.js";
+import { TypeScriptAdapter } from "./shield/typescript.js";
+import { GradleAdapter } from "./shield/gradle.js";
 
 export interface ChangeShieldResult {
   ok: boolean;
@@ -45,11 +47,19 @@ export async function runChangeShield(
     };
   }
 
-  // 1. Hazard-scan snippets (supports .py via adapter)
+  // 1. Hazard-scan snippets (extensions from adapter)
   const snippetsDir = join(changeDir, "snippets");
   const hazards: string[] = [];
+  // Register adapters if not yet registered
+  registerAdapter(GradleAdapter);
+  registerAdapter(TypeScriptAdapter);
   const adapter = detectAdapter(process.cwd());
-  const exts = adapter?.id === "python" ? [".py"] : [".ts", ".js"];
+  const exts =
+    adapter?.id === "gradle"
+      ? [".java"]
+      : adapter?.id === "python"
+        ? [".py"]
+        : [".ts", ".js"];
   if (existsSync(snippetsDir)) {
     for (const f of readdirSync(snippetsDir)) {
       if (!exts.some((e) => f.endsWith(e))) continue;

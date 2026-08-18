@@ -55,3 +55,47 @@ honest `<!-- orion: template=<path> (custom) -->` marker.
 Artifact templates are language-aware (v0.27): the profile's detected
 language selects English or Russian skeletons. Override per run with
 `draft --lang en|ru`.
+
+## Автодетект языка для forge (RED-GREEN-REFACTOR)
+
+Начиная с v0.65 forge автоматически определяет язык проекта и подстраивает
+шаблоны тестов, команды запуска и рефакторинг:
+
+| Маркер | Язык | Команда тестов | Расширения |
+|--------|------|----------------|------------|
+| `build.gradle` / `build.gradle.kts` / `pom.xml` | Java/Gradle | `./gradlew test --tests "*{task}*"` | `.java` |
+| `package.json` (и нет Gradle) | TypeScript | `pnpm vitest run` | `.ts` |
+| ничего | TypeScript (fallback) | `pnpm vitest run` | `.ts` |
+
+### Ручная настройка (orionTdd.json)
+
+Автодетект можно переопределить создав `orionTdd.json` в корне проекта.
+Пример для Java/Gradle:
+
+```json
+{
+  "testTemplate": "import org.junit.jupiter.api.*;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass {{task}}Test {\n    @Test\n    void test{{task}}() {\n        assertNotNull(new {{task}}());\n    }\n}\n",
+  "command": "cd {{root}} && ./gradlew test --tags \"*{{task}}*\" 2>&1",
+  "testExt": ".java",
+  "srcExt": ".java",
+  "testDir": "src/test/java",
+  "srcDir": "src/main/java",
+  "minCoverage": 80
+}
+```
+
+Для TypeScript (дефолт):
+
+```json
+{
+  "testTemplate": "import { describe, it, expect } from 'vitest';\nimport { {{task}} } from '../src/tasks/{{task}}';\n\ndescribe('{{task}}', () => {\n  it('works', () => {\n    expect({{task}}()).toBeDefined();\n  });\n});\n",
+  "command": "pnpm vitest run tests/{{testFile}}",
+  "testExt": ".test.ts",
+  "srcExt": ".ts",
+  "testDir": "tests",
+  "srcDir": "src/tasks",
+  "minCoverage": 80
+}
+```
+
+Без `orionTdd.json` forge сам выбирает правильный конфиг по маркерам проекта.

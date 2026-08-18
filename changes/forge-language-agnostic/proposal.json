@@ -1,0 +1,16 @@
+{
+  "title": "forge-должен-выполнять-red",
+  "goal": "Forge должен выполнять RED-GREEN-REFACTOR для Java/Gradle проектов, а не только для TypeScript/Node.js. Сейчас tddCore.ts жёстко завязан на vitest, pnpm, eslint/prettier. Нужно: (1) абстрагировать ForgeConfig с автодетектом языка по маркерам (build.gradle → Gradle/Java, package.json → TS), (2) реализовать GradleAdapter — JUnit 5 шаблон, команда ./gradlew test, парсинг JUnit-вывода, (3) рефакторинг tddCore.refactor() — не жёсткий eslint/prettier, а через конфиг, (4) поддержка .java сниппетов, (5) тесты на Java-цикл, (6) документировать orionTdd.json для Java. Не сломать существующие TS-проекты. — Node.js 22+, ESM, zero runtime dependency",
+  "platform": "Не ломать существующие TS-проекты, все текущие тесты должны проходить без изменений, никаких новых runtime-зависимостей (Gradle/JUnit вызываются через spawnSync). Автодетект опционален — если нет маркеров — дефолт TS.",
+  "constraints": "compact",
+  "budget": "compact",
+  "clarity": "clear",
+  "language": "ru",
+  "appliesLessons": [
+    "mcp-python-1-7:forge:9c866da712f6",
+    "рефакторинг-shield-language-agnostic:forge:fd9bec59320c",
+    "рефакторинг-shield-language-agnostic:forge:4a18972ee3c5",
+    "рефакторинг-shield-language-agnostic:forge:6f9606faef22",
+    "завершить-дистрибуцию-orion-spec:forge:23b473434d45"
+  ]
+}

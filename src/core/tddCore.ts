@@ -6,7 +6,8 @@ import { writeFileSafe, ensureDir, resolveConfig } from "../utils/file.js";
 import { trace } from "./telemetry.js";
 import { OrionTrack } from "./track.js";
 import { scanHazards, HAZARD_GATE_BLOCKED } from "./hazards.js";
-import type { TaskStatus, TddConfig } from "../type.js";
+import { detectForgeConfig } from "./forgeConfig.js";
+import type { ForgeRuntimeConfig, TaskStatus, TddConfig } from "../type.js";
 
 const execAsync = promisify(exec);
 
@@ -24,7 +25,7 @@ export enum State {
   DONE = "DONE",
 }
 
-/** Load the TDD configuration with defaults. */
+/** Load the TDD configuration with defaults + autodetect. */
 export function loadTddConfig(): TddConfig {
   const DEFAULTS: TddConfig = {
     testTemplate:
@@ -46,8 +47,6 @@ export function loadTddConfig(): TddConfig {
     const cfg = JSON.parse(
       readFileSync(resolveConfig("orionTdd.json"), "utf8"),
     ) as Partial<TddConfig>;
-    // File suffixes are optional: a project's orionTdd.json may omit them
-    // and still get the TS defaults (v0.24 framework-agnostic extensions).
     return {
       ...DEFAULTS,
       ...cfg,
@@ -55,7 +54,17 @@ export function loadTddConfig(): TddConfig {
       srcExt: cfg.srcExt ?? DEFAULTS.srcExt,
     };
   } catch {
-    return DEFAULTS;
+    // No manual orionTdd.json — autodetect language
+    const auto = detectForgeConfig();
+    return {
+      testTemplate: auto.testTemplate,
+      testDir: auto.testDir,
+      srcDir: auto.srcDir,
+      command: auto.command,
+      minCoverage: DEFAULTS.minCoverage,
+      testExt: auto.testExt,
+      srcExt: auto.srcExt,
+    };
   }
 }
 
@@ -103,6 +112,8 @@ export class TddEngine {
   /** Honest description of the last test failure (v0.10), if any. */
   lastFailure?: string;
   readonly config: TddConfig;
+  /** Runtime-only forge config (refactor/parseOutput functions, not JSON). */
+  readonly forgeRuntime?: ForgeRuntimeConfig;
   readonly track: OrionTrack;
 
   constructor(task: string, track?: OrionTrack, config?: TddConfig) {
@@ -123,6 +134,14 @@ export class TddEngine {
       ...base,
       testExt: base.testExt ?? ".test.ts",
       srcExt: base.srcExt ?? ".ts",
+    };
+    // Load runtime config (refactor/parseOutput) from autodetect
+    // Manual orionTdd.json doesn't have runtime functions, so always
+    // detect and merge — the detect returns TS config by default.
+    const detected = detectForgeConfig();
+    this.forgeRuntime = {
+      refactor: detected.refactor,
+      parseOutput: detected.parseOutput,
     };
   }
 
@@ -189,9 +208,23 @@ export class TddEngine {
           ORION_TDD_CACHE_DIR: join(root, ".orion-vitest-cache"),
         },
       });
+      const fullOutput = (stdout + stderr).slice(0, 2000);
+      // If the config has a parseOutput function, use it;
+      // otherwise assume the command exit code is reliable.
+      if (this.forgeRuntime?.parseOutput) {
+        const parsed = this.forgeRuntime.parseOutput(fullOutput);
+        if (parsed.passed) {
+          this.state = State.GREEN;
+          this.lastFailure = undefined;
+          return { passed: true, output: fullOutput };
+        }
+        this.lastFailure = parsed.failure ?? "tests failed";
+        this.state = State.RED;
+        return { passed: false, output: fullOutput };
+      }
       this.state = State.GREEN;
       this.lastFailure = undefined;
-      return { passed: true, output: (stdout + stderr).slice(0, 2000) };
+      return { passed: true, output: fullOutput };
     } catch (err) {
       const output = (
         err instanceof Error
@@ -246,6 +279,11 @@ export class TddEngine {
 
   /** Run lint --fix and format to clean the code up. */
   async refactor(): Promise<boolean> {
+    if (this.forgeRuntime?.refactor) {
+      const ok = await this.forgeRuntime.refactor(process.cwd());
+      if (ok) this.state = State.REFACTOR;
+      return ok;
+    }
     try {
       await execAsync("pnpm exec eslint src/tasks --fix", {
         cwd: process.cwd(),

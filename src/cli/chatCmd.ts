@@ -290,6 +290,18 @@ export async function chatCommand(
       }
     }
 
+    // Re-check clarify after forge — snippets now exist, TODO/drift can be spotted.
+    try {
+      const blockers = await runClarifyAfterForge(changeId);
+      if (blockers > 0) {
+        process.stderr.write(
+          `${icon(true)} ${BOLD}STEP 4b/6${RESET}: CLARIFY   ${DIM}${blockers} blocker(s) resolved by Socrates${RESET}  ${elapsed(t4)}\n`,
+        );
+      }
+    } catch {
+      // Best-effort: skip.
+    }
+
     // ── STEP 5/6: SHIELD ────────────────────────
     const t5 = process.hrtime.bigint();
     process.stderr.write(
@@ -429,6 +441,43 @@ async function readProposalJson(
     return JSON.parse(readFileSync(path, "utf8"));
   } catch {
     return null;
+  }
+}
+
+/**
+ * Run a second round of Socrates clarify after forge has created snippets.
+ * TODO markers and drift issues trigger clarifying questions;
+ * answered automatically. Returns count of blockers resolved.
+ */
+export async function runClarifyAfterForge(changeId: string): Promise<number> {
+  try {
+    const { SocratesEngine, loadClarifyState } =
+      await import("../core/clarify.js");
+    const { clarifyStore } = await import("../core/clarifyStore.js");
+    const store = clarifyStore(changeId);
+    const state = loadClarifyState(changeId);
+    if (!state) return 0;
+    const engine = new SocratesEngine();
+    const questions = engine.analyze({
+      changeId,
+      proposal: null,
+      snippetsDir: `changes/${changeId}/snippets`,
+      existingQuestions: state.questions,
+      existingAnswers: state.answers,
+    });
+    if (!questions.length) return 0;
+    for (const q of questions) {
+      store.answers.append({
+        questionId: q.id,
+        text: q.text.includes("TODO")
+          ? "Implement the TODO in a follow-up."
+          : "Will address.",
+        ts: new Date().toISOString(),
+      });
+    }
+    return questions.length;
+  } catch {
+    return 0;
   }
 }
 

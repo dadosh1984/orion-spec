@@ -162,18 +162,22 @@ export type ChangePlanType =
 const MAINTENANCE_VERBS =
   /\b(fix(?:es|ed|ing)?|bug(?:s)?|broken|regression|upgrade(?:d|s)?|upgrading|update(?:d|s)?|repair(?:s|ed)?|maintain(?:ing)?|maintenance)\b|почин|исправ|обнов|ремонтир|леч/i;
 const REFACTOR_VERBS =
-  /\b(?:refactor(?:ed|ing)?|restructur(?:e|ing|ed)?|rewrit(?:e|ing|ten)?)\b|рефактор|переработ/i;
+  /\b(?:refactor(?:ed|ing)?|restructur(?:e|ing|ed)?|rewrit(?:e|ing|ten)?|migrat(?:e|ing|ed)?|extract(?:s|ed|ing)?|move(?:s|d)?)\b|рефактор|переработ|извлеч|перемещ/i;
 const DELETE_VERBS =
   /\b(delete|remove|drop|uninstall|cleanup|clean|purge|stripp?|toss)\b|удал|очист|выброс/i;
 const DOCS_VERBS =
-  /\b(document|docs|explain|comment|write readme|annotate)\b|документ|инструкц|поясни/i;
+  /\b(document(?:ation)?|docs|explain|comment|write readme|annotate)\b|документ|инструкц|поясни/i;
+const ADAPTER_VERBS =
+  /\b(?:adapter|interface|abstraction|plugin|language.agnostic|extensible|pluggable|generic|polymorphi)\b|адаптер|абстракц|интерфейс/i;
 
 export function changePlanOf(goal: string): ChangePlanType {
-  const leading = goal.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
-  if (MAINTENANCE_VERBS.test(leading)) return "maintain";
-  if (REFACTOR_VERBS.test(leading)) return "refactor";
+  const g = goal.toLowerCase();
+  const leading = g.match(/^\s*(?:please\s+)?([a-zа-яё]+)/i)?.[1] ?? "";
+  // Check full goal first, then leading word for specificity
   if (DELETE_VERBS.test(leading)) return "delete";
   if (DOCS_VERBS.test(leading)) return "docs";
+  if (REFACTOR_VERBS.test(g) || ADAPTER_VERBS.test(g)) return "refactor";
+  if (MAINTENANCE_VERBS.test(leading)) return "maintain";
   return "feature";
 }
 
@@ -184,9 +188,6 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
   const tasks: DerivedTask[] = [];
   const clause = toEnglish(extractCoreClause(goal));
 
-  // v0.66 (signal #3): pick a purpose-built plan for the change type
-  // instead of always falling back to build scaffolding. Maintenance keeps
-  // its RED→fix→verify plan; delete/docs get their own concrete task sets.
   const plan = changePlanOf(goal);
 
   if (plan === "maintain") {
@@ -209,6 +210,44 @@ export function deriveTasks(proposal: Proposal): DerivedTask[] {
   }
 
   if (plan === "refactor") {
+    // v0.66 (signal #3): split into adapter-pattern refactors
+    // (interface + migrate + new impl) vs behavior-preserving restructures.
+    const hasAdapter = ADAPTER_VERBS.test(goal);
+    if (hasAdapter) {
+      tasks.push({
+        text: "Define the adapter interface (types + contract)",
+        mark: "fact",
+      });
+      if (clause) {
+        tasks.push({
+          text: `Move existing ${clause} logic behind the adapter`,
+          mark: "fact",
+        });
+      } else {
+        tasks.push({
+          text: "Move existing implementation behind the adapter (no behavior change)",
+          mark: "assumption",
+        });
+      }
+      tasks.push({
+        text: "Register adapter in the factory/registrator",
+        mark: "assumption",
+      });
+      tasks.push({
+        text: "Implement the new adapter (for the target language/platform)",
+        mark: "assumption",
+      });
+      tasks.push({
+        text: "Cover both adapters with tests",
+        mark: "assumption",
+      });
+      tasks.push({
+        text: "Verify all existing tests, lint and type-check still pass (GREEN)",
+        mark: "assumption",
+      });
+      return tasks;
+    }
+    // Plain refactor (no adapter): behavior baseline + restructure + tests
     if (clause) {
       tasks.push({
         text: `Map current behavior/surface of: ${clause} (behavior baseline)`,

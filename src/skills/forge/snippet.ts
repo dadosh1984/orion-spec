@@ -4,8 +4,11 @@ import { join } from "node:path";
 /**
  * Snippet resolution for `orion forge` (v0.25).
  *
- * forge waits for `changes/<title>/snippets/<slug>.ts`, where the slug is
+ * forge waits for `changes/<title>/snippets/<slug>.<ext>`, where the slug is
  * derived deterministically from the CURRENT task text (shortSlug, v0.24).
+ * The extension defaults to `.ts` (TypeScript) but can be overridden for
+ * other languages (`.java` for Gradle/Java, v0.58).
+ *
  * Files written under any other name — legacy long slugs from before
  * v0.24 (`fact_v77_reader_1cv77_dat_id_nnn_yyyymmdd.ts`), or agent-guessed
  * names — used to produce a false `missingSnippets` even though the
@@ -43,21 +46,22 @@ function basenameTokens(base: string): string[] {
 export function resolveSnippet(
   snippetsDir: string,
   slug: string,
+  ext: string = ".ts",
 ): SnippetResolution {
   let files: string[];
   try {
     files = readdirSync(snippetsDir)
-      .filter((f) => f.endsWith(".ts"))
+      .filter((f) => f.endsWith(ext))
       .sort();
   } catch {
     files = [];
   }
 
   // 1) Exact match — always wins.
-  if (files.includes(`${slug}.ts`)) {
+  if (files.includes(`${slug}${ext}`)) {
     return {
-      content: readFileSync(join(snippetsDir, `${slug}.ts`), "utf8"),
-      path: join(snippetsDir, `${slug}.ts`),
+      content: readFileSync(join(snippetsDir, `${slug}${ext}`), "utf8"),
+      path: join(snippetsDir, `${slug}${ext}`),
       mode: "exact",
     };
   }
@@ -69,7 +73,7 @@ export function resolveSnippet(
   let best: { file: string; score: number } | undefined;
   let ties = false;
   for (const file of files) {
-    const norm = file.slice(0, -3).replace(LEGACY_MARKER, "");
+    const norm = file.slice(0, -ext.length).replace(LEGACY_MARKER, "");
     const score = norm.startsWith(slug)
       ? want.length + 1
       : want.filter((t) => basenameTokens(norm).includes(t)).length;
@@ -94,7 +98,9 @@ export function resolveSnippet(
     .map((f) => ({
       file: f,
       score: want.filter((t) =>
-        basenameTokens(f.slice(0, -3).replace(LEGACY_MARKER, "")).includes(t),
+        basenameTokens(
+          f.slice(0, -ext.length).replace(LEGACY_MARKER, ""),
+        ).includes(t),
       ).length,
     }))
     .filter((f) => f.score >= 1)

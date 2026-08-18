@@ -1,0 +1,14 @@
+# Proposal — task-manager-app-like
+
+## Goal
+Build a task manager app (like premium organizers) with: cross-device sync, CLI + web interface, Mac/Windows/Linux support, mobile version. Atomic decomposition with depth >= 2.
+
+## Context
+
+| Aspect | Value |
+|--------|-------|
+| Platform | any |
+| Budget | compact |
+| Constraints | none |
+
+- **Lessons applied (v0.12):** todo-cli-mac-windows:forge:f84620a7c6bd, todo-cli-mac-windows:forge:4ecbb912bf08, todo-cli-mac-windows:shield:46b0365ab53f, todo-cli-mac-windows:forge:ef2a7bcf257b, todo-cli-mac-windows:forge:ff211870df7f

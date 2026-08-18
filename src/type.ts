@@ -51,6 +51,15 @@ export interface TddConfig {
   srcExt?: string;
 }
 
+/**
+ * Loaded ForgeConfig with runtime functions (refactor, parseOutput).
+ * Not JSON-serializable — set by detectForgeConfig() or orionTdd.json.
+ */
+export interface ForgeRuntimeConfig {
+  refactor?: (root: string) => Promise<boolean>;
+  parseOutput?: (output: string) => { passed: boolean; failure?: string };
+}
+
 /** Clarifying answer from SocratesEngine dialog. */
 export interface Answer {
   questionId: string;

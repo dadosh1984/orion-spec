@@ -325,7 +325,7 @@ describe("change-type plans v0.66 (signal #3: no scaffold noise)", () => {
     expect(tasks).not.toContain("Scaffold project structure");
   });
 
-  it("refactor goal → RED→fix→verify path, NO scaffold", async () => {
+  it("refactor goal → adapter/interface tasks, NO scaffold", async () => {
     const proposal = await think(
       "refactor the auth module to a plugin interface",
       { noCache: true },
@@ -336,8 +336,9 @@ describe("change-type plans v0.66 (signal #3: no scaffold noise)", () => {
       join("changes", proposal.title, "tasks.md"),
       "utf8",
     );
-    expect(tasks).toContain("Refactor");
-    expect(tasks).toContain("behavior regression");
+    expect(tasks).toContain("adapter interface");
+    expect(tasks).toContain("Move existing");
+    expect(tasks).toContain("Cover both adapters");
     expect(tasks).not.toContain("Scaffold project structure");
   });
 

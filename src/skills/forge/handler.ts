@@ -8,6 +8,7 @@ import { TddEngine } from "../../core/tddCore.js";
 import { OrionTrack } from "../../core/track.js";
 import { recordLesson } from "../../core/lessons.js";
 import { writeFileSafe } from "../../utils/file.js";
+import { detectForgeConfig } from "../../core/forgeConfig.js";
 import { writeCheckpoint } from "../../core/checkpoint.js";
 import { slugify } from "../think/handler.js";
 import { significantWords } from "../../core/titles.js";
@@ -295,7 +296,8 @@ export async function forge(
   title: string,
   opts?: ForgeOptions,
   snippetProvider: (slug: string) => Promise<string | null> = async (slug) => {
-    const r = resolveSnippet(`changes/${title}/snippets`, slug);
+    const cfg = detectForgeConfig();
+    const r = resolveSnippet(`changes/${title}/snippets`, slug, cfg.srcExt);
     return r.content;
   },
   engineFactory: EngineFactory = defaultEngineFactory,
@@ -541,15 +543,20 @@ export function chunks<T>(items: T[], size: number): T[][] {
   return out;
 }
 
-/** eslint --fix + prettier over src/tasks — one whole-directory pass. */
+/** eslint --fix + prettier or language-appropriate refactor. */
 export async function refactorAll(): Promise<void> {
+  const cfg = detectForgeConfig();
+  if (cfg.refactor) {
+    await cfg.refactor(process.cwd());
+    return;
+  }
   try {
     await execAsync("pnpm exec eslint src/tasks --fix", { cwd: process.cwd() });
     await execAsync('pnpm exec prettier --write "src/tasks/**/*.ts"', {
       cwd: process.cwd(),
     });
   } catch {
-    /* best effort, like TddEngine.refactor() */
+    /* best effort */
   }
 }
 
