@@ -1,0 +1,10 @@
+{
+  "change": "улучшить-производительность",
+  "ts": "2026-08-16T14:24:30.388Z",
+  "specSource": "not measured",
+  "tests": "not measured",
+  "coverage": "0% (no files with metrics)",
+  "hazards": "not measured",
+  "sha256": "ac94936e62f6",
+  "status": "failing"
+}

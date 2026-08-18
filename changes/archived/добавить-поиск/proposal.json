@@ -1,0 +1,24 @@
+{
+  "title": "добавить-поиск",
+  "goal": "добавить поиск",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2,
+  "appliesLessons": [
+    "v0-46-устранить-дубли:forge:71f6bf89533b",
+    "довести-фазу-29-аудит:forge:43357f71fefd"
+  ],
+  "answers": [
+    {
+      "questionId": "soc-amb-1",
+      "text": "Поиск по названию с нечётким совпадением",
+      "ts": "2026-08-16T15:51:55.465Z"
+    }
+  ],
+  "context": "добавить поиск | soc-amb-1: Поиск по названию с нечётким совпадением"
+}

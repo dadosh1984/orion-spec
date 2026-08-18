@@ -1,0 +1,25 @@
+{
+  "title": "улучшить-производительность-запросов",
+  "goal": "улучшить производительность запросов",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2,
+  "appliesLessons": [
+    "улучшить-производительность:out:08b78a778a1c",
+    "скилл-onec-converter-migration:forge:684890ea40c4",
+    "фазу-22-безопасность-приёмника:forge:9b6100b0dd87"
+  ],
+  "answers": [
+    {
+      "questionId": "soc-amb-1",
+      "text": "Время ответа < 100ms",
+      "ts": "2026-08-16T15:02:15.225Z"
+    }
+  ],
+  "context": "улучшить производительность запросов | soc-amb-1: Время ответа < 100ms"
+}

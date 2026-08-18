@@ -1,0 +1,10 @@
+{
+  "change": "closed-loop-orchestrator-orion",
+  "ts": "2026-08-18T16:06:43.028Z",
+  "specSource": "1/1 symbols matched",
+  "tests": "934 passing, 2 skipped",
+  "coverage": "0% (no files with metrics)",
+  "hazards": "0 destructive patterns",
+  "sha256": "5b69679468b2",
+  "status": "verified"
+}

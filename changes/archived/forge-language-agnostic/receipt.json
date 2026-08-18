@@ -1,0 +1,10 @@
+{
+  "change": "forge-language-agnostic",
+  "ts": "2026-08-18T16:05:22.742Z",
+  "specSource": "no specs — nothing to verify",
+  "tests": "934 passing, 2 skipped",
+  "coverage": "0% (no files with metrics)",
+  "hazards": "0 destructive patterns",
+  "sha256": "dd7f9de3fd6f",
+  "status": "verified"
+}

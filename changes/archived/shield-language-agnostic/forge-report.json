@@ -1,0 +1,30 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 9,
+  "skipped": 0,
+  "pending": [
+    "t1_интерфейс_shieldadapter",
+    "t2_typescriptadapter_перенос",
+    "t3_config_loader",
+    "t4_adaptableshield_рефакторинг",
+    "t5_driftcheck_обобщение",
+    "t6_python_ast",
+    "t7_pythonadapter_src",
+    "t8_changeshield_ts",
+    "t9_тесты_адаптеры"
+  ],
+  "missingSnippets": [
+    "changes/рефакторинг-shield-language-agnostic/snippets/t1_интерфейс_shieldadapter.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t2_typescriptadapter_перенос.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t3_config_loader.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t4_adaptableshield_рефакторинг.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t5_driftcheck_обобщение.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t6_python_ast.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t7_pythonadapter_src.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t8_changeshield_ts.ts",
+    "changes/рефакторинг-shield-language-agnostic/snippets/t9_тесты_адаптеры.ts"
+  ],
+  "reportPath": "changes/рефакторинг-shield-language-agnostic/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 9 pending across 5 wave(s) of 2"
+}

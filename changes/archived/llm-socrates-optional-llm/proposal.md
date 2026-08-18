@@ -1,0 +1,14 @@
+# Proposal — llm-socrates-optional-llm
+
+## Goal
+Implement LLM Socrates — optional LLM adapter for clarifying questions in orion chat --auto. Zero-deps core: src/core/llm/adapter.ts (interface + default), src/core/llm/prompts.ts (templates), src/core/llm/ollama.ts (local via fetch). orion chat --auto uses LLM for clarifying questions when available. Blockers stay rule-based. Env vars: ORION_LLM_URL (default http://127.0.0.1:11434), ORION_LLM_MODEL (default llama3.2).
+
+## Context
+
+| Aspect | Value |
+|--------|-------|
+| Platform | any |
+| Budget | compact |
+| Constraints | none |
+
+- **Lessons applied (v0.12):** socrates-engine-rule-based:out:96b9274dee42, demo:forge:6c4664033966, find-bugs-and-improvement-suggestions-for-project-veridia:forge:48f45a5e0ef0, first-run-orion-draft-forge-shield-orion:forge:e09f177aee62, orion-spec:session:6b4cf54ad029

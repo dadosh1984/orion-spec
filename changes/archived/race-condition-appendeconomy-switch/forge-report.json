@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 4,
+  "skipped": 0,
+  "pending": [
+    "reproduce_failure_write",
+    "implement_fix_race",
+    "apply_fix_without",
+    "verify_full_test"
+  ],
+  "missingSnippets": [
+    "changes/race-condition-appendeconomy-switch/snippets/reproduce_failure_write.ts",
+    "changes/race-condition-appendeconomy-switch/snippets/implement_fix_race.ts",
+    "changes/race-condition-appendeconomy-switch/snippets/apply_fix_without.ts",
+    "changes/race-condition-appendeconomy-switch/snippets/verify_full_test.ts"
+  ],
+  "reportPath": "changes/race-condition-appendeconomy-switch/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 4 pending — add snippets: changes/race-condition-appendeconomy-switch/snippets/reproduce_failure_write.ts, changes/race-condition-appendeconomy-switch/snippets/implement_fix_race.ts, changes/race-condition-appendeconomy-switch/snippets/apply_fix_without.ts, changes/race-condition-appendeconomy-switch/snippets/verify_full_test.ts"
+}
