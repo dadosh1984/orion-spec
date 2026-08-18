@@ -52,7 +52,7 @@ pnpm run format              # prettier --write (run before committing; format m
   alias warnings, legacy switch as fallback for plugin discovery).
 - `src/cli/registry.ts` + `src/cli/bootstrap.ts` (v0.51) — single
   source of truth for top-level commands: `ORION_REGISTRY: Map<string,
-  CommandSpec>`. `registerAllCommands()` is idempotent and called from
+CommandSpec>`. `registerAllCommands()` is idempotent and called from
   `commands.ts:main()` before the legacy switch.
 - `src/cli/commands/<name>.ts` (v0.51) — 8 thin handlers
   (`new`/`ls`/`change`/`run`/`scale`/`doctor`/`serve`/`plugin`).
@@ -74,7 +74,7 @@ pnpm run format              # prettier --write (run before committing; format m
   replaces raw fs writes in economy/lessons/clarify/track.
 - `src/core/changeShield.ts` (v0.58) — hazard+drift guard for `orion change --shield`.
 - `src/core/autopilot.ts` (v0.63) — closed-loop orchestrator: bounded `next ↔ repair
-  ↔ forge ↔ shield`, telemetry, exits honestly on loopDetected/budgetExceeded.
+↔ forge ↔ shield`, telemetry, exits honestly on loopDetected/budgetExceeded.
 - `src/core/selfAudit.ts` + `src/core/promotion.ts` (v0.65) — auto-promote skill
   lessons after `orion out` SUCCESS, dedupe via lineage.
 - `src/core/llm/` (v0.61) — optional LLM adapter (Ollama, zero-deps default).
@@ -147,12 +147,13 @@ sha256 root}, детерминизм (один change → байт-в-байт);
 пересчитывает с диска, детектит tamper (изменение spec/tests), exit 1 при
 tamper. Нет trust.json → честно. Тесты trust (5). Гейт 84 файла / 855 тестов,
 shield allPass. Накоплено к 0.55.0.
+
 - **3.8 shell-injection**: интерполированные `execSync`-строки → argv-безопасные
   `execFileSync`/`spawnSync` (без shell): runtime.ts run-скрипт
   `execFileSync(bin,[scriptFile])`, runCmd.ts watcher/repair/edit через
   `spawnSync` argv + `shell:false`; последний `execSync(`${...})` в runCmd убран.
 - **3.13 denyEnv** (`src/core/denyEnv.ts`): `isDeniedEnvName`/`denyEnv`
-  фильтруют секреты (*TOKEN/*SECRET/*KEY/*PASSWORD/AWS_*/GITHUB_*) из env
+  фильтруют секреты (*TOKEN/*SECRET/_KEY/*PASSWORD/AWS_*/GITHUB__) из env
   дочернего скрипта (runtime.ts run через `denyEnv(process.env)`).
 - **orion update** (`src/core/updateAgent.ts`): пишет `.claude/commands/`
   orion.md (Claude Code) + `.cursor/rules/orion.mdc` (Cursor), только если
@@ -160,10 +161,10 @@ shield allPass. Накоплено к 0.55.0.
   receipt.json) перед «готово» (НЕ своему ощущению); идемпотентно (повтор
   без дублей, stale → refresh); печатает результат. Уникальный угол —
   агент проверяет Honest Receipt (сертификат), не просто следует процессу.
-`src/tasks/denyEnv.ts` (drift-экорт `# Spec: denyEnv`).
-Тесты `tests/security-exec.test.ts` (7) + `tests/update.test.ts` (6).
-**Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
-создаёт валидный command-файл, повтор идемпотентен.
+  `src/tasks/denyEnv.ts` (drift-экорт `# Spec: denyEnv`).
+  Тесты `tests/security-exec.test.ts` (7) + `tests/update.test.ts` (6).
+  **Гейт 77 файлов / 824 теста (+2 skip), shield allPass.** Live: `orion update`
+  создаёт валидный command-файл, повтор идемпотентен.
 
 **Дизайн lineage (0.56.0) — РЕАЛИЗОВАН (2.5 + 4.5, явное действие, не
 эвристика).** src/core/lineage.ts: applyLesson (phantom-refuse, idempotent)
@@ -237,6 +238,7 @@ npm 0.57.0 published. Активных change нет
 сигнала — это было бы спекулятивно.
 
 **Сделано в этой сессии (5 коммитов):**
+
 1. `7478bc8` **chore:** убрать случайные отсылки к чужим брендам из
    авторского кода — ponytail/openspec в комментариях → нейтральные
    формулировки (debt, skillMissLog, packageSurface, updateAgent,
@@ -266,6 +268,7 @@ npm 0.57.0 published. Активных change нет
 shield не гонялся (нет change), но ручной прогон всех команд прошёл.
 
 **ОТКРЫТОЕ (следующая сессия):**
+
 - **convert csv** — 2 повтора в miss-log. Третий однотипный шаг через
   `orion run match "convert csv"` сделает его промоушен-кандидатом.
   Replay уже разблокирован (`--resolve` доступен).
@@ -290,6 +293,7 @@ shield не гонялся (нет change), но ручной прогон вс�
 **Состояние:** HEAD clean (`8a892dc`), `orion --version` 0.57.0, npm 0.57.0 published. Активных change нет (архивные неактуальны).
 
 **Сделано в сессии (10 коммитов):**
+
 1. `036483a` **fix(economy):** JSONL + O_APPEND — race condition fix (#2)
 2. `23d9ca5` **fix(runCmd):** `$EDITOR` shell:true — пути с пробелами (#7)
 3. `ef2a2cd` **fix(watcher):** PID tracking + cleanup — zombie prevention (#4)
@@ -306,6 +310,7 @@ shield не гонялся (нет change), но ручной прогон вс�
 **Гейт:** 84 файла / 874 теста, tsc --noEmit чисто, shield не гонялся (нет active change).
 
 **Открыто (v0.58):**
+
 - Legacy switch cleanup (~35 deprecated aliases) — `src/cli/parse.ts` + `commands.ts`
 - `out` shield-gate — `out` отказывается писать SUCCESS если `change --shield` FAIL
 - `Store<T>` для `track.ts` — последний модуль с raw file I/O
@@ -316,6 +321,7 @@ shield не гонялся (нет change), но ручной прогон вс�
 **Состояние:** HEAD clean (`f7247cf`), `orion --version` 0.66.0, npm **0.66.0 published**. **Active changes: 3** (было 24). **148 src / 90 tests / 934 passing, 2 skipped. gate зелёный.**
 
 **Что сделано в сессии (6 коммитов):**
+
 1. `0ee26e2` **chore(archive):** 21 stale changes → archived/
 2. `5d03f67` **chore(archive):** remove 21 phantom changes (deletions)
 3. `6d70091` **chore(reports):** drop dangling guard-reports
@@ -324,6 +330,7 @@ shield не гонялся (нет change), но ручной прогон вс�
 6. `f7247cf` **Revert** коммита 5 — застрял в защитном тесте `tests/security-exec.test.ts:66`
 
 **Аудит проекта:**
+
 - ✅ B2 (vitest `--reporter=basic`) — **не баг**, мой артефакт. В `package.json`/`scripts/`/`vitest.config.ts` нигде не используется.
 - ⚠️ B1 (security: `shell:true` в editor) — **backlog**: тест явно закрепляет «v0.57 path-with-spaces safe». Любая правка требует синхронного изменения теста + согласования с решением #7 (`23d9ca5`).
 - ❌ B5/B6 (stale `e-164-phone-number-2` draft, устаревший session-save) — частично решено архивацией, частично перенесено в новый блок.
@@ -331,6 +338,7 @@ shield не гонялся (нет change), но ручной прогон вс�
 **Архивированные (21):** `forge-language-agnostic`, `shield-should-be-language`, `shield-language-agnostic`, `внедрить-сопоставление-атомарного-шага`, `closed-loop-orchestrator-orion`, `socrates-engine-rule-based`, `draft-artifact-generation-produces`, `file-watcher-prevent-zombie`, `llm-socrates-optional-llm`, `orion-chat-one-command`, `race-condition-appendeconomy-switch`, `rate-limit-memory-leak`, `refine-auto-after-merging`, `task-manager-app-like`, `test-автономный-режим-auto`, `добавить-поиск`, `ночную-тему`, `пофиксить-багу-быстро`, `улучшить-производительность`, `улучшить-производительность-запросов`, `функцию-iseven-проверяет-число`.
 
 **Активные (3):**
+
 - `benchmark-10-different-orion` — план 10 workflow'ов на E.164 validator
 - `e-164-phone-number-2` — рабочая задача для benchmark'а
 - `25-bugs-implement-15` — большой bug-bash, не форджен (4 tasks scaffold)
@@ -338,6 +346,7 @@ shield не гонялся (нет change), но ручной прогон вс�
 **Между 0.58 и 0.66 (50 коммитов, не разбираем подробно):** autopilot (closed-loop orchestrator), self-audit + auto-promote, auto-learn из session-файлов, draft purpose-built plans (signal #3 fix), language-agnostic forge+shield (ShieldAdapter TypeScript+Python), script-tag fallback для non-Latin prompts, audit 10 багов в 0.65, full-pipeline по умолчанию в `new`. Все эти фичи уже в текущем HEAD.
 
 **ОТКРЫТО (следующая сессия):**
+
 - `benchmark-10-different-orion` — активная задача, можно стартовать `orion forge`. Понадобится wall-clock + iterations + code quality метрики.
 - `e-164-phone-number-2` — target-задача для benchmark'а.
 - `25-bugs-implement-15` — крупный bug-bash, не форджен. Нишевый.
@@ -345,3 +354,56 @@ shield не гонялся (нет change), но ручной прогон вс�
 - Bump 0.67.0 — преждевременно (queue cleanup без substance).
 
 **Рекомендация:** начать с `orion forge e-164-phone-number-2` (дешевле, чем benchmark; даст материал для benchmark-фазы). **Не делать превентивный polish B1** — ждать явного запроса.
+
+### SESSION-SAVE 2026-08-18 (v0.67 подгототовка, release blocked)
+
+**Состояние:** HEAD clean (`80dcafc`), npm не опубликован (package `orion-spec` принадлежит
+`dadosh1984`, машина не залогинена, `npm publish` вернул 404 от чужого maintainer).
+
+**Сделано в сессии (5 коммитов):**
+
+1. `f5f1649` **docs(AGENTS):** sync session-save + architecture to v0.66.0
+2. `ccb7099` **feat(phone):** E.164 validator — parsePhone/validatePhone/formatPhone +
+   18 tests + README
+3. `75b176a` **feat(benchmark):** 3-workflow harness с реальными wall/LOC:
+   - W1 full-flow (think→draft→forge→shield) = 5.9s, 2 tests, 17 LOC
+   - W2 direct (control, ручной код + vitest) = 2.8s, 4 tests, 24 LOC
+   - W3 tdd-engine (RED→GREEN) = 2.2s, 1 test, 14 LOC
+   - parseShield fixed (бывший literal 'PASS' detector → не работал на vitest)
+4. `c54600a` **chore(release):** 0.67.0 — bump version + CHANGELOG
+5. `80dcafc` **Revert 4** — release не состоялся (npm 404)
+
+**Signal #3 подтверждён дважды подряд:**
+
+- Реализация одного-аргументной функции (`parsePhone` бросает на пустую строку)
+  не проходит forge RED-GREEN: generated test `expect(<slug>()).toBeDefined()` ожидает
+  no-arg вызов. Решение: implement by hand + commit (signal #3 из session-save 2026-08-14).
+- Benchmark/Research task — workflows это shell-команды, не code units. Forge
+  неприменим в принципе. Решение: manual + commit. tasks.md обоих changes обновлены.
+
+**Гейт:** tsc clean, 952/2, lint clean, prettier clean, working tree clean.
+
+**RELEASE BLOCKED — куда двигаться:**
+
+- npm `orion-spec` владеет `dadosh1984` (https://registry.npmjs.org/orion-spec).
+  На этой машине `npm whoami` = E401, прав на publish нет. Release commit откачен.
+- **Пути:**
+  (a) залогиниться на этой машине как `dadosh1984` (`npm login` + OTP) — тогда
+  повторить c54600a; npm publish пройдёт; tag v0.67.0.
+  (b) переименовать package — имя должно стать новым (согласование с владельцем).
+  (c) публиковать как `@scope/orion-spec` через organization — нужно создать scope.
+- **Без (a)/(b)/(c)** новые релизы невозможны. Текущий HEAD по-прежнему на 0.66.0.
+
+**Открыто:**
+
+- `benchmark-10-different-orion` — workflow'ы W4..W10 из исходного плана не реализованы
+  (сократил до 3 показательных — W1/W2/W3 разные, остальные без signal = scope-creep).
+- `e-164-phone-number-2` — готов (real impl + 18 tests).
+- `25-bugs-implement-15` — крупный bug-bash, не форжен (signal #3 block).
+- B1 (security shell:true) — без изменений, требует явного запроса (защитный тест).
+
+**Рекомендация:**
+
+1. Если есть цель релиза: `npm login` (или попросить владельца сделать publish).
+2. Если релиза не будет — session можно закрывать: 2 содержательных коммита (E.164 + benchmark)
+   в локальной истории, рабочее состояние, AGENTS.md синхронизирован.
