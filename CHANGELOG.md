@@ -2,34 +2,6 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
-## [0.67.0] — Benchmark + E.164 validator
-
-- **E.164 phone validator** (`src/core/phoneValidator.ts`, `src/tasks/phoneValidator.ts`,
-  18 vitest tests in `tests/phoneValidator.test.ts`): `parsePhone` (throws),
-  `validatePhone` (non-throwing discriminated result), `formatPhone`
-  (groups-of-3). Zero runtime deps; structural validation per ITU-T E.164.
-- **benchmark-3-workflow harness** (`scripts/benchmark-10-workflows.mjs`,
-  rewritten): 3 workflows that genuinely differ in command sequence —
-  W1 full-flow (think→draft→forge→shield), W2 direct (control, no pipeline),
-  W3 tdd-engine (RED→GREEN). Real wall/LOC/tests per workflow.
-- **Signal #3 documented and worked around:** forge RED-GREEN model does
-  not fit tasks that are either single-function-with-args (no-arg generator
-  test fails) or shell-command sequences (no code unit at all). Pattern:
-  draft → forge only when task fits; otherwise implement by hand + commit.
-- **parseShield fix** in benchmark: was matching literal "PASS" in vitest
-  output which never appears; now detects `Tests N passed` with N>0 and
-  no `failed` count, plus `shield: ...PASS` / `allPass`.
-- AGENTS.md synced to v0.66.0 / v0.67.0 (architecture + session-save).
-
-## [0.66.0] — Provenance / lineage (already published)
-
-Released in prior session as npm `orion-spec@0.66.0`. This entry documents
-it for the changelog tree; the live tag on npm remains `Latest`.
-Includes: src/core/lineage.ts (lesson.sourceChange + proposal.borrowedLessons,
-phantom-refuse applyLesson, BFS lineageOf), sourceChange automation
-(`out` sets sourceChange=changeId), DOT-graph tooling, privacy/anonymity
-from 0.55.0 chain.
-
 ## [0.65.0] — Post-audit hardening
 
 10 bugs fixed from deep audit: writeJson atomic, hazard gate in generateSnippets,
@@ -90,7 +62,6 @@ Production-readiness: serve no longer leaks secrets or is DoS-able, and run
 scripts can't hang or blow memory.
 
 ### Security
-
 - **Serve redaction** (3.11): `sendJson` now redacts every `/api/*` response
   centrally (was only `/api/cache`) — credentials in command output / cache are
   never echoed back on any route.
@@ -98,7 +69,6 @@ scripts can't hang or blow memory.
   `Retry-After` on overflow; `ORION_SERVE_RATE_LIMIT=0` turns it off.
 
 ### Runtime hardening
-
 - **Output cap (3.12)**: run scripts stream their stdout — up to 1 MiB stays in
   memory, the overflow spills to `~/.orion/last-output.log` (bounded trim), and
   the CLI honestly warns `output truncated (1 MiB cap), full log: …` when it
@@ -109,7 +79,6 @@ scripts can't hang or blow memory.
   `sandbox.timeout_sec` in the manifest still applies for back-compat.
 
 ### Behavior change
-
 - There is no default run timeout anymore. Set `ORION_RUN_TIMEOUT_MS` (env) or
   `sandbox.timeout_sec` (manifest) if you need one.
 
@@ -119,9 +88,8 @@ Full `change → lesson → change` provenance. Lineage never guesses: «a lesso
 influenced a change» ⟺ the user explicitly applied it.
 
 ### Added
-
 - **`orion lineage <lesson-id>`** — the full provenance chain `change → lesson
-→ change` (BFS over explicit links, cycle-safe, deterministic). Backward via
+  → change` (BFS over explicit links, cycle-safe, deterministic). Backward via
   `lesson.sourceChange` (born-from), forward via `proposal.borrowedLessons`.
 - **`orion memory lessons apply <id> --to <change>`** — explicitly applies a
   lesson to a change, filling `proposal.json.borrowedLessons` (only on user
@@ -132,7 +100,6 @@ influenced a change» ⟺ the user explicitly applied it.
   so `lineage` shows a real backward link only when one exists.
 
 ### Principle
-
 Lineage never guesses influence: heuristics (keyword/domain hints) are
 suggestions only and never write a `borrowedLessons` or `sourceChange` link.
 
@@ -143,7 +110,6 @@ honesty pyramid: one place to see the pipeline's state, visible domain drift,
 honest side-by-side comparison, and externally verifiable integrity.
 
 ### Added
-
 - **`orion memory`** (B2) — one logical group over the pipeline's state: a
   single overview of profile (language/platform/budget), cache (entries/bytes),
   lessons, `ORION_*` env vars and metrics, plus sub-commands `cache` / `lessons`
@@ -160,7 +126,6 @@ honest side-by-side comparison, and externally verifiable integrity.
   on-disk hashes and detects tampering (edits to spec/tests/proposal/tasks).
 
 ### Fixed
-
 - **domain-drift warning** (C2) — `matchSkill` now warns on stderr when a
   declared domain (config/env) has zero skills and no longer silently returns an
   empty match; it falls back to `general` with a visible notice. Builds the
@@ -172,7 +137,6 @@ Safe + honest + replayable — Phase-4 killer set. Honest on BOTH ends: Oracle
 (before) and Honest Receipt/badge (after), with safe undo and zero-token replay.
 
 ### Added
-
 - **`orion new --oracle "<prompt>"`** (4.3) — pre-flight honesty. `orion new`
   already classifies; `--oracle` classifies WITHOUT creating a change: prints
   `kind` (abstract|easy|medium|hard), `depth`, `plannedSteps`, and an honest
@@ -193,7 +157,6 @@ Safe + honest + replayable — Phase-4 killer set. Honest on BOTH ends: Oracle
 Security hardening + safe AI-agent onboarding.
 
 ### Security
-
 - **Run-scripts execute via argv** (`execFileSync`/`spawn`), not shell
   interpolation. Shell-injection eliminated (task 3.8). Scripts that relied on
   shell features (pipes, glob, `$VAR`) in arguments now treat them literally.
@@ -203,7 +166,6 @@ Security hardening + safe AI-agent onboarding.
   external scripts/output/cache.
 
 ### Added
-
 - **`orion update`** — generates AI-agent command files for Claude Code
   (`.claude/commands/orion.md`) and Cursor (`.cursor/rules/orion.mdc`) when
   those agent dirs exist. The files teach the agent to verify the
@@ -275,7 +237,6 @@ command; they will be removed entirely in v0.52.
 - **`orion plugin`** — unchanged (4 sub-commands).
 
 Other changes:
-
 - **`orion shell`**, **`orion completion`**, **`orion route`** are
   **removed** (they had no real users).
 - **Removed** 8 dead `src/cli/*Cmd.ts` modules: trackCmd, tokensCmd,
@@ -459,7 +420,7 @@ Visibility and update notifications.
   works in any install (global pnpm/npm or source dist).
 - `orion mcp` prints a non-blocking stderr banner at startup with the
   installed version and, when a newer release exists, `→ update available:
-vX.Y.Z`. Offline-safe (2.5s timeout, silent on failure, cached for a
+  vX.Y.Z`. Offline-safe (2.5s timeout, silent on failure, cached for a
   day); disable with ORION_UPDATE_CHECK=0.
 - MCP initialize already announced serverInfo {name,version}; clients get
   the version at handshake and via the version tool.
@@ -636,7 +597,6 @@ file exists under a legacy or agent-guessed name — same class of false
 signal as v0.24.1/v0.24.2, this time on the snippet side.
 
 ### Fixed
-
 - **False `missingSnippets`**: forge derived the expected snippet path
   deterministically from the current task text (`snippets/<slug>.ts`,
   shortSlug since v0.24), so files written under any other name — legacy
@@ -649,7 +609,6 @@ signal as v0.24.1/v0.24.2, this time on the snippet side.
   can rename instead of re-creating.
 
 ### Docs
-
 - **Token economy rule**: `AGENTS.md` documents concise-reasoning and
   terse-artifact rules (short thinking, substance-only files,
   `budget: compact` for `orion think`, `orion: compress` for big outputs).
@@ -660,7 +619,6 @@ Drift can no longer fail on an impossible name — a false signal of the
 same class as the v0.24.1 forge fix.
 
 ### Fixed
-
 - **Unsatisfiable drift FAIL**: `draft` generated the spec's `# Spec:`
   heading from the think "Platform?" answer, slugified with **hyphens**
   (`read-only-mypy-strict-ruff-pytest-http-m`). Drift requires that
@@ -672,18 +630,16 @@ same class as the v0.24.1 forge fix.
 - **Unclear failure for existing broken specs**: a heading that is not a
   valid JS identifier is now reported with a rename hint
   (`invalid capability name(s): … — "# Spec:" headings must be valid JS
-identifiers matching an export in src/tasks`) instead of a misleading
+  identifiers matching an export in src/tasks`) instead of a misleading
   "missing exported" that implied the impossible. Rename the heading to
   the real exported module's name and the check becomes satisfiable.
 
 ### Unchanged
-
 - Drift still checks ONLY the `# Spec:` H1 headings; `## Purpose`,
   acceptance criteria and prose are free-form documentation.
 - Existing changes keep their spec directories (per-change, not renamed).
 
 ### Honest note
-
 - Changes created before 0.24.2 with hyphenated template headings need
   one manual edit: rename the `# Spec:` heading to the exported symbol
   (e.g. `# Spec: migrate_tool` for `src/tasks/migrate_tool.ts`).
@@ -693,13 +649,12 @@ identifiers matching an export in src/tasks`) instead of a misleading
 Forge no-junk contract — unfinished tasks leave ZERO trace.
 
 ### Fixed
-
 - **Orphaned test files**: forge generated `tests/<slug>.test.ts` BEFORE
   checking whether the implementation snippet exists, so a task waiting
   for its snippet left a broken test importing a `src/tasks/<slug>.ts`
   that never existed. Those orphans broke the project's vitest run and
   produced FALSE shield FAILs (`test: N failing`, `drift: missing
-exported`). The snippet is now read first — a missing snippet creates
+  exported`). The snippet is now read first — a missing snippet creates
   nothing at all.
 - **RED/hazard rollback**: files forge created are removed when a task
   ends RED or its snippet is refused by the hazard gate; files that
@@ -710,13 +665,11 @@ exported`). The snippet is now read first — a missing snippet creates
   the same `executeTask`, so the contract holds in both.
 
 ### Unchanged
-
 - Completed tasks keep their test + implementation files; the run is
   recorded in `forge-report.md` / `.json`. Interactive `orion tdd start`
   still leaves the RED test in place for you to work on.
 
 ### Honest note
-
 - Junk left by OLD broken runs (e.g. `tests/assumption_*.test.ts` from
   pre-v0.24.1 slugs) is not auto-removed — forge cannot know which files
   are its own. Delete them once, or complete the task (the next forge
@@ -727,7 +680,6 @@ exported`). The snippet is now read first — a missing snippet creates
 Framework-agnostic TDD + short task slugs.
 
 ### Added
-
 - `orionTdd.json` now supports `testExt` / `srcExt` (defaults `.test.ts` /
   `.ts`) — the RED-GREEN loop generates `tests/<task><testExt>` and writes
   `src/<dir>/<task><srcExt>`, so Python / Go / other projects drive the same
@@ -743,7 +695,6 @@ Framework-agnostic TDD + short task slugs.
   shell-injection guard unchanged (still no shell metacharacters).
 
 ### Changed
-
 - `forge:<slug>` cache keys and snippet file names change for existing
   in-progress changes (slugs are shorter) — re-run `orion forge` after
   renaming/re-providing snippets.
@@ -751,13 +702,11 @@ Framework-agnostic TDD + short task slugs.
   (same expansion as before for TS projects).
 
 ### Honest limits
-
 - `tdd refactor` (eslint --fix + prettier) and `shield`'s code scans remain
   TypeScript-oriented; in a Python project they are no-ops or report
   honestly. The RED-GREEN loop itself is framework-agnostic.
 
 ### Fixed (CI flakes found via `gh run` logs — pre-existing, not v0.24)
-
 - `reuse` emitted `../../../../../../private/var/...` imports on macOS: the
   fixture dir from `mkdtemp` keeps the `/var` symlink form while
   `process.cwd()` after `chdir` reports the physical `/private/var` path, so
@@ -791,7 +740,7 @@ Framework-agnostic TDD + short task slugs.
   renames, so parallel processes sharing `ORION_CACHE_DIR` (the documented CI
   pattern) can never read a half-written JSON entry.
 - **Reserved pipeline cache namespaces** — `track set shield:… / tdd:… /
-forge:…` is refused: a hand-written `shield:test = PASS:<hash>` would be
+  forge:…` is refused: a hand-written `shield:test = PASS:<hash>` would be
   indistinguishable from a real pass to the cache check.
 - **Prompt-injection guard in `think`** — a jailbreak/instruction-override
   prompt (EN + RU) is flagged before any proposal exists; a confirmation gate
@@ -804,7 +753,7 @@ forge:…` is refused: a hand-written `shield:test = PASS:<hash>` would be
 - **Pre-execution hazard gate for AI-generated code** — forge/tdd snippets and
   the files the test runner is about to import are scanned deterministically
   for destructive/escaping patterns (`rmSync(recursive)`, `child_process`,
-  `eval`, `process.exit`, outbound `fetch`, …) and blocked _before_ they run
+  `eval`, `process.exit`, outbound `fetch`, …) and blocked *before* they run
   with an honest `[hazard gate]` report. This is the honest re-implementation
   of the "node:vm sandbox" idea: the test runner is a child process, which
   node:vm cannot isolate — a deterministic gate + timeouts is what can
@@ -813,7 +762,7 @@ forge:…` is refused: a hand-written `shield:test = PASS:<hash>` would be
 ### Workflow & learning
 
 - **Toxic-loop guard in `next`** — a change that fails the same step 3+ times
-  with _different_ errors (recordLesson dedupes exact duplicates) stops the
+  with *different* errors (recordLesson dedupes exact duplicates) stops the
   auto-retry loop: `next` returns `loopDetected` with a human-in-the-loop
   report instead of burning budget on another self-correction cycle.
 - **Federated lessons** — `orion lessons export <path>` writes the ledger as
@@ -894,7 +843,7 @@ forge:…` is refused: a hand-written `shield:test = PASS:<hash>` would be
 - **Security scan ignores literals** — `orion shield`'s security step now
   tokenizes the scanned code (dependency-free) and ignores matches that
   begin inside a comment or string literal: `// eval(` or `const s =
-"eval("` no longer raise false findings, while real code and string
+  "eval("` no longer raise false findings, while real code and string
   payloads that matter (node:vm imports, credential values) are still
   detected.
 - **Relevant lessons first** — `findLessons` ranks matches by how many
@@ -1089,4 +1038,5 @@ forge:…` is refused: a hand-written `shield:test = PASS:<hash>` would be
 
 - Initial release: CLI, `orion-track` cache, YAGNI ladder (`orion-scale`),
   TDD engine (`orion-tdd-core`), and the `think → draft → forge → shield →
-out` skills.
+  out` skills.
+
