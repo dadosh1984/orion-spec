@@ -1,3 +1,13 @@
+/**
+ * Tests for `phoneValidator` — DEMO-ONLY artifact.
+ *
+ * The assertions below intentionally lock in the wrong-on-real-E.164
+ * behaviour: `countryCode === "141"` for `+14155552671` because
+ * `parsePhone` pins the country code to the first 3 digits. These
+ * tests are a contract for the demo parser, NOT a correctness claim
+ * about ITU-T E.164. See file header in
+ * `src/tasks/phoneValidator.ts`.
+ */
 import { describe, it, expect } from "vitest";
 import {
   parsePhone,

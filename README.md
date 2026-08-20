@@ -189,6 +189,15 @@ as honest as the code.
 
 Structural validation only — checks format and length per ITU-T E.164.
 
+> ⚠️ **DEMO-ONLY, not a production E.164 parser.** `parsePhone` pins the
+> country code to 3 digits (`digits.slice(0, 3)`). On real E.164 input
+> that is wrong — country codes are 1–3 digits, so `+14155552671`
+> (US, real country code `1`) is parsed as country code `141`. Kept
+> under `src/tasks/` as a teaching artifact for parser-shape exercises.
+> Do not use for phone routing, billing, or compliance — use a vetted
+> library (libphonenumber-js, Twilio Lookup). See file header in
+> `src/tasks/phoneValidator.ts` for the full disclaimer.
+
 ```typescript
 import {
   parsePhone, // throws on malformed input
