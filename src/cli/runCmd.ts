@@ -1026,11 +1026,13 @@ export async function runDispatch(args: string[]): Promise<number> {
       }
       const editor = process.env.EDITOR || process.env.VISUAL || "vi";
       try {
-        // 3.8: use shell for editor invocation so paths with spaces work.
-        // The editor command is user-controlled via env, not from a script.
-        spawnSync(editor, [scriptPath(name)], {
+        // B1 (security): argv-safe spawn, no shell injection.
+        // $EDITOR may contain spaces (e.g. "C:\Program Files\VSCode\code.exe")
+        // — split into argv ourselves, never via shell. If the editor string
+        // carries flags ("code -w"), we honour them as additional argv.
+        const argv = editor.match(/\S+/g) ?? [editor];
+        spawnSync(argv[0], argv.slice(1).concat([scriptPath(name)]), {
           stdio: "inherit",
-          shell: true,
         });
       } catch {
         /* ok */

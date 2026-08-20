@@ -63,9 +63,14 @@ describe("shell-injection (3.8) — child processes use argv, not interpolated s
     );
   });
 
-  it("runCmd.ts edit uses shell:true for editor (path-with-spaces safe, v0.57)", () => {
+  it("runCmd.ts edit is argv-safe (B1, no shell injection)", () => {
     const rc = src("src/cli/runCmd.ts");
-    expect(rc).toMatch(/spawnSync\(editor, \[scriptPath\(name\)\]/);
-    expect(rc).toContain("shell: true");
+    // argv-safe: split $EDITOR into tokens, spawn first token with rest + scriptPath
+    expect(rc).toMatch(/argv\s*=\s*editor\.match\(/);
+    expect(rc).toMatch(/spawnSync\(argv\[0\],/);
+    // scriptPath is concatenated as a single argv element
+    expect(rc).toMatch(/argv\.slice\(1\)\.concat\(\[scriptPath\(name\)\]\)/);
+    // no shell:true anywhere in the edit case
+    expect(rc).not.toMatch(/shell:\s*true/);
   });
 });
