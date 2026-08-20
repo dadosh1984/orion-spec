@@ -95,9 +95,13 @@ export function doctor(): { checks: DoctorCheck[]; pass: boolean } {
   // 8. Duplicate goals: two open changes chasing the same goal is a silent
   // fork (one gets finished, the other hangs — the exact failure mode that
   // left `shield-language-agnostic` and `shield-should-be-language` both in
-  // the tree). Deterministic token-overlap on the normalized `goal` field;
-  // no LLM. Flag pairs above the similarity threshold so a human can merge
-  // or archive the loser.
+  // the tree). Two deterministic signals, OR'd together:
+  //   - goal-Jaccard on the `goal` field (catches same-language rewording)
+  //   - slug-Jaccard on the directory title (catches cross-language forks:
+  //     RU goal vs EN goal that share `shield-language-agnostic` in the
+  //     slug). Lower threshold for slug because slugs are short.
+  // No LLM. Flag pairs above either threshold so a human can merge or
+  // archive the loser.
   const dupes = duplicateGoals(base);
   add(
     "duplicate-goals",
@@ -114,17 +118,32 @@ export function doctor(): { checks: DoctorCheck[]; pass: boolean } {
 
 /**
  * Detect pairs of open changes whose normalized `goal` fields overlap enough
- * to be the same intent. Deterministic (token Jaccard similarity, no LLM):
- * lowercase, strip non-alphanumerics, drop tokens shorter than 3 chars, then
- * compare token sets. A pair is flagged when the smaller set's tokens are
- * ≥ `threshold` (default 0.6) shared with the larger set.
+ * to be the same intent. Two deterministic signals, OR'd:
+ *
+ *   1. goal-Jaccard on the `goal` field (lowercase, strip non-alphanumerics,
+ *      drop tokens shorter than 3 chars, compare token sets; threshold 0.6
+ *      of the smaller set's tokens shared with the larger).
+ *   2. slug-Jaccard on the directory title (split on `-`, drop short tokens,
+ *      compare sets; threshold 0.5). Slugs are short, so the threshold is
+ *      lower; this is the signal that catches cross-language forks where
+ *      one goal is in Russian and the other in English but the slugs
+ *      share their core tokens (the motivating case
+ *      `shield-language-agnostic` vs `shield-should-be-language`).
+ *
+ * No LLM. Pairs above either threshold are flagged.
  */
 function duplicateGoals(
   base: string,
-  threshold = 0.6,
+  goalThreshold = 0.6,
+  slugThreshold = 0.5,
 ): Array<{ a: string; b: string }> {
   if (!existsSync(base)) return [];
-  const goals: Array<{ title: string; tokens: Set<string> }> = [];
+  type Entry = {
+    title: string;
+    goalTokens: Set<string>;
+    slugTokens: Set<string>;
+  };
+  const goals: Entry[] = [];
   for (const d of readdirSync(base, { withFileTypes: true })) {
     if (!d.isDirectory() || d.name === "archived") continue;
     const p = join(base, d.name, "proposal.json");
@@ -136,28 +155,58 @@ function duplicateGoals(
     } catch {
       continue; // unparseable proposal is the `changes` check's job
     }
-    const tokens = new Set(
+    const goalTokens = new Set(
       goal
         .toLowerCase()
         .replace(/[^a-zа-яё0-9\s]/g, " ")
         .split(/\s+/)
         .filter((t) => t.length > 2),
     );
-    if (tokens.size === 0) continue;
-    goals.push({ title: d.name, tokens });
+    const slugTokens = new Set(
+      d.name
+        .toLowerCase()
+        .split(/[-_]+/)
+        .filter((t) => t.length > 2),
+    );
+    if (goalTokens.size === 0 && slugTokens.size === 0) continue;
+    goals.push({ title: d.name, goalTokens, slugTokens });
   }
 
+  const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const flagged = new Set<string>();
   const out: Array<{ a: string; b: string }> = [];
   for (let i = 0; i < goals.length; i++) {
     for (let j = i + 1; j < goals.length; j++) {
       const a = goals[i];
       const b = goals[j];
-      const smaller = a.tokens.size <= b.tokens.size ? a.tokens : b.tokens;
-      const larger = smaller === a.tokens ? b.tokens : a.tokens;
-      let shared = 0;
-      for (const t of smaller) if (larger.has(t)) shared++;
-      const sim = shared / smaller.size;
-      if (sim >= threshold) out.push({ a: a.title, b: b.title });
+      // Signal 1: goal-Jaccard on the smaller set vs larger set.
+      let hit = false;
+      if (a.goalTokens.size > 0 && b.goalTokens.size > 0) {
+        const [smaller, larger] =
+          a.goalTokens.size <= b.goalTokens.size
+            ? [a.goalTokens, b.goalTokens]
+            : [b.goalTokens, a.goalTokens];
+        let shared = 0;
+        for (const t of smaller) if (larger.has(t)) shared++;
+        if (shared / smaller.size >= goalThreshold) hit = true;
+      }
+      // Signal 2: slug-Jaccard (catches cross-language forks).
+      if (!hit && a.slugTokens.size > 0 && b.slugTokens.size > 0) {
+        const [smaller, larger] =
+          a.slugTokens.size <= b.slugTokens.size
+            ? [a.slugTokens, b.slugTokens]
+            : [b.slugTokens, a.slugTokens];
+        let shared = 0;
+        for (const t of smaller) if (larger.has(t)) shared++;
+        if (shared / smaller.size >= slugThreshold) hit = true;
+      }
+      if (hit) {
+        const k = pairKey(a.title, b.title);
+        if (!flagged.has(k)) {
+          flagged.add(k);
+          out.push({ a: a.title, b: b.title });
+        }
+      }
     }
   }
   return out;

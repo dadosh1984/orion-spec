@@ -182,6 +182,38 @@ describe("phase 3 CLI commands (v0.27)", () => {
     expect(dupCheck!.ok).toBe(true);
   });
 
+  it("doctor flags cross-language forks that share slug but not goal tokens", async () => {
+    // Motivating case from the original detector: two changes about
+    // shield/language-agnostic, one with a Russian goal, one with an
+    // English goal. Goal-Jaccard is ~0 (different scripts), but the
+    // slug tokens overlap on {shield, language, agnostic}.
+    const { doctor } = await import("../src/cli/doctorCmd.js");
+    const mk = (name: string, goal: string) => {
+      const d = join(dir, "changes", name);
+      mkdirSync(d, { recursive: true });
+      writeFileSync(
+        join(d, "proposal.json"),
+        JSON.stringify({ title: name, goal }),
+        "utf8",
+      );
+    };
+    mk(
+      "shield-language-agnostic",
+      "Рефакторинг shield: language-agnostic поддержка gradle/java",
+    );
+    mk(
+      "shield-should-be-language",
+      "Shield should be language-agnostic so gradle builds work",
+    );
+
+    const report = doctor();
+    const dupCheck = report.checks.find((c) => c.name === "duplicate-goals");
+    expect(dupCheck).toBeTruthy();
+    expect(dupCheck!.ok).toBe(false);
+    expect(dupCheck!.detail).toContain("shield-language-agnostic");
+    expect(dupCheck!.detail).toContain("shield-should-be-language");
+  });
+
   it("profile export prints JSON, import restores it", async () => {
     expect(await main(["profile", "export"])).toBe(0);
     const { writeFileSync } = await import("node:fs");
