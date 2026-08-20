@@ -439,3 +439,40 @@ shield не гонялся (нет change), но ручной прогон вс�
 **Рекомендация:** сессию закрывать. Очередь пуста, рабочее состояние чистое,
 AGENTS.md синхронизирован. Следующая сессия начинается либо с решения релиза
 (`npm login`), либо с нового `orion think` по реальному сигналу.
+
+### SESSION-SAVE 2026-08-20 — release 0.67.0 published, ветка влита в main
+
+**Состояние:** HEAD `cd87590` (merge-коммит) на `main`. Ветка
+`release-v0.67.0-candidate` удалена локально и на origin. **npm 0.67.0
+published** (блокировка прошлой сессии снята — машина залогинена как
+`dadosh1984` где-то между сессиями). Тег `v0.67.0` на месте, doctor all green.
+Active changes: 0. Рабочее дерево чистое.
+
+**Гейт (только что прогнан):** tsc --noEmit clean; vitest **90 files /
+954 passed / 2 skipped**; coverage 66% / 56% / 76% / 66%.
+
+**Сделано в сессии (3 merge + rtk-hook):**
+
+1. Проверка проекта: HEAD был на `release-v0.67.0-candidate` (7a81404), а
+   `main` отставал на 9 коммитов (`6cd91c0` от 2026-08-18).
+2. Merge: `git checkout main && git merge --no-ff release-v0.67.0-candidate`
+   → `cd87590` без конфликтов. Push `origin main` (cea215a..cd87590).
+3. Удаление ветки: `git branch -d` локально + `git push origin --delete`
+   на origin. Ветка исчезла полностью.
+4. `rtk init -g --agent pi --auto-patch` → установлен pi-extension
+   `C:\Users\dilmurod\.pi\agent\extensions\rtk.ts` (2963 байт). Claude Code
+   settings.json не тронут. **Активируется на старте следующей сессии.**
+   В текущей сессии предупреждение `/!\ No hook installed` ещё видно.
+
+**Открыто (без изменений):**
+
+- **B1** (security `shell:true` в editor) — требует явного запроса.
+- **Глобальный orion 0.66.0** — старая установка в PATH, не блокер;
+  `orion --version` локально = 0.67.0 (бинарник из node_modules/.bin).
+- **Спринт C 3.2/3.3** и **Спринт D 3.6/3.7/3.9** — не стартуем без сигнала.
+- **bump 0.68.0** — преждевременно (merge + housekeeping не тянет на релиз).
+
+**Рекомендация:** сессию закрывать. main синхронизирован с npm, ветка
+почищена, rtk-хук поставлен на следующий запуск. Старт следующей сессии —
+либо `pnpm install -g orion-spec` (по желанию), либо новый `orion think`
+по реальному сигналу.
