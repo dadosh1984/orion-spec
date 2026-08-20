@@ -1,16 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  mkdtempSync,
-  writeFileSync,
-  mkdirSync,
-  rmSync,
-} from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   matchSkill,
   environmentFingerprint,
-  shadowCompare,
   resolveDomain,
   resolveAmbiguous,
   type SkillMeta,
@@ -44,7 +38,8 @@ afterEach(() => {
 function skill(over: Partial<SkillMeta>): SkillMeta {
   return {
     name: "csv-to-json",
-    description: "convert a CSV spreadsheet to a JSON file with a header mapping",
+    description:
+      "convert a CSV spreadsheet to a JSON file with a header mapping",
     tags: ["csv", "json", "convert"],
     domain: "general",
     scriptPath: "run.sh",
@@ -84,8 +79,16 @@ describe("BM25 skill matching (v0.51, no ML)", () => {
 
   it("prefers the best skill, not the first in the catalog", () => {
     writeRegistry([
-      skill({ name: "excel-to-csv", tags: ["excel", "csv"], description: "export an excel sheet to csv" }),
-      skill({ name: "csv-to-json", tags: ["csv", "json"], description: "convert a CSV spreadsheet to JSON" }),
+      skill({
+        name: "excel-to-csv",
+        tags: ["excel", "csv"],
+        description: "export an excel sheet to csv",
+      }),
+      skill({
+        name: "csv-to-json",
+        tags: ["csv", "json"],
+        description: "convert a CSV spreadsheet to JSON",
+      }),
     ]);
     const r = matchSkill("turn csv into a json document");
     if (r.kind === "matched") expect(r.skill.name).toBe("csv-to-json");
@@ -112,8 +115,16 @@ describe("BM25 skill matching (v0.51, no ML)", () => {
 
   it("domain filter prevents cross-domain collisions", () => {
     writeRegistry([
-      skill({ name: "create-record-1c", domain: "onec", description: "create a record in 1c" }),
-      skill({ name: "create-record-contracts", domain: "contracts", description: "create a contract record" }),
+      skill({
+        name: "create-record-1c",
+        domain: "onec",
+        description: "create a record in 1c",
+      }),
+      skill({
+        name: "create-record-contracts",
+        domain: "contracts",
+        description: "create a contract record",
+      }),
     ]);
     // Matching in the contracts domain must not see the 1c skill.
     const r = matchSkill("create a record", { domain: "contracts" });
@@ -130,15 +141,28 @@ describe("BM25 skill matching (v0.51, no ML)", () => {
 
   it("tier=bm25 when the step does NOT literally name the skill (regression for the tier tautology)", () => {
     // Step tokens do not equal the skill name, yet BM25 confidently matches.
-    writeRegistry([skill({ name: "dbf-to-xlsx", description: "convert a dbf table to an xlsx spreadsheet", tags: ["dbf", "xlsx"] })]);
+    writeRegistry([
+      skill({
+        name: "dbf-to-xlsx",
+        description: "convert a dbf table to an xlsx spreadsheet",
+        tags: ["dbf", "xlsx"],
+      }),
+    ]);
     const r = matchSkill("convert dbf into xlsx file", { skills: undefined });
     if (r.kind === "matched") expect(r.tier).toBe("bm25");
     // A matched step must NOT be labelled "exact" when the name differs.
-    if (r.kind === "matched") expect(r.skill.name).not.toBe("dbf-to-xlsx convert dbf into xlsx file");
+    if (r.kind === "matched")
+      expect(r.skill.name).not.toBe("dbf-to-xlsx convert dbf into xlsx file");
   });
 
   it("tier=exact when every token of the skill name is in the step", () => {
-    writeRegistry([skill({ name: "csv-to-json", description: "convert a CSV spreadsheet to JSON", tags: ["csv", "json"] })]);
+    writeRegistry([
+      skill({
+        name: "csv-to-json",
+        description: "convert a CSV spreadsheet to JSON",
+        tags: ["csv", "json"],
+      }),
+    ]);
     const r = matchSkill("csv to json", { skills: undefined });
     if (r.kind === "matched") expect(r.tier).toBe("exact");
   });
@@ -147,32 +171,21 @@ describe("BM25 skill matching (v0.51, no ML)", () => {
     // Registry-less: pass the skill list directly so we control the stale
     // fingerprint. The step strongly matches this skill, yet the stored env
     // (e.g. 1C_TI before a migration) differs from the current runtime.
-    const stale = skill({ name: "dbf-to-xlsx", environmentFingerprint: "runtime=v99.0.0" });
+    const stale = skill({
+      name: "dbf-to-xlsx",
+      environmentFingerprint: "runtime=v99.0.0",
+    });
     const r = matchSkill("convert dbf to xlsx file", { skills: [stale] });
     expect(r.kind).toBe("ambiguous");
   });
 
   it("matched when the env fingerprint matches current (fresh skill)", () => {
-    const fresh = skill({ name: "dbf-to-xlsx", environmentFingerprint: undefined });
+    const fresh = skill({
+      name: "dbf-to-xlsx",
+      environmentFingerprint: undefined,
+    });
     const r = matchSkill("dbf to xlsx make", { skills: [fresh] });
     expect(r.kind).toBe("matched");
-  });
-});describe("shadow-migration (v0.51)", () => {
-  it("shadowCompare runs BM25 and naive on the same cases", () => {
-    writeRegistry([
-      skill({ name: "csv-to-json", description: "convert csv to json files" }),
-      skill({ name: "send-email", description: "send an email report" }),
-    ]);
-    const res = shadowCompare(
-      [
-        { step: "convert csv to json" },
-        { step: "send a telegram alert" },
-      ],
-      "general",
-    );
-    expect(res.length).toBe(2);
-    expect(res[0]).toHaveProperty("bm25");
-    expect(res[0]).toHaveProperty("naive");
   });
 });
 
@@ -180,7 +193,10 @@ describe("environment fingerprint (Phase 4 hook)", () => {
   it("is stable for equal signals and differs on drift", () => {
     const a = environmentFingerprint({ schema: "1C_TI", version: "8.3" });
     const b = environmentFingerprint({ schema: "1C_TI", version: "8.3" });
-    const moved = environmentFingerprint({ schema: "1C_TI_NEW", version: "8.3" });
+    const moved = environmentFingerprint({
+      schema: "1C_TI_NEW",
+      version: "8.3",
+    });
     expect(a).toBe(b);
     expect(a).not.toBe(moved);
   });
@@ -208,9 +224,19 @@ describe("skill miss-log (Phase 1 infrastructure)", () => {
 
   it("flags repeated signatures ≥ minRepeats as promotion candidates", () => {
     for (let i = 0; i < 4; i++) {
-      logSkillMiss({ step: "convert dbf to xlsx", domain: "onec", reason: "no-skills", topScore: null });
+      logSkillMiss({
+        step: "convert dbf to xlsx",
+        domain: "onec",
+        reason: "no-skills",
+        topScore: null,
+      });
     }
-    logSkillMiss({ step: "send a telegram notification", domain: "general", reason: "below-threshold", topScore: 0 });
+    logSkillMiss({
+      step: "send a telegram notification",
+      domain: "general",
+      reason: "below-threshold",
+      topScore: 0,
+    });
     const cands = promotionCandidates(3);
     expect(cands.length).toBe(1);
     expect(cands[0].repeat).toBe(4);
@@ -264,7 +290,11 @@ describe("resolveDomain (v0.51, explicit declaration)", () => {
     delete process.env.ORION_DOMAIN;
     const cfgDir = join(dir, ".orion");
     mkdirSync(cfgDir, { recursive: true });
-    writeFileSync(join(cfgDir, "config.json"), JSON.stringify({ domain: "onec" }), "utf8");
+    writeFileSync(
+      join(cfgDir, "config.json"),
+      JSON.stringify({ domain: "onec" }),
+      "utf8",
+    );
     const orig = process.cwd();
     process.chdir(dir);
     try {
@@ -277,10 +307,7 @@ describe("resolveDomain (v0.51, explicit declaration)", () => {
 
 describe("resolveAmbiguous (v0.51, error asymmetry)", () => {
   it("returns none for a multi-candidate short-list (never guesses)", async () => {
-    const cs = [
-      skill({ name: "a" }),
-      skill({ name: "b" }),
-    ];
+    const cs = [skill({ name: "a" }), skill({ name: "b" })];
     const d = await resolveAmbiguous("some step", cs);
     expect(d.kind).toBe("none");
   });
