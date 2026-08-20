@@ -466,7 +466,7 @@ Active changes: 0. Рабочее дерево чистое.
 
 **Открыто (без изменений):**
 
-- **B1** (security `shell:true` в editor) — требует явного запроса.
+- ~~**B1**~~ (закрыт 2026-08-21, коммит `84eff97`)
 - ~~**Глобальный orion 0.66.0** — старая установка в PATH, не блокер;~~
   **Закрыто 2026-08-20:** `pnpm list -g` показывает `orion-spec@0.67.0`,
   `orion --version` = `0.67.0`. Рассинхрон был артефактом session-save.
@@ -512,7 +512,7 @@ vitest **90 files / 955 passed / 2 skipped**. Рабочее дерево чис
 
 **Открыто (без изменений):**
 
-- **B1** (security `shell:true` в editor) — требует явного запроса.
+- ~~**B1**~~ (закрыт 2026-08-21, коммит `84eff97`)
 - ~~**Глобальный orion 0.66.0** в PATH vs локальный 0.67.0 — не блокер.~~
   **Закрыто 2026-08-20:** оба на 0.67.0 (`pnpm list -g`).
 - **Спринт C 3.2/3.3** и **Спринт D 3.6/3.7/3.9** — не стартуем без
@@ -571,7 +571,7 @@ origin. Active changes: 0.
 
 **Открыто (без изменений):**
 
-- **B1** (security `shell:true` в editor) — требует явного запроса.
+- ~~**B1**~~ (закрыт 2026-08-21, коммит `84eff97`)
 - ~~**Глобальный orion 0.66.0** в PATH vs локальный 0.67.0 — не блокер.~~
   **Закрыто 2026-08-20:** оба на 0.67.0.
 - **Спринт C 3.2/3.3** и **Спринт D 3.6/3.7/3.9** — не стартуем без
@@ -606,7 +606,7 @@ origin.
 
 **Открыто (без изменений):**
 
-- **B1** (security `shell:true` в editor) — требует явного запроса.
+- ~~**B1**~~ (закрыт 2026-08-21, коммит `84eff97`)
 - **Спринт C 3.2/3.3** и **Спринт D 3.6/3.7/3.9** — не стартуем без
   сигнала.
 - **bump 0.68.0** — преждевременно.
@@ -615,3 +615,41 @@ origin.
 orion global/local синхронизированы на 0.67.0, AGENTS.md синхронизирован.
 Следующая сессия — `orion next_step` или `orion think` по реальному
 сигналу.
+
+### SESSION-SAVE 2026-08-21 — B1 закрыт + rtk warning устранён
+
+**Состояние:** HEAD `ecc51fe` на main, синхронизирован с origin (3 коммита:
+`418007f..ecc51fe`). `orion --version` = 0.67.0. Active changes: 0.
+Working tree clean. Гейт зелёный: tsc clean, vitest 90/955+2.
+
+**Сделано в сессии (3 коммита):**
+
+1. `84eff97` **fix(security):** B1 — убрать `shell:true` из `orion run edit`.
+   argv-safe через `editor.match(/\S+/g)` → argv[0] + остальные + scriptPath
+   одним элементом. Back-compat с путями с пробелами и флагами (`code -w`)
+   сохранён без shell. Защитный тест `tests/security-exec.test.ts:66`
+   обновлён: проверяет argv-форму и `not.toMatch(/shell:\s*true/)`.
+   Гейт: tsc clean, lint clean, vitest 90 files / 955 passed / 2 skipped.
+2. **rtk warning fix:** `~/.claude/settings.json` — добавлен `hooks.PreToolUse`
+   секция с командой `rtk hook claude`. rtk CLI теперь видит hook и не
+   выводит `/!\ No hook installed`. Extension (`~/.pi/agent/extensions/rtk.ts`)
+   для pi-coding-agent остался активным. User-level файл, не в проекте.
+3. `ecc51fe` **chore(archive):** убрать-shell-true-orion — draft-заготовка
+   от signal #3 (scaffold/CLI/CRUD/README шаблон для security bugfix).
+   Архивирована штатно, 461 файл в `changes/archived/` уже в истории.
+
+**Закрыто в этой сессии:**
+- **B1** (security `shell:true` в editor) — `84eff97`.
+- **rtk hook warning** — settings.json hook.
+
+**Открыто (без изменений):**
+- **Спринт C 3.2/3.3** и **Спринт D 3.6/3.7/3.9** — не стартуем без сигнала.
+- **Сигнал #3 фикс** (draft шаблоны delete/modify/cleanup) — наблюдение
+  подтвердилось трижды за сессию, по-прежнему не превентивно.
+- **bump 0.68.0** — теперь есть substance (1 security fix + 1 архив),
+  но не тянет на релиз по сравнению с 0.67.0 = «provenance».
+- **convert csv** — 2 повтора в miss-log, ждёт 3-го через `orion run match`.
+
+**Рекомендация:** сессию закрывать. B1 закрыт, rtk warning устранён,
+архив закоммичен, AGENTS синхронизирован. Очередь пуста. Старт следующей —
+`orion next_step` или `orion think` по реальному сигналу.
