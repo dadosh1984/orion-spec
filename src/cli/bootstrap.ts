@@ -1,7 +1,7 @@
 /**
  * CLI command bootstrap (v0.51).
  *
- * Side-effect: imports all 8 top-level command handlers and registers
+ * Side-effect: imports all 9 top-level command handlers and registers
  * them in `ORION_REGISTRY`. Imported once from `src/cli/index.ts`.
  *
  * Why a separate file? Each `commands/<name>.ts` exports a handler but

@@ -11,9 +11,16 @@
 | `--watch`    | re-run on file changes (tdd)                |
 | `--json`     | machine-readable JSON output                |
 
-## Skills
+## Pipeline stages
 
-| Command                    | Description                                                                            |
+The pipeline is `think → draft → forge → shield → out`. These are the
+**stages** of a change, not separate top-level commands: `orion new
+"<prompt>"` drives the whole pipeline (or a single `--step=<name>`). The
+stage names below still work as **deprecated aliases** that print a warning
+and forward to the canonical command — see the [canonical command
+table](../README.md#canonical-commands-9-total) in the README.
+
+| Stage / alias              | Description                                                                            |
 | -------------------------- | -------------------------------------------------------------------------------------- |
 | `orion think <prompt>`     | Refines the prompt (language-aware clarifying questions), then stores the proposal     |
 | `orion draft <title>`      | Generates `proposal.md`, `specs/`, `design.md`, `tasks.md` (never clobbers edits)      |
@@ -107,6 +114,27 @@ built-in one):
 | `orion metrics`                            | Benchmark + token-budget report + token-economy ledger (v0.5, v0.11)     |
 | `orion metrics --session <file.jsonl>`     | Per-role token breakdown of a session (v0.15)                          |
 | `orion mcp`                                | MCP server over stdio; exposes 17 tools incl. `compress`, `lessons_list`, `lessons_learn` (v0.7, v0.11–v0.13)    |
+
+### `orion run match` and the `ambiguous` integration point (v0.66)
+
+`orion run match "<atomic step>"` runs the deterministic BM25 skill matcher
+(`src/core/skillsMatch.ts`) and reports one of three outcomes:
+
+- **`matched`** — a single skill clears the confidence threshold with a
+  strong margin over the runner-up. Prints the skill name, tier and score.
+- **`ambiguous`** — a short-list of candidates, but no single winner. This is
+  the **error-asymmetry** case: a false positive (running the *wrong* skill)
+  costs more than a false reject, so orion refuses to guess.
+- **`none`** — no confident match; the step is meant to fall through to the
+  LLM.
+
+`resolveAmbiguous` is a **documented integration point, not a bug**: it
+returns `{ kind: "none" }` for a multi-candidate short-list by design. Orion
+is zero-runtime-dependency, so the LLM lives *outside* it — the caller that
+invoked `orion run match` sees `ambiguous` + the short-list on stdout and is
+expected to resolve it itself (re-ask the model, or re-run the concrete
+skill). External MCP agents must handle the `ambiguous` branch on their own;
+orion will never silently pick a candidate for them.
 
 `out <change-id>` on SUCCESS also writes an honest **«Уроки и решения»** section
 (v0.14): the change's recorded lessons from `lessons.json` plus up to 3
@@ -225,6 +253,11 @@ contract:
 
 Every rule collapses only when it actually shrinks the output (no fake
 savings) and reports savings with the honest `≈ bytes/4` token label.
+
+## Serve, plugins and the bare-prompt shorthand
+
+| Command                                    | Description                                                            |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
 | `orion <multi-word prompt>`                | Shorthand for `think` — captures an idea as a proposal (v0.7)          |
 | `orion serve [--port N] [--host H] [--ui] [--token T]` | Start the web dashboard; binds 127.0.0.1 by default. `--token T` or `ORION_DASHBOARD_TOKEN` turns auth on (every API call needs `?token=…` / `Authorization: Bearer` / `x-orion-token`); without a token, loopback runs unauthenticated and a non-loopback bind auto-generates + prints a token so it is never unauthenticated (v0.2) |
 | `orion plugin new <name>`                  | Scaffold a plugin skeleton; names are path-safe `[a-zA-Z0-9_-]` (v0.3) |

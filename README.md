@@ -1,7 +1,7 @@
 # Orion — Self-Contained AI-Agent Toolkit
 
 [![npm](https://img.shields.io/npm/v/orion-spec.svg)](https://www.npmjs.com/package/orion-spec)
-[![CI](https://img.shields.io/badge/CI-passing-brightgreen)](https://github.com/dadosh1984/orion-spec/actions)
+[![CI](https://github.com/dadosh1984/orion-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/dadosh1984/orion-spec/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Orion** is a zero‑dependency framework that turns a high‑level idea into
@@ -61,11 +61,11 @@ walkthrough and [Commands Reference](docs/commands.md) for every command.
 | `shield` | Runs the guard‑rails: lint, type‑check, unit tests, drift‑check, YAGNI signal, cache‑economy budget, security scan and project policy gates. Each step caches `PASS`; a report lands in `reports/<id>/`. |
 | `out`    | Writes the final `result.md`: a verdict assembled from tasks, guard report and artifacts — including any lessons learned.                                                                                |
 
-### Supporting commands (v0.51+ — 8 total)
+### Canonical commands (9 total)
 
-The CLI has been shrunk from 43 top-level commands to **8**. Every other
-command from earlier versions is now a **deprecated alias** that prints
-a warning and forwards to one of these:
+The CLI exposes **9 canonical top-level commands**. Every command from
+earlier versions is still reachable as a **deprecated alias** that prints a
+warning and forwards to one of these (see the migration note below).
 
 | Command                | Purpose                                                                                                                                                                                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -77,11 +77,12 @@ a warning and forwards to one of these:
 | `orion doctor`         | Health/init/repair. Flags: `--init`, `--config`, `--clean`, `--backup`, `--restore`, `--env`. Replaces `init`/`config`/`clean`/`backup`/`restore`/`env`.                                                                                                                                                     |
 | `orion serve`          | Web dashboard (default) + `orion serve mcp` (MCP stdio server for AI agents). Replaces `serve`/`mcp`.                                                                                                                                                                                                        |
 | `orion plugin`         | Plugin manager: `list`, `install`, `remove`, `new`.                                                                                                                                                                                                                                                          |
+| `orion autopilot`      | Closed-loop orchestrator: routes a failing change through correction until it goes green or stops honestly.                                                                                                                                                                                                  |
 
 **Migration from v0.50:** every old command still works (e.g. `orion list`,
 `orion think`, `orion shield my-id`, `orion mcp`) but prints a deprecation
-warning. They will be removed in v0.52. `orion shell`, `orion completion`,
-and `orion route` are **already removed** — they had no real users.
+warning. `orion shell`, `orion completion`, and `orion route` are **already
+removed** — they had no real users.
 
 Full details and flags are in [docs/commands.md](docs/commands.md).
 
