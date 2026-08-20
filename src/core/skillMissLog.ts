@@ -145,7 +145,7 @@ export function logSkillMiss(entry: Omit<SkillMissEntry, "ts">): void {
  */
 export const PROMOTION_MIN_REPEATS = 3;
 
-/** Find repeated step signatures in the log — candidatetes for promotion. */
+/** Find repeated step signatures in the log — candidates for promotion. */
 export function promotionCandidates(minRepeats = PROMOTION_MIN_REPEATS): Array<{
   repeat: number;
   entry: SkillMissEntry;
