@@ -133,8 +133,20 @@ export function logSkillMiss(entry: Omit<SkillMissEntry, "ts">): void {
   }
 }
 
+/**
+ * Minimum repeat count for a step signature to be a promotion candidate.
+ *
+ * NOT CALIBRATED: this value was chosen as a sensible default, not derived
+ * from real miss-log statistics. The miss-log exists precisely so this can
+ * be tuned later — once enough real `orion run match` traffic has
+ * accumulated, measure the false-positive rate of promoting at 2 vs 3 vs 4
+ * repeats and set this from data. Until then it is a documented guess, not
+ * a claim.
+ */
+export const PROMOTION_MIN_REPEATS = 3;
+
 /** Find repeated step signatures in the log — candidatetes for promotion. */
-export function promotionCandidates(minRepeats = 3): Array<{
+export function promotionCandidates(minRepeats = PROMOTION_MIN_REPEATS): Array<{
   repeat: number;
   entry: SkillMissEntry;
 }> {
