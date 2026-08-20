@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 4,
+  "skipped": 0,
+  "pending": [
+    "reproduce_failure_write",
+    "implement_fix_25",
+    "apply_fix_without",
+    "verify_full_test"
+  ],
+  "missingSnippets": [
+    "changes/25-bugs-implement-15/snippets/reproduce_failure_write.ts",
+    "changes/25-bugs-implement-15/snippets/implement_fix_25.ts",
+    "changes/25-bugs-implement-15/snippets/apply_fix_without.ts",
+    "changes/25-bugs-implement-15/snippets/verify_full_test.ts"
+  ],
+  "reportPath": "changes/25-bugs-implement-15/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 4 pending — add snippets: changes/25-bugs-implement-15/snippets/reproduce_failure_write.ts, changes/25-bugs-implement-15/snippets/implement_fix_25.ts, changes/25-bugs-implement-15/snippets/apply_fix_without.ts, changes/25-bugs-implement-15/snippets/verify_full_test.ts"
+}
