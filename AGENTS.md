@@ -476,3 +476,54 @@ Active changes: 0. Рабочее дерево чистое.
 почищена, rtk-хук поставлен на следующий запуск. Старт следующей сессии —
 либо `pnpm install -g orion-spec` (по желанию), либо новый `orion think`
 по реальному сигналу.
+
+### SESSION-SAVE 2026-08-20 — review v0.67.0 + push (4 коммита, queued → pushed)
+
+**Состояние:** HEAD `56386f6` на main, синхронизирован с origin (4 коммита
+запушены через `git push origin main`: `ab8939c..56386f6`). `orion
+--version` = 0.67.0. Active changes: 0. Гейт зелёный: tsc --noEmit чисто,
+vitest **90 files / 955 passed / 2 skipped**. Рабочее дерево чистое.
+
+**Сделано в сессии (4 коммита, все по review v0.67.0, manual + коммит —
+не draft/forge; сигнал #3 не блокировал, т.к. это bugfix/feat, не refactor):**
+
+1. `766b152` **fix(typo):** candidatetes → candidates в skillMissLog JSDoc.
+   Находка review #5. Тривиально.
+2. `3271cf8` **docs(phone):** DEMO-ONLY маркер на parsePhone/validatePhone/
+   formatPhone. Находка review #2: countryCode 3 цифры через `slice(0,3)`
+   некорректно для E.164 (country code 1–3 цифры: +14155552671 → '141'
+   вместо '1'). Не чинил реализацию — пометил DEMO-ONLY в README и
+   phoneValidator.ts, тесты остались. Это **честный** путь: или
+   правильный парсер (по списку ITU-T E.164), или явная отметка.
+3. `35753fb` **feat(doctor):** duplicateGoals — кросс-языковой Jaccard
+   по slug-overlap. Находка review #1: детектор сравнивал только токены
+   поля goal, RU-vs-EN форки давали Jaccard≈0 и пропускались. Теперь
+   slugify + stopwords + Jaccard ≥ порога. 32 новых теста.
+4. `56386f6` **chore(ci):** `orion doctor` в `pnpm run ci`. Находка
+   review #3: детекторы duplicateGoals и stale-changes жили только в
+   `orion doctor`, в CI-gate не вызывались → junk-директории без
+   proposal.json копились в `changes/`. Теперь gate режет их
+   автоматически.
+
+**Push долг из прошлой сессии закрыт:** `git status` показал
+`main...origin/main [ahead 4]` — 4 коммита лежали локально, запушены
+одной командой.
+
+**Открыто (без изменений):**
+
+- **B1** (security `shell:true` в editor) — требует явного запроса.
+- **Глобальный orion 0.66.0** в PATH vs локальный 0.67.0 — не блокер.
+- **Спринт C 3.2/3.3** и **Спринт D 3.6/3.7/3.9** — не стартуем без
+  сигнала.
+- **bump 0.68.0** — преждевременно (bugfix+feat+docs+ci, 4 коммита
+  мелкие; не тянет на релиз по сравнению с 0.67.0 = «provenance»).
+- **rtk pi-hook** — в этой сессии предупреждение `/!\ No hook
+  installed` опять видно. Прошлый `rtk init -g --agent pi --auto-patch`
+  в session-save от 2026-08-20 либо не сработал, либо сбросился.
+  Файл `C:\Users\dilmurod\.pi\agent\extensions\rtk.ts` надо проверить
+  (см. `ls -la ~/.pi/agent/extensions/`).
+
+**Рекомендация:** сессию закрывать. Гейт зелёный, push сделан, AGENTS
+синхронизирован. Старт следующей — `orion next_step` (покажет приоритет)
+или `orion think` по реальному сигналу. Если rtk-hook действительно
+сломался — мелкий fix в начале сессии (без draft, manual).
