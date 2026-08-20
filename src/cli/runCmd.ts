@@ -617,7 +617,6 @@ export async function runDispatch(args: string[]): Promise<number> {
     case "match": {
       // Skill matching + miss-log + promotion (Phase 1/2/3).
       //   orion run match "<atomic step>"  → BM25 (tier/score) + log miss if none
-      //   orion run match --shadow <step>   → compare BM25 vs naive on a step
       //   orion run match --promote          → repeated misses promotable
       //   orion run match --approve "<sig>" → scaffold a change from miss-log
       //                                        (safe promotion; replay-verified)
@@ -625,7 +624,6 @@ export async function runDispatch(args: string[]): Promise<number> {
         rest.includes("--promote") ||
         name === "--promote" ||
         name === "--candidates";
-      const wantsShadow = rest.includes("--shadow") || name === "--shadow";
       const wantsApprove =
         rest.includes("--approve") ||
         rest.includes("--propose") ||
@@ -635,8 +633,7 @@ export async function runDispatch(args: string[]): Promise<number> {
         name === "--propose" ||
         name === "--replay" ||
         name === "--resolve";
-      const { matchSkill, shadowCompare } =
-        await import("../core/skillsMatch.js");
+      const { matchSkill } = await import("../core/skillsMatch.js");
       const { logSkillMiss } = await import("../core/skillMissLog.js");
 
       if (wantsApprove) {
@@ -858,15 +855,16 @@ export async function runDispatch(args: string[]): Promise<number> {
         return 0;
       }
       if (wantsPromote) {
-        const { promotionCandidates } = await import("../core/skillMissLog.js");
-        const cands = promotionCandidates(3);
+        const { promotionCandidates, PROMOTION_MIN_REPEATS } =
+          await import("../core/skillMissLog.js");
+        const cands = promotionCandidates(PROMOTION_MIN_REPEATS);
         if (cands.length === 0) {
           console.log(
             `${statusMark("info")} No promotion candidates yet — log accumulates misses to find repeated signatures.`,
           );
         } else {
           console.log(
-            `\n${paint(`${cands.length} promotion candidate(s)`, "cyan")} (repeat ≥ 3) — review before promoting:`,
+            `\n${paint(`${cands.length} promotion candidate(s)`, "cyan")} (repeat ≥ ${PROMOTION_MIN_REPEATS}) — review before promoting:`,
           );
           for (const c of cands) {
             console.log(`\n  ✦ ×${c.repeat}  ${c.entry.step}`);
@@ -878,30 +876,6 @@ export async function runDispatch(args: string[]): Promise<number> {
             );
           }
         }
-        return 0;
-      }
-
-      if (wantsShadow) {
-        // Shadow-migration: show BM25 vs legacy naive on lucid terms so you
-        // can decide (with data) whether BM25 fixes the false positives
-        // before the naive scorer is deleted.
-        const tgt = (
-          name === "--shadow"
-            ? rest.join(" ")
-            : rest.filter((a) => a !== "--shadow").join(" ")
-        ).trim();
-        if (!tgt) return fail('usage: orion run match --shadow "<step>"');
-        const res = shadowCompare([{ step: tgt }], undefined)[0];
-        console.log(`\n${paint("shadow: BM25 vs naive", "cyan")}`);
-        console.log(`  step: ${tgt}`);
-        const bm = res.bm25;
-        console.log(
-          `  BM25  → ${bm?.kind === "matched" ? `${bm.skill.name} (tier=${bm.tier}, score=${bm.score.toFixed(2)})` : bm?.kind === "ambiguous" ? `ambiguous: ${bm.candidates.map((c) => c.name).join(", ")}` : "none"}`,
-        );
-        console.log(
-          `  naive → ${res.naive ? `${res.naive.name} (score=${res.naive.score})` : "none"}`,
-        );
-        console.log(`  agree → ${res.agree ? "yes" : "NO (decision point)"}`);
         return 0;
       }
 

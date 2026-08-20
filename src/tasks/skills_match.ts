@@ -9,8 +9,6 @@ export {
   matchSkill,
   resolveDomain,
   listSkills,
-  naiveScore,
-  shadowCompare,
   environmentFingerprint,
 } from "../core/skillsMatch.js";
 export type {

@@ -109,7 +109,8 @@ Flags:
  * Deprecated top-level aliases (v0.51). Each entry maps an old command
  * name to its v0.51+ canonical name. When a user runs the old name, the
  * dispatcher prints a deprecation warning and forwards to the canonical
- * handler. These aliases will be removed in v0.52.
+ * handler. These aliases are kept for back-compat; removal is tracked
+ * separately from the version they were introduced in.
  */
 export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
   Object.freeze({

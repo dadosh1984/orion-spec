@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  mkdtempSync,
-  rmSync,
-  existsSync,
-  readFileSync,
-} from "node:fs";
+import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "../src/cli/commands.js";
@@ -85,7 +80,11 @@ describe("plugin command failure paths (v0.25)", () => {
     mkdirSync(plug, { recursive: true });
     writeFileSync(
       join(plug, "manifest.json"),
-      JSON.stringify({ name: "boomplug", version: "1.0.0", commands: ["boomplug"] }),
+      JSON.stringify({
+        name: "boomplug",
+        version: "1.0.0",
+        commands: ["boomplug"],
+      }),
       "utf8",
     );
     writeFileSync(
@@ -111,12 +110,94 @@ describe("phase 3 CLI commands (v0.27)", () => {
     expect(await main(["doctor"])).toBeLessThanOrEqual(1);
   });
 
+  it("doctor flags an incomplete change untouched past the stale threshold", async () => {
+    const { doctor } = await import("../src/cli/doctorCmd.js");
+    // A change with a proposal but no tasks.md is INCOMPLETE; backdate its
+    // mtime so it reads as stale, then assert the stale-changes check fails.
+    const changeDir = join(dir, "changes", "stale-one");
+    mkdirSync(changeDir, { recursive: true });
+    writeFileSync(
+      join(changeDir, "proposal.json"),
+      JSON.stringify({ title: "stale-one", goal: "x" }),
+      "utf8",
+    );
+    const old = Date.now() - 40 * 24 * 60 * 60 * 1000; // 40 days ago
+    const { utimesSync } = await import("node:fs");
+    utimesSync(join(changeDir, "proposal.json"), old / 1000, old / 1000);
+
+    const report = doctor();
+    const staleCheck = report.checks.find((c) => c.name === "stale-changes");
+    expect(staleCheck).toBeTruthy();
+    expect(staleCheck!.ok).toBe(false);
+    expect(staleCheck!.detail).toContain("stale-one");
+  });
+
+  it("doctor flags two open changes chasing the same goal", async () => {
+    const { doctor } = await import("../src/cli/doctorCmd.js");
+    // Two proposals whose goals overlap heavily (same intent, different
+    // wording) must be flagged as a near-duplicate fork.
+    const mk = (name: string, goal: string) => {
+      const d = join(dir, "changes", name);
+      mkdirSync(d, { recursive: true });
+      writeFileSync(
+        join(d, "proposal.json"),
+        JSON.stringify({ title: name, goal }),
+        "utf8",
+      );
+    };
+    mk(
+      "shield-language-agnostic",
+      "make shield support gradle and java builds",
+    );
+    mk(
+      "shield-should-be-language",
+      "make shield support gradle and java builds for language agnostic",
+    );
+
+    const report = doctor();
+    const dupCheck = report.checks.find((c) => c.name === "duplicate-goals");
+    expect(dupCheck).toBeTruthy();
+    expect(dupCheck!.ok).toBe(false);
+    expect(dupCheck!.detail).toContain("shield-language-agnostic");
+    expect(dupCheck!.detail).toContain("shield-should-be-language");
+  });
+
+  it("doctor does not flag distinct goals as duplicates", async () => {
+    const { doctor } = await import("../src/cli/doctorCmd.js");
+    const mk = (name: string, goal: string) => {
+      const d = join(dir, "changes", name);
+      mkdirSync(d, { recursive: true });
+      writeFileSync(
+        join(d, "proposal.json"),
+        JSON.stringify({ title: name, goal }),
+        "utf8",
+      );
+    };
+    mk("csv-tool", "build a csv to json converter");
+    mk("phone-validator", "validate e164 phone numbers");
+
+    const report = doctor();
+    const dupCheck = report.checks.find((c) => c.name === "duplicate-goals");
+    expect(dupCheck).toBeTruthy();
+    expect(dupCheck!.ok).toBe(true);
+  });
+
   it("profile export prints JSON, import restores it", async () => {
     expect(await main(["profile", "export"])).toBe(0);
     const { writeFileSync } = await import("node:fs");
     const exp = join(dir, "profile.json");
     // export writes nothing to a file; capture via console instead
-    writeFileSync(exp, JSON.stringify({ version: 1, language: "ru", platform: "node", topics: [], notes: "hello" }), "utf8");
+    writeFileSync(
+      exp,
+      JSON.stringify({
+        version: 1,
+        language: "ru",
+        platform: "node",
+        topics: [],
+        notes: "hello",
+      }),
+      "utf8",
+    );
     expect(await main(["profile", "import", exp])).toBe(0);
     expect(await main(["profile", "--reset"])).toBe(0);
   });

@@ -3,7 +3,7 @@ import {
   parsePhone,
   validatePhone,
   formatPhone,
-} from "../src/core/phoneValidator.js";
+} from "../src/tasks/phoneValidator.js";
 
 describe("parsePhone", () => {
   it("parses +1 US 10-digit number", () => {

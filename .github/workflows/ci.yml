@@ -47,6 +47,9 @@ jobs:
       - name: Core coverage gate (track.ts, scale.ts, tddCore.ts)
         run: pnpm run core:coverage
 
+      - name: CHANGELOG/version sync gate
+        run: node scripts/check-changelog.mjs
+
       - name: Prune cache after build
         run: node dist/cli/index.js track prune
 
