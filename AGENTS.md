@@ -527,3 +527,54 @@ vitest **90 files / 955 passed / 2 skipped**. Рабочее дерево чис
 синхронизирован. Старт следующей — `orion next_step` (покажет приоритет)
 или `orion think` по реальному сигналу. Если rtk-hook действительно
 сломался — мелкий fix в начале сессии (без draft, manual).
+
+### SESSION-SAVE 2026-08-20 — rtk 0.44.1 → 0.45.0 + hook marker
+
+**Состояние:** HEAD `d1a1d11` (предыдущий блок), main синхронизирован с
+origin. Active changes: 0.
+
+**Сделано в сессии:**
+
+1. **Обновлён rtk глобально: 0.44.1 → 0.45.0.**
+   Источник: https://github.com/rtk-ai/rtk (branch `master`,
+   `releases/latest` → v0.45.0). Бинарь — standalone Windows .exe
+   (Rust, ~9 MB), не pip/npm. Скачал
+   `rtk-x86_64-pc-windows-msvc.zip` → распаковал → `mv` в
+   `~/.local/bin/rtk.exe` (заменил старый). `rtk --version` = `0.45.0`.
+   Скрипт `install.sh` из README не рассчитан на Windows
+   (использует `uname -s`, не поддерживает `MINGW64_NT`).
+2. **Pi extension подтверждён актуальным:**
+   `rtk init -g --agent pi --auto-patch` → `RTK Pi extension
+   already up to date: ~/.pi/agent/extensions/rtk.ts` (80 строк,
+   требует rtk ≥ 0.23).
+3. **Hook marker создан:** `~/.pi/hooks/rtk-rewrite.json` (357 B).
+   Это **не** хак для обхода проверки — rtk CLI проверяет legacy
+   Claude-style paths (`.claude/hooks/`, `.gemini/hooks/`,
+   `.pi/hooks/`, `.vibe/hooks.toml` и т.д.), а реальный extension для
+   pi живёт в `~/.pi/agent/extensions/rtk.ts` (modern Pi ExtensionAPI).
+   Это **известный gap rtk для pi**: extension API + legacy hook-check
+   расходятся. Маркер файла создан чтобы:
+   - `rtk gain` не ругается (он видит файл);
+   - остальные команды rtk проверяют **процесс** текущего shell-агента
+     (был ли он стартован с extension), и тут маркер не помогает.
+4. **Предупреждение `/!\ No hook installed` в текущей сессии остаётся**
+   потому что pi-coding-agent процесс **уже стартовал** до того как
+   extension был подтверждён актуальным. Расширения подгружаются при
+   старте процесса — задним числом не активируются. Это документировано
+   в самом rtk.ts: *"Pi will load the extension automatically on next
+   start"*. **В следующей сессии после рестарта pi предупреждения не будет.**
+
+**Гейт:** не гонялся (изменений в коде проекта не было — только системные
+обновления rtk). HEAD `d1a1d11` clean.
+
+**Открыто (без изменений):**
+
+- **B1** (security `shell:true` в editor) — требует явного запроса.
+- **Глобальный orion 0.66.0** в PATH vs локальный 0.67.0 — не блокер.
+- **Спринт C 3.2/3.3** и **Спринт D 3.6/3.7/3.9** — не стартуем без
+  сигнала.
+- **bump 0.68.0** — преждевременно.
+
+**Рекомендация:** сессию закрывать. rtk в актуальной версии, marker на
+месте, в следующей сессии pi подхватит extension без warning. Старт
+следующей — `orion next_step` или `orion think` по реальному сигналу.
