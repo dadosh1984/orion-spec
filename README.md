@@ -185,41 +185,6 @@ as honest as the code.
 
 ---
 
-## Phone number validator (E.164)
-
-Structural validation only — checks format and length per ITU-T E.164.
-
-> ⚠️ **DEMO-ONLY, not a production E.164 parser.** `parsePhone` pins the
-> country code to 3 digits (`digits.slice(0, 3)`). On real E.164 input
-> that is wrong — country codes are 1–3 digits, so `+14155552671`
-> (US, real country code `1`) is parsed as country code `141`. Kept
-> under `src/tasks/` as a teaching artifact for parser-shape exercises.
-> Do not use for phone routing, billing, or compliance — use a vetted
-> library (libphonenumber-js, Twilio Lookup). See file header in
-> `src/tasks/phoneValidator.ts` for the full disclaimer.
-
-```typescript
-import {
-  parsePhone, // throws on malformed input
-  validatePhone, // non-throwing: { ok, phone?, error? }
-  formatPhone, // "+XXX NNN NNN NN"
-} from "./src/tasks/phoneValidator.js";
-
-parsePhone("+14155552671"); // → { countryCode: "141", nationalNumber: "55552671", raw: "+14155552671" }
-validatePhone("+998901234567"); // → { ok: true, phone: {...} }
-validatePhone("14155552671"); // → { ok: false, error: "Must start with +" }
-formatPhone({
-  countryCode: "141",
-  nationalNumber: "55552671",
-  raw: "+14155552671",
-});
-// → "+141 555 526 71"
-```
-
-Rules: must start with `+`; 7–15 digits total; digits only after `+`; country
-code is the first 3 digits. Not in scope: libphonenumber, country-code
-assignment lookup, number-in-use check (zero-dep project).
-
 ## Development
 
 ```bash
