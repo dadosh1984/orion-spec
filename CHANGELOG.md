@@ -2,6 +2,20 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.67.0] — Benchmark harness + E.164 validator + honesty hardening
+
+- Benchmark harness: 3 representative workflows (full-flow / direct / tdd-engine)
+  with real wall-clock and LOC differences, replacing the placeholder
+  10-workflow script. `parseShield` fixed to detect `Tests N passed` instead of
+  a literal `PASS` that never appeared.
+- E.164 phone validator: `parsePhone` / `validatePhone` / `formatPhone` in
+  `src/tasks/phoneValidator.ts`.
+- Honesty hardening: `orion doctor` now flags stale incomplete changes and
+  near-duplicate goals between open changes; CHANGELOG/version sync is gated in
+  CI; README/docs corrected to the real 9 canonical commands; legacy
+  `naiveScore`/`shadowCompare` removed; promotion threshold extracted to a
+  documented (not-yet-calibrated) constant.
+
 ## [0.66.0] — Language-agnostic pipeline + autonomous loop
 
 - Language-agnostic `forge` + `shield` + `draft` (signal #3 fix): pipeline no
