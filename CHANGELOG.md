@@ -2,6 +2,19 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.66.0] — Language-agnostic pipeline + autonomous loop
+
+- Language-agnostic `forge` + `shield` + `draft` (signal #3 fix): pipeline no
+  longer assumes a single implementation language.
+- Autonomous pipeline: `orion new` defaults to the full pipeline with Socrates
+  clarify; closed-loop orchestrator self-corrects on guard failures.
+- Learning: self-audit (C) + auto-promote (D); learn from session files after
+  a successful `out`.
+- i18n: English-first for system/metadata, script-tag fallback for non-Latin
+  prompts.
+- `draft`: purpose-built change-type plans instead of generic scaffolding.
+- UX: `--slug` override, `change --open`, pre-commit hook, JSDoc coverage.
+
 ## [0.65.0] — Post-audit hardening
 
 10 bugs fixed from deep audit: writeJson atomic, hazard gate in generateSnippets,

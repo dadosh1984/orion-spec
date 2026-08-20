@@ -43,11 +43,12 @@
     "test:watch": "vitest",
     "test:coverage": "pnpm run build && vitest run --coverage",
     "core:coverage": "node scripts/check-core-coverage.mjs",
+    "changelog:check": "node scripts/check-changelog.mjs",
     "watch": "tsc -w -p tsconfig.json",
     "prepublishOnly": "pnpm run build",
     "tdd": "node dist/cli/index.js tdd",
     "metrics": "node dist/cli/index.js metrics",
-    "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run build && pnpm run test:coverage && pnpm run core:coverage",
+    "ci": "pnpm run lint && pnpm run format:check && pnpm exec tsc --noEmit && pnpm run build && pnpm run test:coverage && pnpm run core:coverage && pnpm run changelog:check",
     "test:e2e": "npx playwright install chromium --with-deps && npx vitest run tests/browser.test.ts",
     "hooks:install": "node scripts/install-git-hooks.js"
   },
