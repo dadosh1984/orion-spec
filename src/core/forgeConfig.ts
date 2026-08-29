@@ -72,11 +72,11 @@ export const GRADLE_FORGE_CONFIG: ForgeConfig = {
   srcDir: "src/main/java",
   refactor: async (root: string) => {
     try {
-      execSync(`cd "${root}" && ./gradlew spotlessApply 2>&1`, {
-        shell: true,
+      execSync("./gradlew spotlessApply", {
+        cwd: root,
         timeout: 60_000,
         stdio: "ignore",
-      } as any);
+      });
       return true;
     } catch {
       return true;
