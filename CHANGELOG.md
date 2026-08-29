@@ -2,6 +2,12 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.68.0] — Security lint + hardening
+
+- Local ESLint rule `local/no-shell-sync` — forbids `shell:true` in `src/` (B1 anti-regression, argv-safe). One-file rule in `tools/eslint-rules/no-shell-sync.js`, wired in flat config for `src/**/*.ts` only; tests/examples untouched.
+- `forgeConfig` gradle path fixed: `execSync` with `shell:true` + `cd "…" &&` → `execSync` with `cwd: root`, no shell.
+- Archive cleanup: `phoneValidator` DEMO removed, `custom-eslint-rule-orion` closed.
+
 ## [0.67.0] — Benchmark harness + E.164 validator + honesty hardening
 
 - Benchmark harness: 3 representative workflows (full-flow / direct / tdd-engine)
