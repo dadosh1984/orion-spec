@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 5,
+  "skipped": 4,
+  "pending": [
+    "add_task_list"
+  ],
+  "missingSnippets": [
+    "changes/task-cyrillic-2/snippets/add_task_list.ts"
+  ],
+  "reportPath": "changes/task-cyrillic-2/forge-report.md",
+  "message": "forge paused: 0 done, 4 skipped, 1 pending — add snippets: changes/task-cyrillic-2/snippets/add_task_list.ts"
+}

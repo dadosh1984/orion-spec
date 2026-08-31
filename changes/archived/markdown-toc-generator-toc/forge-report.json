@@ -1,0 +1,16 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 2,
+  "skipped": 0,
+  "pending": [
+    "implement_toc_md",
+    "cover_toc_tests"
+  ],
+  "missingSnippets": [
+    "changes/markdown-toc-generator-toc/snippets/implement_toc_md.ts",
+    "changes/markdown-toc-generator-toc/snippets/cover_toc_tests.ts"
+  ],
+  "reportPath": "changes/markdown-toc-generator-toc/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 2 pending — add snippets: changes/markdown-toc-generator-toc/snippets/implement_toc_md.ts, changes/markdown-toc-generator-toc/snippets/cover_toc_tests.ts"
+}

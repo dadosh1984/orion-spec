@@ -1,0 +1,10 @@
+{
+  "change": "help",
+  "ts": "2026-08-30T20:21:47.480Z",
+  "specSource": "not measured",
+  "tests": "ran (no pass/skip summary)",
+  "coverage": "0% (no files with metrics)",
+  "hazards": "0 destructive patterns",
+  "sha256": "f20ab33bc111",
+  "status": "failing"
+}

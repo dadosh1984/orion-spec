@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "done": 0,
+  "total": 4,
+  "skipped": 4,
+  "pending": [],
+  "missingSnippets": [],
+  "reportPath": "changes/help/forge-report.md",
+  "message": "forge complete: 0 done, 4 skipped from cache"
+}

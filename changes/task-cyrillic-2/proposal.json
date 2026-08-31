@@ -1,0 +1,19 @@
+{
+  "title": "task-cyrillic-2",
+  "goal": "Тестовая задача",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2,
+  "appliesLessons": [
+    "скилл-onec-converter-migration:forge:56cc53ac3e99",
+    "mcp-python-1-7:forge:cfc3bc6d2af5",
+    "sadaferp-полноценное-ядро-erp-2:forge:6ff166037b0d",
+    "v0-46-устранить-дубли:forge:c0563dbd8439",
+    "скилл-onec-converter-migration:forge:9b6fcea6b6bd"
+  ]
+}

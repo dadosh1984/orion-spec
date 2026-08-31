@@ -1,0 +1,12 @@
+{
+  "title": "markdown-toc-generator-toc",
+  "goal": "Markdown TOC generator: toc(md) парсит # ## ### в оглавление, slugify, игнор не-заголовков",
+  "platform": "",
+  "constraints": "",
+  "budget": "",
+  "clarity": "vague",
+  "language": "ru",
+  "complexity": "easy",
+  "depth": 1,
+  "plannedSteps": 2
+}

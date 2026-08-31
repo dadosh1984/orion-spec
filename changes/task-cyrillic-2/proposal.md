@@ -1,0 +1,14 @@
+# Предложение — task-cyrillic-2
+
+## Цель
+Тестовая задача
+
+## Контекст
+
+| Аспект | Значение |
+|--------|----------|
+| Платформа | any |
+| Бюджет | unlimited |
+| Ограничения | none |
+
+- **Lessons applied (v0.12):** скилл-onec-converter-migration:forge:56cc53ac3e99, mcp-python-1-7:forge:cfc3bc6d2af5, sadaferp-полноценное-ядро-erp-2:forge:6ff166037b0d, v0-46-устранить-дубли:forge:c0563dbd8439, скилл-onec-converter-migration:forge:9b6fcea6b6bd
