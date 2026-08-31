@@ -1,0 +1,12 @@
+{
+  "ok": false,
+  "done": 0,
+  "total": 1,
+  "skipped": 0,
+  "pending": [
+    "build_cli_entry"
+  ],
+  "missingSnippets": [],
+  "reportPath": "changes/zero-dependency-typescript-cli/forge-report.md",
+  "message": "forge paused: 0 done, 0 skipped, 1 pending — add snippets: "
+}

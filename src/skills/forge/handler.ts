@@ -352,17 +352,19 @@ export async function forge(
 
     if (!outcome.ok) {
       pending.push(slug);
-      missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
-      const r = resolveSnippet(`changes/${title}/snippets`, slug);
-      if (
-        r.content === null &&
-        r.candidates &&
-        r.candidates.length > 0 &&
-        snippetHints.length < 3
-      ) {
-        snippetHints.push(
-          `${slug}: no exact match — existing: ${r.candidates.join(", ")}`,
-        );
+      if (outcome.reason === "no-snippet") {
+        missingSnippets.push(`changes/${title}/snippets/${slug}.ts`);
+        const r = resolveSnippet(`changes/${title}/snippets`, slug);
+        if (
+          r.content === null &&
+          r.candidates &&
+          r.candidates.length > 0 &&
+          snippetHints.length < 3
+        ) {
+          snippetHints.push(
+            `${slug}: no exact match — existing: ${r.candidates.join(", ")}`,
+          );
+        }
       }
       rows.push({ desc, status: "pending" });
       opts?.onTask?.({ desc, status: "pending" });
@@ -497,7 +499,9 @@ export async function forgeParallel(
           { noCache: opts?.noCache },
         );
         pending.push(reply.slug);
-        missingSnippets.push(`changes/${title}/snippets/${reply.slug}.ts`);
+        if (reply.reason === "no-snippet") {
+          missingSnippets.push(`changes/${title}/snippets/${reply.slug}.ts`);
+        }
         rows.push({ desc, status: "pending" });
         opts?.onTask?.({ desc, status: "pending" });
       }

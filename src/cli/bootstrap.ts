@@ -1,12 +1,5 @@
 /**
  * CLI command bootstrap (v0.51).
- *
- * Side-effect: imports all 9 top-level command handlers and registers
- * them in `ORION_REGISTRY`. Imported once from `src/cli/index.ts`.
- *
- * Why a separate file? Each `commands/<name>.ts` exports a handler but
- * should not run registration as a side effect (that would force every
- * test that imports one handler to drag the whole registry in).
  */
 import { ORION_REGISTRY, registerCommand } from "./registry.js";
 import { newHandler } from "./commands/new.js";
@@ -19,6 +12,7 @@ import { serveHandler } from "./commands/serve.js";
 import { pluginHandler } from "./commands/plugin.js";
 import { autopilotHandler } from "./commands/autopilot.js";
 import { skillHandler } from "./commands/skillCmd.js";
+import { safeEnvHandler } from "./safe-env.js";
 
 let registered = false;
 
@@ -80,6 +74,11 @@ export function registerAllCommands(): void {
     name: "skill",
     description: "Search and install community skills",
     handler: skillHandler,
+  });
+  registerCommand({
+    name: "safe-env",
+    description: "Encrypt/decrypt .env files with a master password",
+    handler: safeEnvHandler,
   });
 }
 
