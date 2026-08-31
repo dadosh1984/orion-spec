@@ -2,6 +2,11 @@ All notable changes to **Orion** are documented here, newest first. Orion
 follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Dates are from git history.
 
+## [0.68.1] — $EDITOR tokenizer fix
+
+- `orion run edit`: quote-aware `$EDITOR`/`$VISUAL` tokenizer (`src/utils/argv.ts`). The B1 fix split on `\S+`, which broke a quoted path with spaces (`"C:\Program Files\VSCode\code.exe"`) into invalid tokens so `spawn` failed. `tokenizeArgv` honours single/double quotes with no shell and no injection surface; empty/whitespace-only `$EDITOR` now fails honestly instead of a silent no-op.
+- Queue hygiene: archived the `visual` test change store that near-duplicated `task-cyrillic-2` (`orion doctor` duplicate-goals gate).
+
 ## [0.68.0] — Security lint + hardening
 
 - Local ESLint rule `local/no-shell-sync` — forbids `shell:true` in `src/` (B1 anti-regression, argv-safe). One-file rule in `tools/eslint-rules/no-shell-sync.js`, wired in flat config for `src/**/*.ts` only; tests/examples untouched.
