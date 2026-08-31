@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { statusMark, paint } from "../utils/term.js";
+import { tokenizeArgv } from "../utils/argv.js";
 import { denyEnv } from "../core/denyEnv.js";
 import { confirmAction, lineDiff } from "./helpers.js";
 import {
@@ -1025,12 +1026,18 @@ export async function runDispatch(args: string[]): Promise<number> {
         return 1;
       }
       const editor = process.env.EDITOR || process.env.VISUAL || "vi";
+      // B1 (security): argv-safe spawn, no shell injection.
+      // $EDITOR may contain a quoted path with spaces
+      // ("C:\Program Files\VSCode\code.exe") and/or flags ("code -w").
+      // tokenizeArgv honours quotes so a spaced path stays one argv element,
+      // while never handing the string to a shell.
+      const argv = tokenizeArgv(editor);
+      if (argv.length === 0) {
+        // A whitespace-only $EDITOR/$VISUAL yields no command. Fail honestly
+        // instead of a silent no-op that looks like the editor just closed.
+        return fail("$EDITOR/$VISUAL is empty — set it to an editor command");
+      }
       try {
-        // B1 (security): argv-safe spawn, no shell injection.
-        // $EDITOR may contain spaces (e.g. "C:\Program Files\VSCode\code.exe")
-        // — split into argv ourselves, never via shell. If the editor string
-        // carries flags ("code -w"), we honour them as additional argv.
-        const argv = editor.match(/\S+/g) ?? [editor];
         spawnSync(argv[0], argv.slice(1).concat([scriptPath(name)]), {
           stdio: "inherit",
         });

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { denyEnv, isDeniedEnvName } from "../src/core/denyEnv.js";
+import { tokenizeArgv } from "../src/utils/argv.js";
 
 const ROOT = join(import.meta.dirname, "..");
 
@@ -65,12 +66,46 @@ describe("shell-injection (3.8) — child processes use argv, not interpolated s
 
   it("runCmd.ts edit is argv-safe (B1, no shell injection)", () => {
     const rc = src("src/cli/runCmd.ts");
-    // argv-safe: split $EDITOR into tokens, spawn first token with rest + scriptPath
-    expect(rc).toMatch(/argv\s*=\s*editor\.match\(/);
+    // argv-safe: tokenize $EDITOR (quote-aware), spawn first token with rest + scriptPath
+    expect(rc).toMatch(/argv\s*=\s*tokenizeArgv\(editor\)/);
     expect(rc).toMatch(/spawnSync\(argv\[0\],/);
     // scriptPath is concatenated as a single argv element
     expect(rc).toMatch(/argv\.slice\(1\)\.concat\(\[scriptPath\(name\)\]\)/);
     // no shell:true anywhere in the edit case
     expect(rc).not.toMatch(/shell:\s*true/);
+  });
+});
+
+describe("tokenizeArgv (v0.68) — quote-aware, shell-free $EDITOR split", () => {
+  it("keeps a quoted path with spaces as one token", () => {
+    expect(tokenizeArgv('"C:\\Program Files\\VSCode\\code.exe"')).toEqual([
+      "C:\\Program Files\\VSCode\\code.exe",
+    ]);
+  });
+
+  it("keeps a quoted path and its flags separate", () => {
+    expect(
+      tokenizeArgv('"C:\\Program Files\\Notepad++\\notepad++.exe" -multiInst'),
+    ).toEqual(["C:\\Program Files\\Notepad++\\notepad++.exe", "-multiInst"]);
+  });
+
+  it("splits a plain editor with flags", () => {
+    expect(tokenizeArgv("code -w")).toEqual(["code", "-w"]);
+  });
+
+  it("handles single quotes and collapses extra whitespace", () => {
+    expect(tokenizeArgv("  'my editor'   --wait ")).toEqual([
+      "my editor",
+      "--wait",
+    ]);
+  });
+
+  it("treats a bare command as a single token", () => {
+    expect(tokenizeArgv("vi")).toEqual(["vi"]);
+  });
+
+  it("returns [] for an empty or whitespace-only string", () => {
+    expect(tokenizeArgv("")).toEqual([]);
+    expect(tokenizeArgv("   ")).toEqual([]);
   });
 });
