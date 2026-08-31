@@ -1,10 +1,10 @@
 /**
- * `orion new "<prompt>"` (v0.51) — autonomous pipeline driver.
+ * `orion new "<prompt>"` (v0.51) вЂ” autonomous pipeline driver.
  *
  * By default it runs the **full autonomous pipeline** (chat with clarify,
  * atomic decomposition, forge, shield, out). This covers the cycle:
- * prompt → think → draft (atomic if depth≥2) → clarify (Socrates) →
- * forge → shield → out, with auto-learn and auto-promote after success.
+ * prompt в†’ think в†’ draft (atomic if depthв‰Ґ2) в†’ clarify (Socrates) в†’
+ * forge в†’ shield в†’ out, with auto-learn and auto-promote after success.
  *
  * Use --step=think for the old behaviour: only capture the proposal.
  *
@@ -12,6 +12,7 @@
  *   --step=think|draft|forge|shield|out   Run a specific step (default: full pipeline)
  *   --pipeline                            Same as default (full chain)
  *   --dry                                 Show what would happen without writing files
+ *   --visual                              Show real-time pipeline progress (v0.68+)
  *   --from=<change-id>                    Continue an existing change (skip think)
  *   --slug=<id>                          Force an ASCII kebab-case change slug
  *
@@ -19,7 +20,7 @@
  *   orion new "Build a CSV-to-JSON tool"     (full pipeline)
  *   orion new "Build a CSV-to-JSON tool" --step=think   (just proposal)
  *   orion new "" --step=forge --from=my-csv-tool
- *   orion new "Сделай прогноз продаж" --slug=forecast-tool
+ *   orion new "РЎРґРµР»Р°Р№ РїСЂРѕРіРЅРѕР· РїСЂРѕРґР°Р¶" --slug=forecast-tool
  */
 import { fail, printOut } from "../helpers.js";
 import type { CliOptions } from "../helpers.js";
@@ -35,7 +36,7 @@ import { out } from "../../skills/out/handler.js";
 const STEPS = ["think", "draft", "forge", "shield", "out"] as const;
 type Step = (typeof STEPS)[number];
 
-/** Parse --step / --pipeline / --from / --dry out of the remaining args. */
+/** Parse --step / --pipeline / --from / --dry / --visual out of the remaining args. */
 function parseNewFlags(args: string[]): {
   positional: string[];
   step: Step | null;
@@ -44,6 +45,7 @@ function parseNewFlags(args: string[]): {
   dry: boolean;
   oracle: boolean;
   slug: string | null;
+  visual: boolean;
 } {
   const positional: string[] = [];
   let step: Step | null = null;
@@ -52,6 +54,7 @@ function parseNewFlags(args: string[]): {
   let dry = false;
   let oracle = false;
   let slug: string | null = null;
+  let visual = false;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--step") {
@@ -74,6 +77,8 @@ function parseNewFlags(args: string[]): {
       oracle = true;
     } else if (a === "--dry") {
       dry = true;
+    } else if (a === "--visual") {
+      visual = true;
     } else if (a === "--slug") {
       slug = args[++i] ?? null;
       if (!slug) throw new Error("--slug requires a value");
@@ -90,7 +95,7 @@ function parseNewFlags(args: string[]): {
       positional.push(a);
     }
   }
-  return { positional, step, pipeline, from, dry, oracle, slug };
+  return { positional, step, pipeline, from, dry, oracle, slug, visual };
 }
 
 export const newHandler: CommandHandler = async (args, opts) => {
@@ -101,12 +106,12 @@ export const newHandler: CommandHandler = async (args, opts) => {
     return fail(e instanceof Error ? e.message : String(e));
   }
 
-  const { positional, step, pipeline, from } = flags;
+  const { positional, step, pipeline, from, visual } = flags;
   // --dry is a global flag, parsed by parseArgs into opts.dry. Honour it.
   const dry = opts.dry;
   const oracle = flags.oracle;
 
-  // 4.3 oracle: pre-flight complexity analysis WITHOUT creating a change —
+  // 4.3 oracle: pre-flight complexity analysis WITHOUT creating a change вЂ”
   // honest on the front end (Receipt is honest on the back end).
   if (oracle) {
     const prompt = positional.join(" ").trim();
@@ -121,7 +126,7 @@ export const newHandler: CommandHandler = async (args, opts) => {
     console.log(`  depth:        ${r.depth}`);
     console.log(`  plannedSteps: ${r.plannedSteps}`);
     console.log(`  token estimate: ${r.tokenLabel}`);
-    console.log(`  (no change created — pre-flight only)`);
+    console.log(`  (no change created вЂ” pre-flight only)`);
     return 0;
   }
 
@@ -131,15 +136,15 @@ export const newHandler: CommandHandler = async (args, opts) => {
     console.log(`[dry-run] orion new "${target}"`);
     console.log(`  step:    ${step ?? "think"} (default)`);
     console.log(
-      `  pipeline: ${pipeline ? "yes (think→draft→forge→shield→out)" : "no (single step)"}`,
+      `  pipeline: ${pipeline ? "yes (thinkв†’draftв†’forgeв†’shieldв†’out)" : "no (single step)"}`,
     );
-    console.log(`  from:    ${from ?? "(none — would start from think)"}`);
+    console.log(`  from:    ${from ?? "(none вЂ” would start from think)"}`);
     return 0;
   }
 
-  // --pipeline: run the full chain think→draft→forge→shield→out
+  // --pipeline: run the full chain thinkв†’draftв†’forgeв†’shieldв†’out
   if (pipeline) {
-    return runPipeline(positional, from, opts, flags.slug);
+    return runPipeline(positional, from, opts, flags.slug, visual);
   }
 
   // Default (no --step): full autonomous pipeline with chat + clarify.
@@ -149,7 +154,7 @@ export const newHandler: CommandHandler = async (args, opts) => {
   const changeId = from ?? positional[0];
 
   if (whichStep === "think" && step === null) {
-    // Full autonomous pipeline: think → draft → clarify → forge → shield → out
+    // Full autonomous pipeline: think в†’ draft в†’ clarify в†’ forge в†’ shield в†’ out
     const prompt = positional.join(" ").trim();
     if (!prompt) {
       return fail(
@@ -206,10 +211,10 @@ export const newHandler: CommandHandler = async (args, opts) => {
       }) => {
         const mark =
           row.status === "done"
-            ? "✓"
+            ? "вњ“"
             : row.status === "skipped"
-              ? "✓ (cached)"
-              : "· (no snippet)";
+              ? "вњ“ (cached)"
+              : "В· (no snippet)";
         console.log(`  ${mark} ${row.desc}`);
       };
       const summary =
@@ -259,7 +264,7 @@ export const newHandler: CommandHandler = async (args, opts) => {
 };
 
 /**
- * Run the full think→draft→forge→shield→out chain. Stops on the first
+ * Run the full thinkв†’draftв†’forgeв†’shieldв†’out chain. Stops on the first
  * non-zero exit code and reports which step failed.
  */
 async function runPipeline(
@@ -267,6 +272,7 @@ async function runPipeline(
   from: string | null,
   opts: CliOptions,
   slug?: string | null,
+  visual?: boolean,
 ): Promise<number> {
   const prompt = positional.join(" ").trim();
   if (!from && !prompt) {
@@ -275,34 +281,42 @@ async function runPipeline(
     );
   }
 
+  const log = (step: number, msg: string, success = true) => {
+    if (visual) {
+      const status = success ? paint("✔", "green") : paint("✘", "red");
+      console.log(`${paint(`[ ${step}/5 ]`, "dim")} ${msg} ${status}`);
+    } else {
+      console.log(`[pipeline] step ${step}/5: ${msg}`);
+    }
+  };
+
   let changeId: string;
 
   if (from) {
     changeId = from;
     console.log(`[pipeline] continuing existing change: ${changeId}`);
   } else {
-    console.log(`[pipeline] step 1/5: think`);
+    log(1, "think");
     const proposal = await think(prompt, { ...opts, slug: slug ?? undefined });
     changeId = proposal.title;
-    console.log(`  → ${changeId}`);
+    if (!visual) console.log(`  → ${changeId}`);
   }
 
-  console.log(`[pipeline] step 2/5: draft`);
+  log(2, "draft");
   const draftResult = await draft(changeId, {
     noCache: opts.noCache,
     lang: opts.lang,
   });
   if (!draftResult) {
-    console.error(`[pipeline] step 2/5: draft failed`);
+    log(2, "draft failed", false);
     return 1;
   }
+  if (visual) log(2, "draft success");
 
-  console.log(`[pipeline] step 3/5: forge`);
+  log(3, "forge");
   const tasks = readTasks(changeId);
   if (tasks.length === 0) {
-    console.error(
-      `[pipeline] step 3/5: forge — no tasks in changes/${changeId}/tasks.md`,
-    );
+    log(3, "forge — no tasks in changes/${changeId}/tasks.md", false);
     return 1;
   }
   const summary =
@@ -313,16 +327,20 @@ async function runPipeline(
         })
       : await forge(changeId, { noCache: opts.noCache });
   if (!summary.ok) {
-    console.error(`[pipeline] step 3/5: forge failed`);
+    log(3, "forge failed", false);
     return 1;
   }
+  if (visual) log(3, "forge success");
 
-  console.log(`[pipeline] step 4/5: shield`);
+  log(4, "shield");
   const report = await shield(changeId, opts);
   if (!report.allPass) {
-    console.log(
-      `[pipeline] shield failed — handing control to autopilot (bounded):`,
-    );
+    if (visual) log(4, "shield failed — autopilot", false);
+    else
+      console.log(
+        `[pipeline] shield failed — handing control to autopilot (bounded):`,
+      );
+
     const { runAutopilot } = await import("../../core/autopilot.js");
     const auto = await runAutopilot({ changeId });
     for (const line of auto.trace) console.log(line);
@@ -336,10 +354,12 @@ async function runPipeline(
     console.log(`[pipeline] autopilot: ${auto.summary}`);
     return 0;
   }
+  if (visual) log(4, "shield success");
 
-  console.log(`[pipeline] step 5/5: out`);
+  log(5, "out");
   await out(changeId, opts);
-  console.log(`[pipeline] done: ${changeId}`);
+  if (visual) console.log(`[pipeline] done: ${changeId}`);
+  else console.log(`[pipeline] done: ${changeId}`);
   return 0;
 }
 

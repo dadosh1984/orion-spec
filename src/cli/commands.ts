@@ -10,7 +10,7 @@ import {
   checkForUpdate,
   updateBanner,
 } from "../core/updateCheck.js";
-import { parseArgs, HELP, DEPRECATED_ALIASES } from "./parse.js";
+import { parseArgs, HELP, resolveAlias } from "./parse.js";
 // Re-exported for tests and peer modules that import the CLI entry point.
 export { parseArgs } from "./parse.js";
 export type { CliOptions } from "./helpers.js";
@@ -118,15 +118,16 @@ export async function main(argv: string[]): Promise<number> {
     const { registerAllCommands, ORION_REGISTRY } =
       await import("./bootstrap.js");
     registerAllCommands();
-    if (cmd && Object.prototype.hasOwnProperty.call(DEPRECATED_ALIASES, cmd)) {
-      const target = DEPRECATED_ALIASES[cmd];
-      if (target && !target.startsWith("__")) {
-        canonical = target;
-        // `orion init` is a bare alias to doctor; inject --init so it runs
-        // the scaffold, not the health check (v0.52, 2.1).
-        if (target === "doctor" && cmd === "init" && !args.includes("--init")) {
-          args.unshift("--init");
-        }
+    canonical = resolveAlias(cmd);
+    if (cmd !== canonical) {
+      // `orion init` is a bare alias to doctor; inject --init so it runs
+      // the scaffold, not the health check (v0.52, 2.1).
+      if (
+        canonical === "doctor" &&
+        cmd === "init" &&
+        !args.includes("--init")
+      ) {
+        args.unshift("--init");
       }
     }
     const spec = ORION_REGISTRY.get(canonical);

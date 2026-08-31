@@ -91,7 +91,7 @@ describe("registry bootstrap (v0.51)", () => {
       "../src/cli/bootstrap.js"
     );
     registerAllCommands();
-    expect(ORION_REGISTRY.size).toBe(9);
+    expect(ORION_REGISTRY.size).toBe(10);
     for (const name of [
       "new",
       "ls",
@@ -102,6 +102,7 @@ describe("registry bootstrap (v0.51)", () => {
       "serve",
       "plugin",
       "autopilot",
+      "skill",
     ]) {
       expect(ORION_REGISTRY.has(name), `command '${name}' should be registered`).toBe(true);
     }

@@ -1,0 +1,17 @@
+{
+  "ORION-ERR-CONF-0001": {
+    "title": "Invalid Configuration",
+    "solution": "Check ~/.orionrc or ORION_* environment variables.",
+    "doc": "docs/configuration.md"
+  },
+  "ORION-ERR-GATE-0002": {
+    "title": "Hazard Gate Blocked",
+    "solution": "Execution contains destructive patterns. Use --force to override.",
+    "doc": "docs/security.md#hazards"
+  },
+  "ORION-ERR-SKIL-0003": {
+    "title": "Skill Not Found",
+    "solution": "Run 'orion skill search <query>' or check '~/.orion/scripts/'.",
+    "doc": "docs/skills.md"
+  }
+}

@@ -38,6 +38,7 @@ import { verifyChange, formatVerifyReport } from "../../core/verify.js";
 import { replay } from "../../skills/replay/handler.js";
 import { out } from "../../skills/out/handler.js";
 import { exportProfile, importProfile } from "../../core/profile.js";
+import { analyzeChangeImpact } from "../../core/changeAnalyzer.js";
 import type { CommandHandler } from "../registry.js";
 
 export const changeHandler: CommandHandler = async (args, opts) => {
@@ -52,6 +53,27 @@ export const changeHandler: CommandHandler = async (args, opts) => {
 
   if (!existsSync(join("changes", id, "proposal.json"))) {
     return fail(`change '${id}' not found under changes/`);
+  }
+
+  // --analyze / --dry-run
+  if (rest.includes("--analyze") || rest.includes("--dry-run") || opts.dry) {
+    const report = analyzeChangeImpact(id);
+    printOut(
+      opts,
+      report,
+      [
+        `Impact Analysis for "${id}":`,
+        `  Tasks count:        ${report.tasksCount}`,
+        `  Est. duration:      ${report.estimatedDurationMs}ms`,
+        `  Affected files (${report.affectedFiles.length}):`,
+        ...report.affectedFiles.map((f) => `    • ${f}`),
+        report.potentialBreakingChanges.length
+          ? `  Potential breaking changes:\n` +
+            report.potentialBreakingChanges.map((b) => `    ⚠️ ${b}`).join("\n")
+          : `  No breaking changes detected.`,
+      ].join("\n"),
+    );
+    return 0;
   }
 
   // --tasks

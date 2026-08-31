@@ -31,6 +31,8 @@ export interface CliOptions {
   full: boolean;
   /** Force bypass prompt drift guard (v0.64). */
   force: boolean;
+  /** Show real-time pipeline progress (v0.68+). */
+  visual: boolean;
 }
 
 /** Print JSON or plain text depending on the --json flag. */

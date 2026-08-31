@@ -18,6 +18,7 @@ import { doctorHandler } from "./commands/doctor.js";
 import { serveHandler } from "./commands/serve.js";
 import { pluginHandler } from "./commands/plugin.js";
 import { autopilotHandler } from "./commands/autopilot.js";
+import { skillHandler } from "./commands/skillCmd.js";
 
 let registered = false;
 
@@ -74,6 +75,11 @@ export function registerAllCommands(): void {
     description:
       "Closed-loop orchestrator: route failing change through correction until green or honest stop",
     handler: autopilotHandler,
+  });
+  registerCommand({
+    name: "skill",
+    description: "Search and install community skills",
+    handler: skillHandler,
   });
 }
 

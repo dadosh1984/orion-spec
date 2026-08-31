@@ -103,6 +103,7 @@ Flags:
   --token T    Bearer token for serve (auto-generated when host is not loopback)
   --ui         Serve the HTML dashboard at / (default for serve)
   --lang en|ru Template language override for draft (v0.27)
+  --visual    Show real-time pipeline progress (v0.68+)
 `;
 
 /**
@@ -144,6 +145,23 @@ export const DEPRECATED_ALIASES: Readonly<Record<string, string>> =
     route: "__hidden__",
   });
 
+/**
+ * Проверяет, является ли команда устаревшим псевдонимом.
+ * Выводит предупреждение в stderr и возвращает каноническое имя.
+ */
+export function resolveAlias(cmd: string): string {
+  if (Object.prototype.hasOwnProperty.call(DEPRECATED_ALIASES, cmd)) {
+    const target = DEPRECATED_ALIASES[cmd];
+    if (target && !target.startsWith("__")) {
+      process.stderr.write(
+        `[WARNING] Deprecated alias '${cmd}' used. Use '${target}' instead.\n`,
+      );
+      return target;
+    }
+  }
+  return cmd;
+}
+
 /** Parse argv into a command plus options (v0.52, C1: node:util parseArgs). */
 export function parseArgs(argv: string[]): {
   cmd: string;
@@ -161,6 +179,7 @@ export function parseArgs(argv: string[]): {
     npm: false,
     port: 0,
     ui: true,
+    visual: false,
   };
 
   const parsed = nodeParseArgs({
@@ -199,6 +218,7 @@ export function parseArgs(argv: string[]): {
   opts.auto = values.auto === true;
   opts.full = values.full === true;
   opts.force = values.force === true;
+  opts.visual = values.visual === true;
   opts.npm = values.npm === true;
   if (values.ui === true) opts.ui = true;
 
@@ -247,6 +267,10 @@ export function parseArgs(argv: string[]): {
     if (lang !== "en" && lang !== "ru")
       throw new Error('--lang requires "en" or "ru"');
     opts.lang = lang as "en" | "ru";
+  }
+  const visual = values.visual as boolean | undefined;
+  if (visual !== undefined) {
+    opts.visual = visual === true;
   }
   const saveAs = values["save-as"] as string | undefined;
   if (saveAs !== undefined) {

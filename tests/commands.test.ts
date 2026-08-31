@@ -56,6 +56,7 @@ describe("parseArgs", () => {
       npm: false,
       port: 0,
       ui: true,
+      visual: false,
     });
   });
 });
